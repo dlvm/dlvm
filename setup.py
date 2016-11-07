@@ -1,30 +1,40 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
+from codecs import open
+from os import path
 
-import dlvm
+here = path.abspath(path.dirname(__file__))
 
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
-setup_options = dict(
+setup(
     name='dlvm',
-    version=dlvm.__version__,
+    version='0.1.0',
     description='a distribute storage system base on lvm and iscsi',
-    long_description=open('README.rst').read(),
-    author='yupeng',
+    long_description=long_description,
     url='https://github.com/dlvm/dlvm',
-    scripts=['bin/dlvm_manage_db'],
+    author='yupeng',
+    author_email='yupeng0921@gmail.com',
+    license='MIT',
+    classifiers=(
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+    ),
+    keywords='dlvm storage',
     packages=find_packages(exclude=['tests*']),
     data_files=[
         ('/etc/dlvm', [
-            'data/dlvm.conf',
+            'data/conf.yml',
             'data/logger.yml',
         ])
     ],
-    license="Apache License 2.0",
-    classifiers=(
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python',
-    ),
+    entry_points={
+        'console_scripts': [
+            'dlvm_init_transaction=dlvm.util.transaction:init_transaction',
+        ],
+    },
 )
-
-setup(**setup_options)

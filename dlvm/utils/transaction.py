@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 from logging import getLogger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -117,3 +118,9 @@ def host_verify(name, major, minor):
 def dpv_verify(name, major, minor):
     context = get_context()
     do_verify(name, major, minor, context['dpv'])
+
+
+def init_transaction():
+    role = sys.argv[1]
+    major = sys.argv[2]
+    init_transaction_db(role, major)
