@@ -54,6 +54,7 @@ def main():
     loginit()
     s = WrapperRpcServer(conf.host_listener, conf.host_port)
     s.register_function(ping)
+    s.register_function(bm_get)
     logger.info('host_agent start')
     s.serve_forever()
 
