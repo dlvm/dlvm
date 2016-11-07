@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 
 from threading import Lock
-from logging import get_logger
+import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
 from dlvm.utils.transaction import host_verify
 
-loginit()
 
-logger = get_logger('dlvm_host')
+# class NullHandler(logging.Handler):
+#     def emit(self, record):
+#         pass
 
-host_listener = conf.get('default', 'host_listener')
-host_port = conf.getint('default', 'host_port')
+
+logger = logging.getLogger('dlvm_host')
+# logger.addHandler(NullHandler())
 
 global_rpc_lock = Lock()
 global_rpc_set = set()
@@ -49,10 +51,11 @@ def bm_get(dlv_name, tran, dlv_info, thin_id_list, leg_id):
 
 
 def main():
-    s = WrapperRpcServer(host_listener, host_port)
+    loginit()
+    s = WrapperRpcServer(conf.host_listener, conf.host_port)
     s.register_function(ping)
     logger.info('host_agent start')
-    s.server_forever()
+    s.serve_forever()
 
 
 if __name__ == '__main__':

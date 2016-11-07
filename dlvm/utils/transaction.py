@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 
-from logging import get_logger
+from logging import getLogger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
 from configure import conf
-
-dpv_major_file = conf.get('defalt', 'dpv_major_file')
-dpv_transaction_db = conf.get('default', 'dpv_transaction_db')
-host_major_file = conf.get('defalt', 'host_major_file')
-host_transaction_db = conf.get('default', 'host_transaction_db')
 
 conflict_error = 'TransactionConflict'
 
@@ -29,30 +24,33 @@ class Transaction(Base):
             self.name, self.major, self.minor)
 
 
-dpv_engine = create_engine(dpv_transaction_db)
-DpvSession = sessionmaker(bind=dpv_engine)
-host_engine = create_engine(host_transaction_db)
-HostSession = sessionmaker(bind=host_engine)
+def get_context():
+    dpv_engine = create_engine(conf.dpv_transaction_db)
+    DpvSession = sessionmaker(bind=dpv_engine)
+    host_engine = create_engine(conf.host_transaction_db)
+    HostSession = sessionmaker(bind=host_engine)
 
-context = {
-    'dpv': {
-        'engine': dpv_engine,
-        'Session': DpvSession,
-        'default_major': None,
-        'major_file': dpv_major_file,
-        'logger': get_logger('dlvm_dpv'),
-    },
-    'host': {
-        'engine': host_engine,
-        'Session': HostSession,
-        'default_major': None,
-        'major_file': host_major_file,
-        'logger': get_logger('host_dpv'),
-    },
-}
+    context = {
+        'dpv': {
+            'engine': dpv_engine,
+            'Session': DpvSession,
+            'default_major': None,
+            'major_file': conf.dpv_major_file,
+            'logger': getLogger('dlvm_dpv'),
+        },
+        'host': {
+            'engine': host_engine,
+            'Session': HostSession,
+            'default_major': None,
+            'major_file': conf.host_major_file,
+            'logger': getLogger('host_dpv'),
+        },
+    }
+    return context
 
 
 def init_transaction_db(role, major):
+    context = get_context()
     c = context[role]
     Base.metadata.create_all(c['engine'])
     c['default_major'] = major
@@ -112,8 +110,10 @@ def do_verify(name, major, minor, c):
 
 
 def host_verify(name, major, minor):
+    context = get_context()
     do_verify(name, major, minor, context['host'])
 
 
 def dpv_verify(name, major, minor):
+    context = get_context()
     do_verify(name, major, minor, context['dpv'])
