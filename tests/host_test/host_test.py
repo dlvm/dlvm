@@ -6,6 +6,7 @@ import unittest
 from mock import Mock, patch
 from dlvm.host.host_agent import main
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
+from dlvm.utils.bitmap import BitMap
 
 
 class PingTest(unittest.TestCase):
@@ -116,5 +117,9 @@ class BmGetSimpleTest(unittest.TestCase):
             'major': 1,
             'minor': 0,
         }
-        ret = client.bm_get('dlv0', tran, dlv_info, [], [])
-        self.assertTrue(ret is not None)
+        dm_dict = client.bm_get('dlv0', tran, dlv_info, [], [])
+        for key in dm_dict:
+            val = dm_dict[key]
+            bm = BitMap.fromhexstring(val)
+            for i in xrange(bm.size()):
+                self.assertTrue(bm.test(i))
