@@ -7,3 +7,4 @@ host_port: 9523
 main_db: sqlite:////data/dlvm/dlvm.db
 host_db: sqlite:////data/dlvm/host.db
 dpv_db: sqlite:////data/dlvm/dpv.db
+bm_throttle: 5120

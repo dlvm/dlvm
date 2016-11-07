@@ -159,6 +159,16 @@ def dm_status(name):
     return r.out
 
 
+def dm_info(name):
+    cmd = [
+        ctx.conf.dmsetup_path,
+        'info',
+        name,
+    ]
+    r = run_cmd(cmd)
+    return r.out
+
+
 class DmBasic(object):
 
     def __init__(self, name):
@@ -196,6 +206,10 @@ class DmBasic(object):
         status = dm_status(self.name)
         return self._extract_status(status)
 
+    def info(self):
+        info = dm_info(self.name)
+        return self._extract_info(info)
+
     def _format_table(self, param):
         raise Exception('not implement')
 
@@ -203,6 +217,9 @@ class DmBasic(object):
         raise Exception('not implement')
 
     def _extract_status(self, param):
+        raise Exception('not implement')
+
+    def _extract_info(self, param):
         raise Exception('not implement')
 
 
@@ -276,6 +293,43 @@ class DmPool(DmBasic):
         else:
             assert(False)
         return message
+
+    def _extract_status(self, status_str):
+        status = {}
+        items = status_str.split()
+        status['start'] = int(items[0])
+        status['length'] = int(items[1])
+        status['type'] = items[2]
+        status['transaction_id'] = items[3]
+        used_meta, total_meta = map(int, items[4].split())
+        status['used_meta'] = used_meta
+        status['total_meta'] = total_meta
+        used_data, total_data = map(int, items[5].split())
+        status['used_data'] = used_data
+        status['total_data'] = total_data
+        return status
+
+    def _extract_info(self, info_str):
+        info = {}
+        lines = info_str.split('\n')
+        items = lines[0].split()
+        info['name'] = items[-1]
+        items = lines[1].split()
+        info['status'] = items[-1]
+        items = lines[2].split()
+        info['read_ahead'] = int(items[-1])
+        items = lines[3].split()
+        info['tables_present'] = items[-1]
+        items = lines[4].split()
+        info['open_count'] = int(items[-1])
+        items = lines[5].split()
+        info['event_number'] = int(items[-1])
+        itmes = lines[6].split()
+        info['major'] = int(itmes[-2])
+        info['minor'] = int(itmes[-1])
+        items = lines[7].split()
+        info['number_of_targets'] = int(items[-1])
+        return info
 
 
 class DmThin(DmBasic):
