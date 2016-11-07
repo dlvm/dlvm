@@ -1,0 +1,40 @@
+version: 1
+formatters:
+  simple:
+    format: '%(asctime)s - %(levelname)s - %(message)s'
+handlers:
+  api_handler:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: simple
+    filename: /var/log/dlvm/api.log
+    when: midnight
+    interval: 1
+    backupCount: 14
+  dpv_handler:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: simple
+    filename: /var/log/dlvm/dpv.log
+    when: midnight
+    interval: 1
+    backupCount: 14
+  host_handler:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: simple
+    filename: /var/log/dlvm/host.log
+    when: midnight
+    interval: 1
+    backupCount: 14
+loggers:
+  dlvm_api:
+    level: DEBUG
+    handlers: [api_handler]
+    propagate: yes
+  dlvm_dpv:
+    level: DEBUG
+    handlers: [api_handler]
+    propagate: yes
+  dlvm_host:
+    level: DEBUG
+    handlers: [api_handler]
+    propagate: yes
+
