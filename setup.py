@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='dlvm',
-    version='0.1.0',
+    version='0.1.2',
     description='a distribute storage system base on lvm and iscsi',
     long_description=long_description,
     url='https://github.com/dlvm/dlvm',
@@ -26,12 +26,12 @@ setup(
     ),
     keywords='dlvm storage',
     packages=find_packages(exclude=['tests*']),
-    data_files=[
-        ('/etc/dlvm', [
+    package_data={
+        'dlvm': [
             'data/conf.yml',
             'data/logger.yml',
-        ])
-    ],
+        ],
+    },
     entry_points={
         'console_scripts': [
             'dlvm_init_transaction=dlvm.util.transaction:init_transaction',
