@@ -27,6 +27,14 @@ handlers:
     when: midnight
     interval: 1
     backupCount: 14
+  monitor_handler:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: simple
+    filename: /var/log/dlvm/monitor.log
+    delay: True
+    when: midnight
+    interval: 1
+    backupCount: 14
 loggers:
   dlvm_api:
     level: DEBUG
@@ -39,5 +47,9 @@ loggers:
   dlvm_host:
     level: DEBUG
     handlers: [host_handler]
+    propagate: yes
+  dlvm_monitor:
+    level: DEBUG
+    handlers: [monitor_handler]
     propagate: yes
 

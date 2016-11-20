@@ -220,7 +220,41 @@ class DmBasic(object):
         raise Exception('not implement')
 
     def _extract_info(self, param):
-        raise Exception('not implement')
+        info = {}
+        lines = param.split('\n')
+        items = lines[0].split()
+        info['name'] = items[-1]
+        items = lines[1].split()
+        info['status'] = items[-1]
+        items = lines[2].split()
+        info['read_ahead'] = int(items[-1])
+        items = lines[3].split()
+        info['tables_present'] = items[-1]
+        items = lines[4].split()
+        info['open_count'] = int(items[-1])
+        items = lines[5].split()
+        info['event_number'] = int(items[-1])
+        itmes = lines[6].split()
+        info['major'] = int(itmes[-2])
+        info['minor'] = int(itmes[-1])
+        items = lines[7].split()
+        info['number_of_targets'] = int(items[-1])
+        return info
+
+    def wait(self, event_number):
+        dm_wait(self.name, event_number)
+
+    def wait_event(self, check, action, args):
+        info = self.info()
+        event_number = info['event_number']
+        ret = check(args)
+        if ret is True:
+            action(args)
+        else:
+            self.wait(event_number)
+            ret = check(args)
+            if ret is True:
+                action(args)
 
 
 class DmLinear(DmBasic):
@@ -267,6 +301,23 @@ class DmMirror(DmBasic):
         ).format(**param)
         return table
 
+    def _extract_status(self, param):
+        status = {}
+        items = param.split()
+        status['start'] = int(items[0])
+        status['length'] = int(items[1])
+        status['type'] = items[2]
+        status['raid_type'] = items[3]
+        status['devices_num'] = int(items[4])
+        status['first_hc'] = items[5][0]
+        status['second_hc'] = items[5][0]
+        curr, total = map(int, items[6].split('/'))
+        status['curr'] = curr
+        status['total'] = total
+        status['sync_action'] = items[7]
+        status['mismatch_cnt'] = items[8]
+        return status
+
 
 class DmPool(DmBasic):
 
@@ -309,28 +360,6 @@ class DmPool(DmBasic):
         status['total_data'] = total_data
         return status
 
-    def _extract_info(self, info_str):
-        info = {}
-        lines = info_str.split('\n')
-        items = lines[0].split()
-        info['name'] = items[-1]
-        items = lines[1].split()
-        info['status'] = items[-1]
-        items = lines[2].split()
-        info['read_ahead'] = int(items[-1])
-        items = lines[3].split()
-        info['tables_present'] = items[-1]
-        items = lines[4].split()
-        info['open_count'] = int(items[-1])
-        items = lines[5].split()
-        info['event_number'] = int(items[-1])
-        itmes = lines[6].split()
-        info['major'] = int(itmes[-2])
-        info['minor'] = int(itmes[-1])
-        items = lines[7].split()
-        info['number_of_targets'] = int(items[-1])
-        return info
-
 
 class DmThin(DmBasic):
 
@@ -345,3 +374,108 @@ class DmError(DmBasic):
     def _format_talbe(self, param):
         table = '{start} {length} error'.format(**param)
         return table
+
+
+def iscsi_get_context(target_name, iscsi_ip_port):
+    cmd = [
+        ctx.iscsiadm_path,
+        '-m', 'node',
+        '-o', 'show',
+        '-T', target_name,
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        cmd = [
+            ctx.iscsiadm_path,
+            '-m', 'discovery',
+            '-t', 'sendtargets',
+            '-p', iscsi_ip_port,
+        ]
+        run_cmd(cmd)
+        cmd = [
+            ctx.iscsiadm_path,
+            '-m', 'node',
+            '-o', 'show',
+            '-T', target_name,
+        ]
+        r = run_cmd(cmd)
+    return iscsi_extract_context(r.out)
+
+
+def iscsi_extract_context(output):
+    items = output.split('\n')
+    address = None
+    port = None
+    for item in items:
+        if item.startswith('node.conn[0].address'):
+            address = item.split()[-1]
+        elif item.startswith('node.conn[0].port'):
+            port = item.split()[-1]
+        if address is not None and port is not None:
+            break
+    assert(address is not None)
+    assert(port is not None)
+    context = {}
+    context['address'] = address
+    context['port'] = port
+    return context
+
+
+def iscsi_get_path(target_name, context):
+    iscsi_path = ctx.iscsi_path_fmt.format(
+        address=context['address'],
+        port=context['port'],
+        target_name=target_name,
+    )
+    return iscsi_path
+
+
+def iscsi_login(target_name, dpv_name):
+    iscsi_ip_port = '{dpv_name}:{iscsi_port}'.format(
+        dpv_name=dpv_name, iscsi_port=ctx.iscsi_port)
+    context = iscsi_get_context(
+        target_name, iscsi_ip_port)
+    iscsi_path = iscsi_get_path(target_name, context)
+    if os.path.exists(iscsi_path):
+        return iscsi_path
+    cmd = [
+        ctx.iscsiadm_path,
+        '-m', 'node',
+        '--login',
+        '-T', target_name,
+        '-p', iscsi_ip_port,
+    ]
+    run_cmd(cmd)
+    verify_dev_path(iscsi_path)
+    return iscsi_path
+
+
+def iscsi_logout(target_name):
+    # iscsiadm -m node -o show -T target_name
+    cmd = [
+        ctx.iscsiadm_path,
+        '-m', 'node',
+        '-o', 'show',
+        '-T', target_name,
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        return
+    context = iscsi_extract_context(r.out)
+    iscsi_path = iscsi_get_path(target_name, context)
+    if os.path.exists(iscsi_path):
+        cmd = [
+            ctx.iscsiadm_path,
+            '-m', 'node',
+            '--logout',
+            '-T', target_name,
+        ]
+        run_cmd(cmd)
+    # iscsiadm -m node -T target_name -o delete
+    cmd = [
+        ctx.iscsiadm_path,
+        '-m', 'node',
+        '-T', target_name,
+        '-o', 'delete',
+    ]
+    run_cmd(cmd)

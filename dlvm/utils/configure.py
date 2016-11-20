@@ -18,5 +18,5 @@ class Conf(object):
         return self.conf[attr]
 
 
-conf_path = os.path.join(lc_path, 'dlvm.conf')
+conf_path = os.path.join(lc_path, 'conf.yml')
 conf = Conf(conf_path)

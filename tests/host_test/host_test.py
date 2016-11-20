@@ -4,7 +4,7 @@ import time
 from multiprocessing import Process
 import unittest
 from mock import Mock, patch
-from dlvm.host.host_agent import main, bm_get
+from dlvm.host.host_agent import main, bm_get, dlv_aggregate
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks
 from dlvm.utils.bitmap import BitMap
@@ -113,3 +113,71 @@ class RpcFunctionTest(unittest.TestCase):
                 bm = BitMap.fromhexstring(val)
                 for i in xrange(bm_size):
                     self.assertTrue(bm.test(i))
+
+    @patch('dlvm.host.host_agent.Thread')
+    @patch('dlvm.host.host_agent.iscsi_login')
+    @patch('dlvm.host.host_agent.DmError')
+    @patch('dlvm.host.host_agent.DmThin')
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.DmMirror')
+    @patch('dlvm.host.host_agent.DmStripe')
+    @patch('dlvm.host.host_agent.DmLinear')
+    @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.host_verify')
+    @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.loginit')
+    def test_dlv_aggregate(
+            self, loginit, conf, host_verify,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            iscsi_login, Thread,
+    ):
+        dm_context = {
+            'thin_block_size': 4*1024*1024,
+            'mirror_meta_blocks': 1,
+            'mirror_region_size': 4*1024*1024,
+            'stripe_number': 1,
+            'stripe_chunk_blocks': 1,
+            'low_water_mark': 100,
+        }
+        groups = [{
+            'idx': 0,
+            'group_size': 16*1024*1024,
+            'legs': [{
+                'leg_id': '000',
+                'idx': 0,
+                'leg_size': 16*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv0',
+            }, {
+                'leg_id': '001',
+                'idx': 1,
+                'leg_size': 16*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv1',
+            }],
+        }, {
+            'idx': 1,
+            'group_size': 512*1024*1024,
+            'legs': [{
+                'leg_id': '002',
+                'idx': 0,
+                'leg_size': 512*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv2',
+            }, {
+                'leg_id': '003',
+                'idx': 1,
+                'leg_size': 512*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv3',
+            }],
+        }]
+        dlv_info = {
+            'dlv_size': 1024*1024*1024,
+            'data_size': 512*1024*1024,
+            'thin_id': 0,
+            'dm_context': dm_context,
+            'groups': groups,
+        }
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        dlv_aggregate('dlv0', tran, dlv_info)
