@@ -8,7 +8,7 @@ from mock import patch
 from dlvm.dpv.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     mj_leg_export, mj_leg_unexport, mj_login, \
-    mj_mirror_start
+    mj_mirror_start, mj_mirror_stop
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -240,3 +240,26 @@ class RpcFunctionTest(unittest.TestCase):
         }
         mj_mirror_start(
             leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm, tran)
+
+    @patch('dlvm.dpv.dpv_agent.DmLinear')
+    @patch('dlvm.dpv.dpv_agent.lv_remove')
+    @patch('dlvm.dpv.dpv_agent.iscsi_logout')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_mirror_stop(
+            self, conf, dpv_verify,
+            encode_target_name,
+            iscsi_logout, lv_remove,
+            DmLinear,
+    ):
+        leg_id = '001'
+        mj_name = 'mj0'
+        dst_id = '002'
+        leg_size = 1024*1024*1024
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        mj_mirror_stop(
+            leg_id, mj_name, dst_id, leg_size, tran)

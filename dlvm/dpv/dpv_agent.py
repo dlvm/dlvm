@@ -14,7 +14,7 @@ from dlvm.utils.command import context_init, \
     run_dd, \
     iscsi_create, iscsi_delete, \
     iscsi_export, iscsi_unexport, \
-    iscsi_login
+    iscsi_login, iscsi_logout
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, \
@@ -346,6 +346,35 @@ def mj_mirror_start(
             leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm)
 
 
+def do_mj_mirror_stop(leg_id, mj_name, dst_id, leg_size):
+    leg_sectors = leg_size / 512
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmLinear(layer1_name)
+    lv_path = lv_get_path(leg_id, conf.local_vg)
+    table = [{
+        'start': 0,
+        'length': leg_sectors,
+        'dev_path': lv_path,
+        'offset': 0,
+    }]
+    dm.reload(table)
+    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
+    lv_remove(mj_meta0_name, conf.local_vg)
+    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
+    lv_remove(mj_meta1_name, conf.local_vg)
+    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+    target_name = encode_target_name(dst_layer2_name)
+    iscsi_logout(target_name)
+
+
+def mj_mirror_stop(
+        leg_id, mj_name, dst_id, leg_size, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_mj_mirror_stop(
+            leg_id, mj_name, dst_id, leg_size)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -360,5 +389,6 @@ def main():
     s.register_function(mj_leg_unexport)
     s.register_function(mj_login)
     s.register_function(mj_mirror_start)
+    s.register_function(mj_mirror_stop)
     logger.info('dpv_agent start')
     s.serve_forever()
