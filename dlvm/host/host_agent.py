@@ -245,12 +245,22 @@ def create_mirror(dlv_name, g_idx, m_idx, leg0, leg1, dm_context):
     mirror_region_sectors = dm_context['mirror_region_sectors']
     try:
         leg0_path = login_leg(leg0['leg_id'], leg0['dpv_name'])
-    except:
-        pass
+    except Exception as e:
+        logger.warning(
+            'login_failed_0: %s %s %s',
+            leg0['leg_id'],
+            leg0['dpv_name'],
+            e,
+        )
     try:
         leg1_path = login_leg(leg1['leg_id'], leg1['dpv_name'])
-    except:
-        pass
+    except Exception as e:
+        logger.warning(
+            'login_failed_1: %s %s %s',
+            leg0['leg_id'],
+            leg0['dpv_name'],
+            e,
+        )
     if leg0_path is None and leg1_path is None:
         mirror_name = get_mirror_name(dlv_name, g_idx, m_idx)
         dm = DmError(mirror_name)
@@ -712,6 +722,106 @@ def snapshot_delete(dlv_name, tran, thin_id):
         do_snapshot_delete(dlv_name, thin_id)
 
 
+def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
+    dm_context = generate_dm_context(dlv_info['dm_context'])
+    src_leg = None
+    m_idx = None
+    for group in dlv_info['groups']:
+        legs = group['legs']
+        legs.sort(key=lambda x: x['idx'])
+        for m, (leg0, leg1) in enumerate(chunks(legs, 2)):
+            if leg0['leg_id'] == src_id:
+                src_leg = leg0
+            elif leg1['leg_id'] == src_id:
+                src_leg = leg1
+            if src_leg is not None:
+                m_idx = m
+                g_idx = group['idx']
+                break
+        if src_leg is not None:
+            break
+    if src_leg is None:
+        raise Exception('src_id not found: %s' % src_id)
+
+    leg_sectors = src_leg['leg_size'] / 512
+    mirror_meta_sectors = dm_context['mirror_meta_sectors']
+    mirror_data_sectors = leg_sectors - mirror_meta_sectors
+    mirror_region_sectors = dm_context['mirror_region_sectors']
+
+    dst_path = None
+    try:
+        dst_path = login_leg(
+            dst_leg['leg_id'], dst_leg['dpv_name'])
+    except Exception as e:
+        logger.warning(
+            'remirror_dst_failed: %s %s %s',
+            dst_leg['leg_id'],
+            dst_leg['dpv_name'],
+            e,
+        )
+    src_path = login_leg(
+        src_leg['leg_id'], src_leg['dpv_name'])
+    if dst_path is None:
+        src_meta_path, src_data_path = create_mirror_leg(
+            dlv_name, g_idx, src_leg, src_path, dm_context)
+        mirror_name = get_mirror_name(dlv_name, g_idx, m_idx)
+        dm = DmLinear(mirror_name)
+        table = [{
+            'start': 0,
+            'length': mirror_data_sectors,
+            'dpv_path': src_data_path,
+            'offset': 0,
+        }]
+        dm.reload(table)
+        report_single_leg(dlv_name, dst_leg['leg_id'])
+    else:
+        src_meta_path, src_data_path = create_mirror_leg(
+            dlv_name, g_idx, src_leg, src_path, dm_context)
+        dst_meta_path, dst_data_path = create_mirror_leg(
+            dlv_name, g_idx, dst_leg, dst_path, dm_context)
+        mirror_name = get_mirror_name(dlv_name, g_idx, m_idx)
+        dm = DmMirror(mirror_name)
+        if src_leg['idx'] < dst_leg['idx']:
+            leg0 = src_leg
+            meta0_path = src_meta_path
+            data0_path = src_data_path
+            leg1 = dst_leg
+            meta1_path = dst_meta_path
+            data1_path = dst_data_path
+        else:
+            leg0 = dst_leg
+            meta0_path = dst_meta_path
+            data0_path = dst_data_path
+            leg1 = src_leg
+            meta1_path = src_meta_path
+            data1_path = src_data_path
+        assert(leg0['idx'] + 1 == leg1['idx'])
+        table = {
+            'start': 0,
+            'offset': mirror_data_sectors,
+            'region_size': mirror_region_sectors,
+            'meta0': meta0_path,
+            'data0': data0_path,
+            'meta1': meta1_path,
+            'data1': data1_path,
+        }
+        dm.reload(table)
+        args = {
+            'dlv_name': dlv_name,
+            'mirror_name': mirror_name,
+            'leg0_id': leg0['leg_id'],
+            'leg1_id': leg1['leg_id'],
+        }
+        t = Thread(target=mirror_event, args=(args,))
+        t.start()
+
+
+def remirror(dlv_name, tran, dlv_info, src_id, dst_leg):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_remirror(dlv_name, dlv_info, src_id, dst_leg)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -725,5 +835,6 @@ def main():
     s.register_function(dlv_resume)
     s.register_function(snapshot_create)
     s.register_function(snapshot_delete)
+    s.register_function(remirror)
     logger.info('host_agent start')
     s.serve_forever()
