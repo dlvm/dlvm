@@ -8,7 +8,7 @@ from dlvm.host.host_agent import main, bm_get, \
     dlv_aggregate, dlv_degregate, \
     dlv_suspend, dlv_resume, \
     snapshot_create, snapshot_delete, \
-    remirror
+    remirror, leg_remove
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks
 from dlvm.utils.bitmap import BitMap
@@ -211,36 +211,37 @@ class RpcFunctionTest(unittest.TestCase):
     @patch('dlvm.host.host_agent.DmStripe')
     @patch('dlvm.host.host_agent.DmLinear')
     @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.encode_target_name')
     @patch('dlvm.host.host_agent.host_verify')
     @patch('dlvm.host.host_agent.conf')
     @patch('dlvm.host.host_agent.queue_init')
     @patch('dlvm.host.host_agent.loginit')
     def test_dlv_degregate(
-            self, loginit, queue_init, conf, host_verify,
+            self, loginit, queue_init, conf,
+            host_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_logout,
     ):
-        return
         groups = [{
             'idx': 0,
             'legs': [{
-                'id': '000',
+                'leg_id': '000',
                 'idx': 0,
                 'dpv_name': 'dpv0',
             }, {
-                'id': '001',
+                'leg_id': '001',
                 'idx': 1,
                 'dpv_name': 'dpv1',
             }],
         }, {
             'idx': 1,
             'legs': [{
-                'id': '002',
+                'leg_id': '002',
                 'idx': 0,
                 'dpv_name': 'dpv2',
             }, {
-                'id': '003',
+                'leg_id': '003',
                 'idx': 1,
                 'dpv_name': 'dpv3',
             }],
@@ -432,3 +433,55 @@ class RpcFunctionTest(unittest.TestCase):
             'dpv_name': 'dpv4',
         }
         remirror('dlv0', tran, dlv_info, src_id, dst_leg)
+
+    @patch('dlvm.host.host_agent.iscsi_logout')
+    @patch('dlvm.host.host_agent.DmError')
+    @patch('dlvm.host.host_agent.DmThin')
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.DmMirror')
+    @patch('dlvm.host.host_agent.DmStripe')
+    @patch('dlvm.host.host_agent.DmLinear')
+    @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.encode_target_name')
+    @patch('dlvm.host.host_agent.host_verify')
+    @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.queue_init')
+    @patch('dlvm.host.host_agent.loginit')
+    def test_leg_remove(
+            self, loginit, queue_init, conf,
+            host_verify, encode_target_name,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            iscsi_logout,
+    ):
+        groups = [{
+            'idx': 0,
+            'legs': [{
+                'leg_id': '000',
+                'idx': 0,
+                'dpv_name': 'dpv0',
+            }, {
+                'leg_id': '001',
+                'idx': 1,
+                'dpv_name': 'dpv1',
+            }],
+        }, {
+            'idx': 1,
+            'legs': [{
+                'leg_id': '002',
+                'idx': 0,
+                'dpv_name': 'dpv2',
+            }, {
+                'leg_id': '003',
+                'idx': 1,
+                'dpv_name': 'dpv3',
+            }],
+        }]
+        dlv_info = {
+            'groups': groups,
+        }
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        leg_remove('dlv0', tran, dlv_info, '001')

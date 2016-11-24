@@ -726,6 +726,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
     dm_context = generate_dm_context(dlv_info['dm_context'])
     src_leg = None
     m_idx = None
+    g_idx = None
     for group in dlv_info['groups']:
         legs = group['legs']
         legs.sort(key=lambda x: x['idx'])
@@ -822,6 +823,33 @@ def remirror(dlv_name, tran, dlv_info, src_id, dst_leg):
         do_remirror(dlv_name, dlv_info, src_id, dst_leg)
 
 
+def do_leg_remove(dlv_name, dlv_info, leg_id):
+    leg = None
+    g_idx = None
+    for group in dlv_info['groups']:
+        legs = group['legs']
+        for m, (leg0, leg1) in enumerate(chunks(legs, 2)):
+            if leg0['leg_id'] == leg_id:
+                leg = leg0
+            elif leg1['leg_id'] == leg_id:
+                leg = leg1
+            if leg is not None:
+                g_idx = group['idx']
+                break
+        if leg is not None:
+            break
+    if leg is None:
+        raise Exception('leg_id is not found: %s' % leg_id)
+    remove_mirror_leg(dlv_name, g_idx, leg)
+    logout_leg(leg['leg_id'])
+
+
+def leg_remove(dlv_name, tran, dlv_info, leg_id):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_leg_remove(dlv_name, dlv_info, leg_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -836,5 +864,6 @@ def main():
     s.register_function(snapshot_create)
     s.register_function(snapshot_delete)
     s.register_function(remirror)
+    s.register_function(leg_remove)
     logger.info('host_agent start')
     s.serve_forever()
