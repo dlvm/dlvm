@@ -25,6 +25,9 @@ from mirror_meta import generate_mirror_meta
 logger = logging.getLogger('dlvm_dpv')
 
 
+class DpvError(Exception):
+    pass
+
 global_rpc_lock = Lock()
 global_rpc_set = set()
 
@@ -37,7 +40,7 @@ class RpcLock(object):
     def __enter__(self):
         with global_rpc_lock:
             if self.name in global_rpc_set:
-                raise Exception('rpc_conflict: %s' % self.name)
+                raise DpvError('rpc_conflict: %s' % self.name)
             global_rpc_set.add(self.name)
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -375,6 +378,29 @@ def mj_mirror_stop(
             leg_id, mj_name, dst_id, leg_size)
 
 
+def do_mj_mirror_status(leg_id):
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmBasic(layer1_name)
+    dm_type = dm.get_type()
+    if dm_type != 'raid':
+        raise DpvError('wrong dm_type: %s' % dm_type)
+    dm = DmMirror(layer1_name)
+    status = dm.status()
+    return {
+        'hc0': status['hc0'],
+        'hc1': status['hc1'],
+        'curr': status['curr'],
+        'total': status['total'],
+        'sync_action': status['sync_action'],
+        'mismatch_cnt': status['mismatch_cnt'],
+    }
+
+
+def mj_mirror_status(leg_id):
+    with RpcLock(leg_id):
+        return do_mj_mirror_status(leg_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -390,5 +416,6 @@ def main():
     s.register_function(mj_login)
     s.register_function(mj_mirror_start)
     s.register_function(mj_mirror_stop)
+    s.register_function(mj_mirror_status)
     logger.info('dpv_agent start')
     s.serve_forever()

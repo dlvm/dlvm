@@ -314,8 +314,8 @@ class DmMirror(DmBasic):
         status['type'] = items[2]
         status['raid_type'] = items[3]
         status['devices_num'] = int(items[4])
-        status['first_hc'] = items[5][0]
-        status['second_hc'] = items[5][0]
+        status['hc0'] = items[5][0]
+        status['hc1'] = items[5][0]
         curr, total = map(int, items[6].split('/'))
         status['curr'] = curr
         status['total'] = total

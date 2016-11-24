@@ -4,11 +4,11 @@ import distutils.dir_util
 import time
 from multiprocessing import Process
 import unittest
-from mock import patch
+from mock import Mock, patch
 from dlvm.dpv.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     mj_leg_export, mj_leg_unexport, mj_login, \
-    mj_mirror_start, mj_mirror_stop
+    mj_mirror_start, mj_mirror_stop, mj_mirror_status
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -263,3 +263,27 @@ class RpcFunctionTest(unittest.TestCase):
         }
         mj_mirror_stop(
             leg_id, mj_name, dst_id, leg_size, tran)
+
+    @patch('dlvm.dpv.dpv_agent.DmMirror')
+    @patch('dlvm.dpv.dpv_agent.DmBasic')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_mirror_status(
+            self, conf,
+            DmBasic, DmMirror,
+    ):
+        dm_mock = Mock()
+        DmBasic.return_value = dm_mock
+        dm_mock.get_type.return_value = 'raid'
+        DmMirror.return_value = dm_mock
+        status = {
+            'hc0': 'A',
+            'hc1': 'A',
+            'curr': 30,
+            'total': 100,
+            'sync_action': None,
+            'mismatch_cnt': 0,
+        }
+        dm_mock.status.return_value = status
+        leg_id = '001'
+        ret = mj_mirror_status(leg_id)
+        self.assertEqual(ret, status)
