@@ -106,6 +106,30 @@ def leg_create(leg_id, leg_size, dm_context, tran):
         do_leg_create(leg_id, leg_size, dm_context)
 
 
+def do_leg_delete(leg_id):
+    layer2_name = get_layer2_name(leg_id)
+    dm = DmLinear(layer2_name)
+    layer2_path = dm.get_path()
+    target_name = encode_target_name(leg_id)
+    iscsi_delete(target_name, layer2_path)
+    dm.remove()
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmLinear(layer1_name)
+    dm.remove()
+    lv_remove(leg_id, conf.local_vg)
+
+    file_name = 'dlvm-leg-{leg_id}'.format(leg_id=leg_id)
+    file_path = os.path.join(conf.tmp_dir, file_name)
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+
+def leg_delete(leg_id, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_leg_delete(leg_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -113,5 +137,6 @@ def main():
     s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port)
     s.register_function(ping)
     s.register_function(leg_create)
+    s.register_function(leg_delete)
     logger.info('dpv_agent start')
     s.serve_forever()

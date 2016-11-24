@@ -6,7 +6,7 @@ from multiprocessing import Process
 import unittest
 from mock import Mock, patch
 from dlvm.dpv.dpv_agent import main, \
-    leg_create
+    leg_create, leg_delete
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 
 
@@ -77,3 +77,23 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         leg_create(leg_id, leg_size, dm_context, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_delete')
+    @patch('dlvm.dpv.dpv_agent.lv_remove')
+    @patch('dlvm.dpv.dpv_agent.DmLinear')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_leg_delete(
+            self, conf, dpv_verify,
+            encode_target_name,
+            DmLinear,
+            iscsi_delete, lv_remove,
+    ):
+        conf.tmp_dir = self.tmp_dir
+        leg_id = '001'
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        leg_delete(leg_id, tran)
