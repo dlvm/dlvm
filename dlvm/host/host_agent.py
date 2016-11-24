@@ -176,7 +176,7 @@ def mirror_check(args):
         logger.info('mirror status failed: %s %s', mirror_name, e)
         return False
     else:
-        if status['first_hc'] == 'A' and status['second_hc'] == 'A':
+        if status['hc0'] == 'A' and status['hc1'] == 'A':
             return False
         else:
             return True
@@ -189,11 +189,11 @@ def mirror_action(args):
     leg1_id = args['leg1_id']
     dm = DmMirror(mirror_name)
     status = dm.status()
-    if status['first_hc'] == 'A' and status['second_hc'] == 'A':
+    if status['hc0'] == 'A' and status['hc1'] == 'A':
         pass
-    elif status['first_hc'] != 'A' and status['second_hc'] == 'A':
+    elif status['hc0'] != 'A' and status['hc1'] == 'A':
         report_single_leg(dlv_name, leg0_id)
-    elif status['first_hc'] == 'A' and status['second_hc'] != 'A':
+    elif status['hc0'] == 'A' and status['hc1'] != 'A':
         report_single_leg(dlv_name, leg1_id)
     else:
         report_multi_legs(dlv_name, leg0_id, leg1_id)

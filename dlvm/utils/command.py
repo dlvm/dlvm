@@ -199,6 +199,11 @@ class DmBasic(object):
     def get_path(self):
         return dm_get_path(self.name)
 
+    def get_type(self):
+        status = dm_status(self.name)
+        items = status.split()
+        return items[2]
+
     def resume(self):
         dm_resume(self.name)
 

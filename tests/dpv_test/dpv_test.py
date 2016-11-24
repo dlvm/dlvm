@@ -7,8 +7,10 @@ import unittest
 from mock import patch
 from dlvm.dpv.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
-    mj_leg_export, mj_leg_unexport, mj_login
+    mj_leg_export, mj_leg_unexport, mj_login, \
+    mj_mirror_start
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
+from dlvm.utils.bitmap import BitMap
 
 
 class RpcServerTest(unittest.TestCase):
@@ -196,7 +198,6 @@ class RpcFunctionTest(unittest.TestCase):
             iscsi_login,
     ):
         leg_id = '001'
-        dlv_name = 'dlv0'
         mj_name = 'mj0'
         dst_name = 'dpv2'
         dst_id = '002'
@@ -205,4 +206,37 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         mj_login(
-            leg_id, dlv_name, mj_name, dst_name, dst_id, tran)
+            leg_id, mj_name, dst_name, dst_id, tran)
+
+    @patch('dlvm.dpv.dpv_agent.Thread')
+    @patch('dlvm.dpv.dpv_agent.run_dd')
+    @patch('dlvm.dpv.dpv_agent.DmMirror')
+    @patch('dlvm.dpv.dpv_agent.DmBasic')
+    @patch('dlvm.dpv.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_mirror_start(
+            self, conf, dpv_verify,
+            encode_target_name,
+            iscsi_login,
+            DmBasic, DmMirror,
+            run_dd, Thread,
+    ):
+        conf.tmp_dir = self.tmp_dir
+        leg_id = '001'
+        mj_name = 'mj0'
+        dst_name = 'dpv2'
+        dst_id = '002'
+        leg_size = 1024*1024*1024
+        dmc = {
+            'thin_block_size': 2*1024*1024,
+        }
+        bm_size = leg_size / dmc['thin_block_size']
+        bm = BitMap(bm_size).tohexstring()
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        mj_mirror_start(
+            leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm, tran)

@@ -23,3 +23,11 @@ def report_multi_legs(dlv_name, leg0_id, leg1_id):
 
 def report_pool(dlv_name):
     queue_functions['pool_full'].delay(dlv_name)
+
+
+def report_mj_mirror_failed(mj_name):
+    queue_functions['mj_mirror_failed'].delay(mj_name)
+
+
+def report_mj_mirror_complete(mj_name):
+    queue_functions['mj_mirror_complete'].delay(mj_name)

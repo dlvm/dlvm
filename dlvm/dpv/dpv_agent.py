@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 
 import os
-from threading import Lock
+import time
+from threading import Thread, Lock
 import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
 from dlvm.utils.transaction import dpv_verify
 from dlvm.utils.command import context_init, \
-    DmLinear, \
-    lv_create, lv_remove, \
+    DmBasic, DmLinear, DmMirror, \
+    lv_create, lv_remove, lv_get_path, \
     run_dd, \
     iscsi_create, iscsi_delete, \
     iscsi_export, iscsi_unexport, \
     iscsi_login
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
-from dlvm.utils.queue import queue_init
+from dlvm.utils.queue import queue_init, \
+    report_mj_mirror_failed, report_mj_mirror_complete
 from mirror_meta import generate_mirror_meta
 
 
@@ -41,6 +43,25 @@ class RpcLock(object):
     def __exit__(self, exc_type, exc_value, traceback):
         with global_rpc_lock:
             global_rpc_set.remove(self.name)
+
+
+mj_thread_set = set()
+mj_thread_lock = Lock()
+
+
+def mj_thread_add(leg_id):
+    with mj_thread_lock:
+        mj_thread_set.add(leg_id)
+
+
+def mj_thread_remove(leg_id):
+    with mj_thread_lock:
+        mj_thread_set.remove(leg_id)
+
+
+def mj_thread_check(leg_id):
+    with mj_thread_lock:
+        return leg_id in mj_thread_set
 
 
 def ping(message):
@@ -219,7 +240,7 @@ def mj_leg_unexport(
         do_mj_leg_unexport(leg_id, mj_name, src_name)
 
 
-def do_mj_login(leg_id, dlv_name, mj_name, dst_name, dst_id):
+def do_mj_login(leg_id, mj_name, dst_name, dst_id):
     dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
     target_name = encode_target_name(dst_layer2_name)
     iscsi_login(target_name, dst_name)
@@ -230,12 +251,99 @@ def do_mj_login(leg_id, dlv_name, mj_name, dst_name, dst_id):
 
 
 def mj_login(
-        leg_id, dlv_name, mj_name,
+        leg_id, mj_name,
         dst_name, dst_id, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
         do_mj_login(
-            leg_id, dlv_name, mj_name, dst_name, dst_id)
+            leg_id, mj_name, dst_name, dst_id)
+
+
+def mj_mirror_event(args):
+    leg_id = args['leg_id']
+    mj_name = args['mj_name']
+    mirror_name = args['mirror_name']
+    dm = DmMirror(mirror_name)
+    while 1:
+        time.sleep(conf.mj_mirror_interval)
+        if mj_thread_check(leg_id) is False:
+            break
+        try:
+            status = dm.status()
+        except Exception as e:
+            logger.info('mj mirror status failed: %s %s', args, e)
+            report_mj_mirror_failed(mj_name)
+            break
+        if status['hc0'] == 'D' or status['hc1'] == 'D':
+            report_mj_mirror_failed(mj_name)
+            break
+        elif status['hc0'] == 'A' and status['hc1'] == 'A':
+            report_mj_mirror_complete(mj_name)
+            break
+
+
+def do_mj_mirror_start(
+        leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm):
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmBasic(layer1_name)
+    dm_type = dm.get_type()
+    if dm_type == 'raid':
+        return
+    bm = BitMap.fromhexstring(bm)
+    file_name = 'dlvm-{mj_name}'.format(mj_name=mj_name)
+    file_path = os.path.join(conf.tmp_dir, file_name)
+    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
+    mj_meta0_path = lv_get_path(mj_meta0_name, conf.local_vg)
+    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
+    mj_meta1_path = lv_get_path(mj_meta1_name, conf.local_vg)
+    generate_mirror_meta(
+        file_path,
+        conf.mj_meta_size,
+        leg_size,
+        dmc['thin_block_size'],
+        bm,
+    )
+    run_dd(file_path, mj_meta0_path)
+    run_dd(file_path, mj_meta1_path)
+    os.remove(file_path)
+
+    leg_sectors = leg_size / 512
+    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+    target_name = encode_target_name(dst_layer2_name)
+    # the dst should have already login, the iscsi_login is
+    # an idempotent option, call it again just for getting dev path
+    dst_dev_path = iscsi_login(target_name, dst_name)
+    src_dev_path = lv_get_path(leg_id, conf.local_vg)
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmMirror(layer1_name)
+    table = {
+        'start': 0,
+        'offset': leg_sectors,
+        'region_size': dmc['thin_block_size'],
+        'meta0': mj_meta0_path,
+        'data0': src_dev_path,
+        'meta1': mj_meta1_path,
+        'data1': dst_dev_path,
+    }
+    dm.reload(table)
+    mj_thread_add(leg_id)
+    args = {
+        'leg_id': leg_id,
+        'mj_name': mj_name,
+        'mirror_name': layer1_name,
+    }
+    t = Thread(target=mj_mirror_event, args=(args,))
+    t.start()
+
+
+def mj_mirror_start(
+        leg_id, mj_name,
+        dst_name, dst_id,
+        leg_size, dmc, bm, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_mj_mirror_start(
+            leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm)
 
 
 def main():
@@ -251,5 +359,6 @@ def main():
     s.register_function(mj_leg_export)
     s.register_function(mj_leg_unexport)
     s.register_function(mj_login)
+    s.register_function(mj_mirror_start)
     logger.info('dpv_agent start')
     s.serve_forever()
