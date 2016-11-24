@@ -6,7 +6,8 @@ import unittest
 from mock import Mock, patch
 from dlvm.host.host_agent import main, bm_get, \
     dlv_aggregate, dlv_degregate, \
-    dlv_suspend, dlv_resume
+    dlv_suspend, dlv_resume, \
+    snapshot_create, snapshot_delete
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks
 from dlvm.utils.bitmap import BitMap
@@ -319,3 +320,30 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         dlv_resume('dlv0', tran, dlv_info)
+
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.host_verify')
+    def test_snapshot_create(
+            self, host_verify, DmPool,
+    ):
+        dlv_name = 'dlv0'
+        thin_id = 1
+        ori_thin_id = 0
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        snapshot_create(dlv_name, tran, thin_id, ori_thin_id)
+
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.host_verify')
+    def test_snapshot_delete(
+            self, host_verify, DmPool,
+    ):
+        dlv_name = 'dlv0'
+        thin_id = 1
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        snapshot_delete(dlv_name, tran, thin_id)

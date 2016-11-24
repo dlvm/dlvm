@@ -678,6 +678,40 @@ def dlv_resume(dlv_name, tran, dlv_info):
         do_dlv_resume(dlv_name, dlv_info)
 
 
+def do_snapshot_create(dlv_name, thin_id, ori_thin_id):
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    message = {
+        'action': 'snap',
+        'thin_id': thin_id,
+        'ori_thin_id': ori_thin_id,
+    }
+    dm.message(message)
+
+
+def snapshot_create(dlv_name, tran, thin_id, ori_thin_id):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_snapshot_create(
+            dlv_name, thin_id, ori_thin_id)
+
+
+def do_snapshot_delete(dlv_name, thin_id):
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    message = {
+        'action': 'delete',
+        'thin_id': thin_id,
+    }
+    dm.message(message)
+
+
+def snapshot_delete(dlv_name, tran, thin_id):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_snapshot_delete(dlv_name, thin_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -689,5 +723,7 @@ def main():
     s.register_function(dlv_degregate)
     s.register_function(dlv_suspend)
     s.register_function(dlv_resume)
+    s.register_function(snapshot_create)
+    s.register_function(snapshot_delete)
     logger.info('host_agent start')
     s.serve_forever()
