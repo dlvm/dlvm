@@ -5,7 +5,8 @@ from multiprocessing import Process
 import unittest
 from mock import Mock, patch
 from dlvm.host.host_agent import main, bm_get, \
-    dlv_aggregate, dlv_degregate
+    dlv_aggregate, dlv_degregate, \
+    dlv_suspend, dlv_resume
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks
 from dlvm.utils.bitmap import BitMap
@@ -249,3 +250,72 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         dlv_degregate('dlv0', tran, dlv_info)
+
+    @patch('dlvm.host.host_agent.Thread')
+    @patch('dlvm.host.host_agent.DmError')
+    @patch('dlvm.host.host_agent.DmThin')
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.DmMirror')
+    @patch('dlvm.host.host_agent.DmStripe')
+    @patch('dlvm.host.host_agent.DmLinear')
+    @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.host_verify')
+    @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.report_pool')
+    @patch('dlvm.host.host_agent.queue_init')
+    @patch('dlvm.host.host_agent.loginit')
+    def test_dlv_suspend(
+            self, loginit, queue_init,
+            report_pool, conf, host_verify,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            Thread,
+    ):
+        dlv_info = {
+            'dlv_size': 1024*1024*1024,
+        }
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        dlv_suspend('dlv0', tran, dlv_info)
+
+    @patch('dlvm.host.host_agent.Thread')
+    @patch('dlvm.host.host_agent.DmError')
+    @patch('dlvm.host.host_agent.DmThin')
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.DmMirror')
+    @patch('dlvm.host.host_agent.DmStripe')
+    @patch('dlvm.host.host_agent.DmLinear')
+    @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.host_verify')
+    @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.report_pool')
+    @patch('dlvm.host.host_agent.queue_init')
+    @patch('dlvm.host.host_agent.loginit')
+    def test_dlv_resume(
+            self, loginit, queue_init,
+            report_pool, conf, host_verify,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            Thread,
+    ):
+        dm_context = {
+            'thin_block_size': 4*1024*1024,
+            'mirror_meta_blocks': 1,
+            'mirror_region_size': 4*1024*1024,
+            'stripe_chunk_blocks': 1,
+            'stripe_number': 1,
+            'low_water_mark': 100,
+        }
+        dlv_info = {
+            'dlv_size': 1024*1024*1024,
+            'data_size': 512*1024*1024,
+            'thin_id': 0,
+            'dm_context': dm_context,
+        }
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        dlv_resume('dlv0', tran, dlv_info)

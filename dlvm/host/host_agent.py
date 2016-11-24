@@ -584,6 +584,100 @@ def dlv_degregate(dlv_name, tran, dlv_info):
         do_dlv_degregate(dlv_name, dlv_info)
 
 
+def do_dlv_suspend(dlv_name, dlv_info):
+    dlv_sectors = dlv_info['dlv_size'] / 512
+
+    final_name = get_final_name(dlv_name)
+    dm = DmLinear(final_name)
+    dm.suspend()
+
+    middle_name = get_middle_name(dlv_name)
+    dm = DmError(middle_name)
+    table = {
+        'start': 0,
+        'length': dlv_sectors,
+    }
+    dm.reload(table)
+
+    thin_name = get_thin_name(dlv_name)
+    dm = DmThin(thin_name)
+    dm.remove()
+
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    dm.remove()
+
+
+def dlv_suspend(dlv_name, tran, dlv_info):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_dlv_suspend(dlv_name, dlv_info)
+
+
+def do_dlv_resume(dlv_name, dlv_info):
+    dlv_sectors = dlv_info['dlv_size'] / 512
+    data_sectors = dlv_info['data_size'] / 512
+    thin_id = dlv_info['thin_id']
+    dm_context = generate_dm_context(dlv_info['dm_context'])
+    thin_block_sectors = dm_context['thin_block_sectors']
+    low_water_mark = dm_context['low_water_mark']
+
+    thin_data_name = get_thin_data_name(dlv_name)
+    dm = DmLinear(thin_data_name)
+    thin_data_path = dm.get_path()
+    thin_meta_name = get_thin_meta_name(dlv_name)
+    dm = DmLinear(thin_meta_name)
+    thin_meta_path = dm.get_path()
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    table = {
+        'start': 0,
+        'length': data_sectors,
+        'meta_path': thin_meta_path,
+        'data_path': thin_data_path,
+        'block_sectors': thin_block_sectors,
+        'low_water_mark': low_water_mark,
+    }
+    pool_path = dm.create(table)
+
+    thin_name = get_thin_name(dlv_name)
+    dm = DmThin(thin_name)
+    table = {
+        'start': 0,
+        'length': dlv_sectors,
+        'pool_path': pool_path,
+        'thin_id': thin_id,
+    }
+    thin_path = dm.create(table)
+
+    middle_name = get_middle_name(dlv_name)
+    dm = DmLinear(middle_name)
+    table = [{
+        'start': 0,
+        'length': dlv_sectors,
+        'dev_path': thin_path,
+        'offset': 0,
+    }]
+    dm.reload(table)
+
+    final_name = get_final_name(dlv_name)
+    dm = DmLinear(final_name)
+    dm.resume()
+    args = {
+        'dlv_name': dlv_name,
+        'pool_name': pool_name,
+        'low_water_mark': low_water_mark,
+    }
+    t = Thread(target=pool_event, args=(args,))
+    t.start()
+
+
+def dlv_resume(dlv_name, tran, dlv_info):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_dlv_resume(dlv_name, dlv_info)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -593,5 +687,7 @@ def main():
     s.register_function(bm_get)
     s.register_function(dlv_aggregate)
     s.register_function(dlv_degregate)
+    s.register_function(dlv_suspend)
+    s.register_function(dlv_resume)
     logger.info('host_agent start')
     s.serve_forever()
