@@ -8,14 +8,7 @@ from dlvm.utils.loginit import loginit
 
 logger = logging.getLogger('dlvm_monitor')
 
-app = Celery(
-    'monitor',
-    broker=conf.broker_url,
-)
-
-app.conf.update(
-    task_acks_late=True,
-)
+app = Celery('monitor')
 
 
 def run_cmd(cmd):
@@ -28,41 +21,52 @@ def run_cmd(cmd):
         raise Exception('cmd failed')
 
 
-@app.task
-def single_leg_failed(dlv_name, leg_id):
-    cmd_name = conf.monitor_single_leg_failed
-    cmd = [
-        cmd_name,
-        dlv_name,
-        leg_id,
-    ]
-    run_cmd(cmd)
+def create_tasks():
+    app.conf.update(
+        task_acks_late=True,
+        broker_url=conf.broker_url,
+    )
 
+    d = {}
 
-@app.task
-def multi_legs_failed(dlv_name, leg0_id, leg1_id):
-    cmd_name = conf.monitor_multi_legs_failed
-    cmd = [
-        cmd_name,
-        dlv_name,
-        leg0_id,
-        leg1_id,
-    ]
-    run_cmd(cmd)
+    @app.task
+    def single_leg_failed(dlv_name, leg_id):
+        cmd_name = conf.monitor_single_leg_failed
+        cmd = [
+            cmd_name,
+            dlv_name,
+            leg_id,
+        ]
+        run_cmd(cmd)
+    d['single_leg_failed'] = single_leg_failed
 
+    @app.task
+    def multi_legs_failed(dlv_name, leg0_id, leg1_id):
+        cmd_name = conf.monitor_multi_legs_failed
+        cmd = [
+            cmd_name,
+            dlv_name,
+            leg0_id,
+            leg1_id,
+        ]
+        run_cmd(cmd)
+    d['multi_legs_failed'] = multi_legs_failed
 
-@app.task
-def pool_full(dlv_name):
-    cmd_name = conf.monitor_pool_full
-    cmd = [
-        cmd_name,
-        dlv_name,
-    ]
-    run_cmd(cmd)
+    @app.task
+    def pool_full(dlv_name):
+        cmd_name = conf.monitor_pool_full
+        cmd = [
+            cmd_name,
+            dlv_name,
+        ]
+        run_cmd(cmd)
+    d['pool_full'] = pool_full
+    return d
 
 
 def start():
     loginit()
+    create_tasks()
     argv = [
         'worker',
         '--loglevel=INFO',

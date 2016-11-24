@@ -12,7 +12,7 @@ from dlvm.utils.command import context_init, \
     iscsi_login, iscsi_logout
 from dlvm.utils.helper import chunks, encode_target_name
 from dlvm.utils.bitmap import BitMap
-from dlvm.utils.queue import report_single_leg, \
+from dlvm.utils.queue import queue_init, report_single_leg, \
     report_multi_legs, report_pool
 
 
@@ -91,6 +91,13 @@ def get_mirror_name(dlv_name, g_idx, m_idx):
         dlv_name=dlv_name,
         g_idx=g_idx,
         m_idx=m_idx,
+    )
+
+
+def get_stripe_name(dlv_name, g_idx):
+    return '{dlv_name}-{g_idx}'.format(
+        dlv_name=dlv_name,
+        g_idx=g_idx,
     )
 
 
@@ -351,10 +358,7 @@ def create_stripe(dlv_name, group, dm_context):
             'offset': 0,
         }
         devices.append(device)
-    stripe_name = '{dlv_name}-{g_idx}'.format(
-        dlv_name=dlv_name,
-        g_idx=group['idx'],
-    )
+    stripe_name = get_stripe_name(dlv_name, group['idx'])
     dm = DmStripe(stripe_name)
     stripe_path = dm.create(table)
     return stripe_path
@@ -495,12 +499,99 @@ def dlv_aggregate(dlv_name, tran, dlv_info):
         return do_dlv_aggregate(dlv_name, dlv_info)
 
 
+def remove_final(dlv_name):
+    final_name = get_final_name(dlv_name)
+    dm = DmLinear(final_name)
+    dm.remove()
+    middle_name = get_middle_name(dlv_name)
+    dm = DmLinear(middle_name)
+    dm.remove()
+    thin_name = get_thin_name(dlv_name)
+    dm = DmThin(thin_name)
+    dm.remove()
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    dm.remove()
+
+
+def remove_mirror_leg(dlv_name, g_idx, leg):
+    mirror_meta_name = get_mirror_meta_name(dlv_name, g_idx, leg['idx'])
+    dm = DmLinear(mirror_meta_name)
+    dm.remove()
+    mirror_data_name = get_mirror_data_name(dlv_name, g_idx, leg['idx'])
+    dm = DmLinear(mirror_data_name)
+    dm.remove()
+
+
+def logout_leg(leg_id):
+    target_name = encode_target_name(leg_id)
+    iscsi_logout(target_name)
+
+
+def remove_mirror(dlv_name, g_idx, m_idx, leg0, leg1):
+    mirror_name = get_mirror_name(dlv_name, g_idx, m_idx)
+    # not sure whether it is mirror or linear or error,
+    # so use DmBasic
+    dm = DmBasic(mirror_name)
+    dm.remove()
+    remove_mirror_leg(dlv_name, g_idx, leg0)
+    remove_mirror_leg(dlv_name, g_idx, leg1)
+    logout_leg(leg0['leg_id'])
+    logout_leg(leg1['leg_id'])
+
+
+def remove_stripe(dlv_name, group):
+    legs = group['legs']
+    legs.sort(key=lambda x: x['idx'])
+    stripe_name = get_stripe_name(dlv_name, group['idx'])
+    dm = DmStripe(stripe_name)
+    dm.remove()
+    for m_idx, (leg0, leg1) in enumerate(chunks(legs, 2)):
+        remove_mirror(
+            dlv_name, group['idx'], m_idx, leg0, leg1)
+
+
+def remove_thin_data(dlv_name, groups):
+    thin_data_name = get_thin_data_name(dlv_name)
+    dm = DmLinear(thin_data_name)
+    dm.remove()
+    for group in groups:
+        remove_stripe(dlv_name, group)
+
+
+def remove_thin_meta(dlv_name, group):
+    thin_meta_name = get_thin_meta_name(dlv_name)
+    dm = DmLinear(thin_meta_name)
+    dm.remove()
+    legs = group['legs']
+    legs.sort(key=lambda x: x['idx'])
+    leg0 = legs[0]
+    leg1 = legs[1]
+    remove_mirror(dlv_name, 0, 0, leg0, leg1)
+
+
+def do_dlv_degregate(dlv_name, dlv_info):
+    groups = dlv_info['groups']
+    groups.sort(key=lambda x: x['idx'])
+    remove_final(dlv_name)
+    remove_thin_data(dlv_name, groups[1:])
+    remove_thin_meta(dlv_name, groups[0])
+
+
+def dlv_degregate(dlv_name, tran, dlv_info):
+    with RpcLock(dlv_name):
+        host_verify(dlv_name, tran['major'], tran['minor'])
+        do_dlv_degregate(dlv_name, dlv_info)
+
+
 def main():
     loginit()
     context_init(conf, logger)
+    queue_init()
     s = WrapperRpcServer(conf.host_listener, conf.host_port)
     s.register_function(ping)
     s.register_function(bm_get)
     s.register_function(dlv_aggregate)
+    s.register_function(dlv_degregate)
     logger.info('host_agent start')
     s.serve_forever()

@@ -4,7 +4,8 @@ import time
 from multiprocessing import Process
 import unittest
 from mock import Mock, patch
-from dlvm.host.host_agent import main, bm_get, dlv_aggregate
+from dlvm.host.host_agent import main, bm_get, \
+    dlv_aggregate, dlv_degregate
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks
 from dlvm.utils.bitmap import BitMap
@@ -16,8 +17,9 @@ class RpcServerTest(unittest.TestCase):
     host_port = 9523
 
     @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.queue_init')
     @patch('dlvm.host.host_agent.loginit')
-    def setUp(self, loginit, conf):
+    def setUp(self, loginit, queue_init, conf):
         conf.host_listener = self.host_listener
         conf.host_port = self.host_port
         self.server = Process(target=main)
@@ -42,8 +44,16 @@ class RpcFunctionTest(unittest.TestCase):
     @patch('dlvm.host.host_agent.DmPool')
     @patch('dlvm.host.host_agent.host_verify')
     @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.queue_init')
     @patch('dlvm.host.host_agent.loginit')
-    def test_bm_get_simple(self, loginit, conf, host_verify, DmPool):
+    def test_bm_get_simple(
+            self,
+            loginit,
+            queue_init,
+            conf,
+            host_verify,
+            DmPool,
+    ):
         conf.bm_throttle = 0
         status_mock = Mock()
         status_mock.return_value = {
@@ -125,9 +135,16 @@ class RpcFunctionTest(unittest.TestCase):
     @patch('dlvm.host.host_agent.DmBasic')
     @patch('dlvm.host.host_agent.host_verify')
     @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.report_pool')
+    @patch('dlvm.host.host_agent.report_multi_legs')
+    @patch('dlvm.host.host_agent.report_single_leg')
+    @patch('dlvm.host.host_agent.queue_init')
     @patch('dlvm.host.host_agent.loginit')
     def test_dlv_aggregate(
-            self, loginit, conf, host_verify,
+            self, loginit,
+            queue_init, report_single_leg,
+            report_multi_legs, report_pool,
+            conf, host_verify,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_login, Thread,
@@ -181,3 +198,54 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         dlv_aggregate('dlv0', tran, dlv_info)
+
+    @patch('dlvm.host.host_agent.iscsi_logout')
+    @patch('dlvm.host.host_agent.DmError')
+    @patch('dlvm.host.host_agent.DmThin')
+    @patch('dlvm.host.host_agent.DmPool')
+    @patch('dlvm.host.host_agent.DmMirror')
+    @patch('dlvm.host.host_agent.DmStripe')
+    @patch('dlvm.host.host_agent.DmLinear')
+    @patch('dlvm.host.host_agent.DmBasic')
+    @patch('dlvm.host.host_agent.host_verify')
+    @patch('dlvm.host.host_agent.conf')
+    @patch('dlvm.host.host_agent.queue_init')
+    @patch('dlvm.host.host_agent.loginit')
+    def test_dlv_degregate(
+            self, loginit, queue_init, conf, host_verify,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            iscsi_logout,
+    ):
+        return
+        groups = [{
+            'idx': 0,
+            'legs': [{
+                'id': '000',
+                'idx': 0,
+                'dpv_name': 'dpv0',
+            }, {
+                'id': '001',
+                'idx': 1,
+                'dpv_name': 'dpv1',
+            }],
+        }, {
+            'idx': 1,
+            'legs': [{
+                'id': '002',
+                'idx': 0,
+                'dpv_name': 'dpv2',
+            }, {
+                'id': '003',
+                'idx': 1,
+                'dpv_name': 'dpv3',
+            }],
+        }]
+        dlv_info = {
+            'groups': groups,
+        }
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        dlv_degregate('dlv0', tran, dlv_info)
