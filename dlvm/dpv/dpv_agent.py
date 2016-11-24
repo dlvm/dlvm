@@ -11,8 +11,9 @@ from dlvm.utils.command import context_init, \
     DmLinear, \
     lv_create, lv_remove, \
     run_dd, \
-    iscsi_create, iscsi_delete
-from dlvm.utils.helper import encode_target_name
+    iscsi_create, iscsi_delete, \
+    iscsi_export, iscsi_unexport
+from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init
 from mirror_meta import generate_mirror_meta
@@ -130,6 +131,30 @@ def leg_delete(leg_id, tran):
         do_leg_delete(leg_id)
 
 
+def do_leg_export(leg_id, host_name):
+    target_name = encode_target_name(leg_id)
+    initiator_name = encode_initiator_name(host_name)
+    iscsi_export(target_name, initiator_name)
+
+
+def leg_export(leg_id, host_name, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_leg_export(leg_id, host_name)
+
+
+def do_leg_unexport(leg_id, host_name):
+    target_name = encode_target_name(leg_id)
+    initiator_name = encode_initiator_name(host_name)
+    iscsi_unexport(target_name, initiator_name)
+
+
+def leg_unexport(leg_id, host_name, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_leg_unexport(leg_id, host_name)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -138,5 +163,7 @@ def main():
     s.register_function(ping)
     s.register_function(leg_create)
     s.register_function(leg_delete)
+    s.register_function(leg_export)
+    s.register_function(leg_unexport)
     logger.info('dpv_agent start')
     s.serve_forever()

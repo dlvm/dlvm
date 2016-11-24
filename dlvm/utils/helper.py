@@ -14,3 +14,10 @@ def encode_target_name(leg_id):
         target_prefix=conf.target_prefix,
         leg_id=leg_id,
     )
+
+
+def encode_initiator_name(host_name):
+    return '{initiator_prefix}.{host_name}'.format(
+        initiator_prefix=conf.initiator_prefix,
+        host_name=host_name,
+    )

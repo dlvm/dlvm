@@ -620,6 +620,76 @@ def iscsi_delete(target_name, dev_name):
         run_cmd(cmd)
 
 
+def iscsi_export(target_name, initiator_name):
+    acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
+        target_name=target_name,
+    )
+    initiator_path = '{acl_path}/{initiator_name}'.format(
+        acl_path=acl_path,
+        initiator_name=initiator_name,
+    )
+    cmd = [
+        ctx.conf.targetcli_path,
+        initiator_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        cmd = [
+            ctx.conf.targetcli_path,
+            acl_path,
+            'create',
+            initiator_name,
+        ]
+        run_cmd(cmd)
+
+    assign_userid = 'userid={iscsi_userid}'.format(
+        iscsi_userid=ctx.conf.iscsi_userid)
+    cmd = [
+        ctx.conf.targetcli_path,
+        initiator_path,
+        'set',
+        'auth',
+        assign_userid,
+    ]
+    run_cmd(cmd)
+
+    assign_password = 'password={iscsi_password}'.format(
+        iscsi_password=ctx.conf.iscsi_password)
+    cmd = [
+        ctx.conf.targetcli_path,
+        initiator_path,
+        'set',
+        'auth',
+        assign_password,
+    ]
+    run_cmd(cmd)
+
+
+def iscsi_unexport(target_name, initiator_name):
+    acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
+        target_name=target_name,
+    )
+    initiator_path = '{acl_path}/{initiator_name}'.format(
+        acl_path=acl_path,
+        initiator_name=initiator_name,
+    )
+    cmd = [
+        ctx.conf.targetcli_path,
+        initiator_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode == 0:
+        cmd = [
+            ctx.conf.targetcli_path,
+            acl_path,
+            'delete',
+            initiator_name,
+        ]
+        run_cmd(cmd)
+
+
 def run_dd(in_path, out_path):
     inp = 'if={in_path}'.format(in_path=in_path)
     outp = 'of={out_path}'.format(out_path=out_path)

@@ -6,7 +6,7 @@ from multiprocessing import Process
 import unittest
 from mock import Mock, patch
 from dlvm.dpv.dpv_agent import main, \
-    leg_create, leg_delete
+    leg_create, leg_delete, leg_export, leg_unexport
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 
 
@@ -97,3 +97,39 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         leg_delete(leg_id, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_export')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    def test_leg_export(
+            self, dpv_verify,
+            encode_target_name,
+            encode_initiator_name,
+            iscsi_export,
+    ):
+        leg_id = '001'
+        host_name = 'host0'
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        leg_export(leg_id, host_name, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_unexport')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    def test_leg_unexport(
+            self, dpv_verify,
+            encode_target_name,
+            encode_initiator_name,
+            iscsi_unexport,
+    ):
+        leg_id = '001'
+        host_name = 'host0'
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        leg_unexport(leg_id, host_name, tran)
