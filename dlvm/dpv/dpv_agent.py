@@ -59,7 +59,8 @@ def mj_thread_add(leg_id):
 
 def mj_thread_remove(leg_id):
     with mj_thread_lock:
-        mj_thread_set.remove(leg_id)
+        if leg_id in mj_thread_set:
+            mj_thread_set.remove(leg_id)
 
 
 def mj_thread_check(leg_id):
@@ -350,6 +351,7 @@ def mj_mirror_start(
 
 
 def do_mj_mirror_stop(leg_id, mj_name, dst_id, leg_size):
+    mj_thread_remove(leg_id)
     leg_sectors = leg_size / 512
     layer1_name = get_layer1_name(leg_id)
     dm = DmLinear(layer1_name)
