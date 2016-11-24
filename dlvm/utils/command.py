@@ -376,9 +376,52 @@ class DmError(DmBasic):
         return table
 
 
+def lv_get_path(lv_name, vg_name):
+    return '/dev/{vg_name}/{lv_name}'.format(
+        vg_name=vg_name, lv_name=lv_name)
+
+
+def lv_create(lv_name, lv_size, vg_name):
+    lv_path = lv_get_path(lv_name, vg_name)
+    cmd = [
+        ctx.conf.lvm_path,
+        'lvs',
+        lv_path,
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        cmd = [
+            ctx.conf.lvm_path,
+            'lvcreate',
+            '-n', lv_name,
+            '-L', str(lv_size)+'B',
+            vg_name,
+        ]
+        run_cmd(cmd)
+    return lv_path
+
+
+def lv_remove(lv_name, vg_name):
+    lv_path = lv_get_path(lv_name, vg_name)
+    cmd = [
+        ctx.conf.lvm_path,
+        'lvs',
+        lv_path,
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode == 0:
+        cmd = [
+            ctx.conf.lvm_path,
+            'lvremove',
+            '-f',
+            lv_path,
+        ]
+        run_cmd(cmd)
+
+
 def iscsi_get_context(target_name, iscsi_ip_port):
     cmd = [
-        ctx.iscsiadm_path,
+        ctx.conf.iscsiadm_path,
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
@@ -386,14 +429,14 @@ def iscsi_get_context(target_name, iscsi_ip_port):
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.iscsiadm_path,
+            ctx.conf.iscsiadm_path,
             '-m', 'discovery',
             '-t', 'sendtargets',
             '-p', iscsi_ip_port,
         ]
         run_cmd(cmd)
         cmd = [
-            ctx.iscsiadm_path,
+            ctx.conf.iscsiadm_path,
             '-m', 'node',
             '-o', 'show',
             '-T', target_name,
@@ -422,7 +465,7 @@ def iscsi_extract_context(output):
 
 
 def iscsi_get_path(target_name, context):
-    iscsi_path = ctx.iscsi_path_fmt.format(
+    iscsi_path = ctx.conf.iscsi_path_fmt.format(
         address=context['address'],
         port=context['port'],
         target_name=target_name,
@@ -432,14 +475,14 @@ def iscsi_get_path(target_name, context):
 
 def iscsi_login(target_name, dpv_name):
     iscsi_ip_port = '{dpv_name}:{iscsi_port}'.format(
-        dpv_name=dpv_name, iscsi_port=ctx.iscsi_port)
+        dpv_name=dpv_name, iscsi_port=ctx.conf.iscsi_port)
     context = iscsi_get_context(
         target_name, iscsi_ip_port)
     iscsi_path = iscsi_get_path(target_name, context)
     if os.path.exists(iscsi_path):
         return iscsi_path
     cmd = [
-        ctx.iscsiadm_path,
+        ctx.conf.iscsiadm_path,
         '-m', 'node',
         '--login',
         '-T', target_name,
@@ -453,7 +496,7 @@ def iscsi_login(target_name, dpv_name):
 def iscsi_logout(target_name):
     # iscsiadm -m node -o show -T target_name
     cmd = [
-        ctx.iscsiadm_path,
+        ctx.conf.iscsiadm_path,
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
@@ -465,7 +508,7 @@ def iscsi_logout(target_name):
     iscsi_path = iscsi_get_path(target_name, context)
     if os.path.exists(iscsi_path):
         cmd = [
-            ctx.iscsiadm_path,
+            ctx.conf.iscsiadm_path,
             '-m', 'node',
             '--logout',
             '-T', target_name,
@@ -473,9 +516,117 @@ def iscsi_logout(target_name):
         run_cmd(cmd)
     # iscsiadm -m node -T target_name -o delete
     cmd = [
-        ctx.iscsiadm_path,
+        ctx.conf.iscsiadm_path,
         '-m', 'node',
         '-T', target_name,
         '-o', 'delete',
+    ]
+    run_cmd(cmd)
+
+
+def iscsi_create(target_name, dev_name, dev_path):
+    backstore_path = '/backstores/block/{dev_name}'.format(
+        dev_name=dev_name)
+    cmd = [
+        ctx.conf.targetcli_path,
+        backstore_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        dev = 'dev={dev_path}'.format(
+            dev_path=dev_path)
+        name = 'name={dev_name}'.format(
+            dev_name=dev_name)
+        cmd = [
+            ctx.conf.targetcli_path,
+            '/backstores/block',
+            'create',
+            dev,
+            name,
+        ]
+        run_cmd(cmd)
+
+    target_path = '/iscsi/{target_name}'.format(
+        target_name=target_name)
+    cmd = [
+        ctx.conf.targetcli_path,
+        target_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        cmd = [
+            ctx.conf.targetcli_path,
+            '/iscsi',
+            'create',
+            target_name,
+        ]
+        run_cmd(cmd)
+
+    lun0 = '{target_path}/tpg1/luns/lun0'.format(
+        target_path=target_path)
+    cmd = [
+        ctx.conf.targetcli_path,
+        lun0,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        lun_path = '{target_path}/tpg1/luns'.format(
+            target_path=target_path)
+        cmd = [
+            ctx.conf.targetcli_path,
+            lun_path,
+            'create',
+            backstore_path,
+        ]
+        run_cmd(cmd)
+
+
+def iscsi_delete(target_name, dev_name):
+    target_path = '/iscsi/{target_name}'.format(
+        target_name=target_name)
+    cmd = [
+        ctx.conf.targetcli_path,
+        target_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode == 0:
+        cmd = [
+            ctx.conf.targetcli_path,
+            '/iscsi',
+            'delete',
+            target_name,
+        ]
+        run_cmd(cmd)
+
+    backstore_path = '/backstores/block/{dev_name}'.format(
+        dev_name=dev_name)
+    cmd = [
+        ctx.conf.targetcli_path,
+        backstore_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode == 0:
+        cmd = [
+            ctx.conf.targetcli_path,
+            '/backstores/block',
+            'delete',
+            dev_name,
+        ]
+        run_cmd(cmd)
+
+
+def run_dd(in_path, out_path):
+    inp = 'if={in_path}'.format(in_path=in_path)
+    outp = 'of={out_path}'.format(out_path=out_path)
+    cmd = [
+        ctx.conf.dd_path,
+        inp,
+        outp,
+        'bs=1M',
     ]
     run_cmd(cmd)
