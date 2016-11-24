@@ -4,9 +4,10 @@ import distutils.dir_util
 import time
 from multiprocessing import Process
 import unittest
-from mock import Mock, patch
+from mock import patch
 from dlvm.dpv.dpv_agent import main, \
-    leg_create, leg_delete, leg_export, leg_unexport
+    leg_create, leg_delete, leg_export, leg_unexport, \
+    mj_leg_export, mj_leg_unexport
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 
 
@@ -133,3 +134,52 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         leg_unexport(leg_id, host_name, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_export')
+    @patch('dlvm.dpv.dpv_agent.iscsi_create')
+    @patch('dlvm.dpv.dpv_agent.DmLinear')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_leg_export(
+            self, conf, dpv_verify,
+            encode_target_name,
+            encode_initiator_name,
+            DmLinear,
+            iscsi_create,
+            iscsi_export,
+    ):
+        leg_id = '001'
+        mj_name = 'mj0'
+        src_name = 'dpv1'
+        leg_size = 1024*1024*1024
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        mj_leg_export(leg_id, mj_name, src_name, leg_size, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_unexport')
+    @patch('dlvm.dpv.dpv_agent.iscsi_delete')
+    @patch('dlvm.dpv.dpv_agent.DmLinear')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_leg_unexport(
+            self, conf, dpv_verify,
+            encode_target_name,
+            encode_initiator_name,
+            DmLinear,
+            iscsi_delete,
+            iscsi_unexport,
+    ):
+        leg_id = '001'
+        mj_name = 'mj0'
+        src_name = 'dpv1'
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        mj_leg_unexport(leg_id, mj_name, src_name, tran)

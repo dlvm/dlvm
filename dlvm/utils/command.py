@@ -265,7 +265,7 @@ class DmLinear(DmBasic):
             line_str = '{start} {length} linear {dev_path} {offset}'.format(
                 **line)
             line_strs.append(line_str)
-        table = line_strs.join('\n')
+        table = '\n'.join(line_strs)
         return table
 
 

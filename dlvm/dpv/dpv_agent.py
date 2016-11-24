@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-from threading import Thread, Lock
+from threading import Lock
 import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
@@ -54,6 +54,14 @@ def get_layer1_name(leg_id):
 def get_layer2_name(leg_id):
     return '{dlvm_prefix}-{leg_id}-2'.format(
         dlvm_prefix=conf.dlvm_prefix, leg_id=leg_id)
+
+
+def get_layer2_name_mj(leg_id, mj_name):
+    return '{dlvm_prefix}-{leg_id}-mj-{mj_name}'.format(
+        dlvm_prefix=conf.dlvm_prefix,
+        leg_id=leg_id,
+        mj_name=mj_name,
+    )
 
 
 def do_leg_create(leg_id, leg_size, dm_context):
@@ -155,6 +163,51 @@ def leg_unexport(leg_id, host_name, tran):
         do_leg_unexport(leg_id, host_name)
 
 
+def do_mj_leg_export(leg_id, mj_name, src_name, leg_size):
+    leg_sectors = leg_size / 512
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmLinear(layer1_name)
+    layer1_path = dm.get_path()
+    layer2_name = get_layer2_name_mj(leg_id, mj_name)
+    dm = DmLinear(layer2_name)
+    table = [{
+        'start': 0,
+        'length': leg_sectors,
+        'dev_path': layer1_path,
+        'offset': 0,
+    }]
+    layer2_path = dm.create(table)
+    target_name = encode_target_name(layer2_name)
+    iscsi_create(target_name, layer2_name, layer2_path)
+    initiator_name = encode_initiator_name(src_name)
+    iscsi_export(target_name, initiator_name)
+
+
+def mj_leg_export(
+        leg_id, mj_name, src_name, leg_size, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_mj_leg_export(leg_id, mj_name, src_name, leg_size)
+
+
+def do_mj_leg_unexport(leg_id, mj_name, src_name):
+    layer2_name = get_layer2_name_mj(leg_id, mj_name)
+    target_name = encode_initiator_name(layer2_name)
+    initiator_name = encode_initiator_name(src_name)
+    iscsi_unexport(target_name, initiator_name)
+    dm = DmLinear(layer2_name)
+    layer2_path = dm.get_path()
+    iscsi_delete(target_name, layer2_path)
+    dm.remove()
+
+
+def mj_leg_unexport(
+        leg_id, mj_name, src_name, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_mj_leg_unexport(leg_id, mj_name, src_name)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -165,5 +218,7 @@ def main():
     s.register_function(leg_delete)
     s.register_function(leg_export)
     s.register_function(leg_unexport)
+    s.register_function(mj_leg_export)
+    s.register_function(mj_leg_unexport)
     logger.info('dpv_agent start')
     s.serve_forever()
