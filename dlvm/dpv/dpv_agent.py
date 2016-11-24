@@ -12,7 +12,8 @@ from dlvm.utils.command import context_init, \
     lv_create, lv_remove, \
     run_dd, \
     iscsi_create, iscsi_delete, \
-    iscsi_export, iscsi_unexport
+    iscsi_export, iscsi_unexport, \
+    iscsi_login
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init
@@ -62,6 +63,16 @@ def get_layer2_name_mj(leg_id, mj_name):
         leg_id=leg_id,
         mj_name=mj_name,
     )
+
+
+def get_mj_meta0_name(leg_id, mj_name):
+    return '{leg_id}-{mj_name}-0'.format(
+        leg_id=leg_id, mj_name=mj_name)
+
+
+def get_mj_meta1_name(leg_id, mj_name):
+    return '{leg_id}-{mj_name}-1'.format(
+        leg_id=leg_id, mj_name=mj_name)
 
 
 def do_leg_create(leg_id, leg_size, dm_context):
@@ -208,6 +219,25 @@ def mj_leg_unexport(
         do_mj_leg_unexport(leg_id, mj_name, src_name)
 
 
+def do_mj_login(leg_id, dlv_name, mj_name, dst_name, dst_id):
+    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+    target_name = encode_target_name(dst_layer2_name)
+    iscsi_login(target_name, dst_name)
+    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
+    lv_create(mj_meta0_name, conf.mj_meta_size, conf.local_vg)
+    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
+    lv_create(mj_meta1_name, conf.mj_meta_size, conf.local_vg)
+
+
+def mj_login(
+        leg_id, dlv_name, mj_name,
+        dst_name, dst_id, tran):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, tran['major'], tran['minor'])
+        do_mj_login(
+            leg_id, dlv_name, mj_name, dst_name, dst_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -220,5 +250,6 @@ def main():
     s.register_function(leg_unexport)
     s.register_function(mj_leg_export)
     s.register_function(mj_leg_unexport)
+    s.register_function(mj_login)
     logger.info('dpv_agent start')
     s.serve_forever()

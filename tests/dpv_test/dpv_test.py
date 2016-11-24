@@ -7,7 +7,7 @@ import unittest
 from mock import patch
 from dlvm.dpv.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
-    mj_leg_export, mj_leg_unexport
+    mj_leg_export, mj_leg_unexport, mj_login
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 
 
@@ -183,3 +183,26 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         mj_leg_unexport(leg_id, mj_name, src_name, tran)
+
+    @patch('dlvm.dpv.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv.dpv_agent.lv_create')
+    @patch('dlvm.dpv.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv.dpv_agent.conf')
+    def test_mj_login(
+            self, conf, dpv_verify,
+            encode_target_name,
+            lv_create,
+            iscsi_login,
+    ):
+        leg_id = '001'
+        dlv_name = 'dlv0'
+        mj_name = 'mj0'
+        dst_name = 'dpv2'
+        dst_id = '002'
+        tran = {
+            'major': 1,
+            'minor': 0,
+        }
+        mj_login(
+            leg_id, dlv_name, mj_name, dst_name, dst_id, tran)
