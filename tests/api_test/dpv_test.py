@@ -3,10 +3,14 @@
 import os
 import datetime
 import json
+import uuid
 import unittest
 from mock import Mock, patch
 from dlvm.api_server import create_app
-from dlvm.api_server.modules import db, DistributePhysicalVolume
+from dlvm.api_server.modules import db, \
+    DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
+    Snapshot, Group, Leg
+
 
 class DpvTest(unittest.TestCase):
 
@@ -86,3 +90,79 @@ class DpvTest(unittest.TestCase):
         self.assertEqual(dpv.status, 'available')
         self.assertEqual(dpv.total_size, 512*1024*1024*1024)
         self.assertEqual(get_dpv_info_mock.call_count, 1)
+
+    def _insert_dpv(self):
+        with self.app.app_context():
+            dpv = DistributePhysicalVolume(
+                dpv_name='dpv0',
+                total_size=512*1024*1024*1024,
+                free_size=512*1024*1024*1024,
+                status='available',
+                timestamp=datetime.datetime.utcnow(),
+            )
+            db.session.add(dpv)
+            db.session.commit()
+
+            dvg = DistributeVolumeGroup(
+                dvg_name='dvg0',
+                total_size=0,
+                free_size=0,
+            )
+            db.session.add(dvg)
+            db.session.commit()
+
+            dpv.dvg_name = dvg.dvg_name
+            dvg.total_size = 512*1024*1024*1024
+            dvg.free_size = 512*1024*1024*1024
+            db.session.add(dpv)
+            db.session.add(dvg)
+            db.session.commit()
+
+            dlv_name = 'dlv0'
+            snap_name = '%s/base' % dlv_name
+            dlv = DistributeLogicalVolume(
+                dlv_name=dlv_name,
+                dlv_size=64*1024*1024*1024,
+                partition_count=2,
+                status='detached',
+                timestamp=datetime.datetime.utcnow(),
+                dvg_name=dvg.dvg_name,
+                active_snap_name=snap_name,
+            )
+            snapshot = Snapshot(
+                snap_name=snap_name,
+                thin_id=0,
+                ori_thin_id=0,
+                status='available',
+                timestamp=datetime.datetime.utcnow(),
+                dlv=dlv,
+            )
+            db.session.add(dlv)
+            db.session.add(snapshot)
+            db.session.commit()
+            group = Group(
+                group_id=uuid.uuid4().hex,
+                idx=0,
+                group_size=64*1024*1024*1024,
+                dlv_name=dlv_name,
+            )
+            db.session.add(group)
+            leg = Leg(
+                leg_id=uuid.uuid4().hex,
+                idx=0,
+                group=group,
+                leg_size=64*1024*1024*1024,
+                dpv=dpv
+            )
+            db.session.add(leg)
+            db.session.commit()
+
+            db.session.add(dvg)
+            db.session.add(dpv)
+            db.session.add(leg)
+            db.session.commit()
+
+    def test_dpv_get(self):
+        self._insert_dpv()
+        resp = self.client.get('/dpvs/dpv0')
+        self.assertEqual(resp.status_code, 200)

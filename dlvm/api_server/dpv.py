@@ -119,3 +119,64 @@ class Dpvs(Resource):
 
     def post(self):
         return handle_dlvm_request(None, dpvs_post_parser, handle_dpvs_post)
+
+
+group_fields = OrderedDict()
+group_fields['group_id'] = fields.String
+group_fields['idx'] = fields.Integer
+group_fields['group_size'] = fields.Integer
+group_fields['snap_name'] = fields.String
+
+leg_fields = OrderedDict()
+leg_fields['leg_id'] = fields.String
+leg_fields['idx'] = fields.Integer
+leg_fields['thin_id'] = fields.Integer
+leg_fields['group'] = fields.Nested(group_fields)
+
+dpv_fields = OrderedDict()
+dpv_fields['dpv_name'] = fields.String
+dpv_fields['total_size'] = fields.Integer
+dpv_fields['free_size'] = fields.Integer
+dpv_fields['status'] = fields.String
+dpv_fields['dvg_name'] = fields.String
+dpv_fields['legs'] = fields.List(fields.Nested(leg_fields))
+
+
+def handle_dpv_get(params, args):
+    dpv_name = params[0]
+    try:
+        dpv = DistributePhysicalVolume \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
+    return marshal(dpv, dpv_fields), 200
+
+
+def handle_dpv_delete(params, args):
+    dpv_name = params[0]
+    try:
+        dpv = DistributePhysicalVolume \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist', 404)
+    else:
+        if dpv.dvg:
+            return make_body('dpv_busy', dpv.dvg.dvg_name), 403
+        db.session.delete(dpv)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+class Dpv(Resource):
+
+    def get(self, dpv_name):
+        return handle_dlvm_request([dpv_name], None, handle_dpv_get)
+
+    def delete(self, dpv_name):
+        return handle_dlvm_request([dpv_name], None, handle_dpv_delete)
