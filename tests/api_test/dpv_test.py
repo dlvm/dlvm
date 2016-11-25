@@ -166,3 +166,17 @@ class DpvTest(unittest.TestCase):
         self._insert_dpv()
         resp = self.client.get('/dpvs/dpv0')
         self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        dpv = data['body']
+        self.assertEqual(dpv['dpv_name'], 'dpv0')
+        self.assertEqual(dpv['dvg_name'], 'dvg0')
+        self.assertEqual(len(dpv['legs']), 1)
+        leg = dpv['legs'][0]
+        self.assertEqual(leg['idx'], 0)
+        group = leg['group']
+        self.assertEqual(group['idx'], 0)
+
+    def test_dpv_delete(self):
+        self._insert_dpvs()
+        resp = self.client.delete('/dpvs/dpv0')
+        self.assertEqual(resp.status_code, 200)
