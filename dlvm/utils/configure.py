@@ -14,6 +14,7 @@ DEFAULT_CONF = {
     'dvg_list_limit': 100,
     'dlv_list_limit': 100,
     'mj_list_limit': 100,
+    'dpv_timeout': 10,
     'sudo': True,
     'tmp_dir': '/tmp',
     'dlvm_prefix': 'dlvm',

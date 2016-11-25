@@ -4,7 +4,7 @@ import os
 import datetime
 import json
 import unittest
-from mock import patch
+from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, DistributePhysicalVolume
 
@@ -58,3 +58,31 @@ class DpvTest(unittest.TestCase):
         self.assertTrue(dpv0_resp['dpv_name'] in ('dpv0', 'dpv1'))
         dpv1_resp = data['body'][1]
         self.assertTrue(dpv1_resp['dpv_name'] in ('dpv0', 'dpv1'))
+
+    @patch('dlvm.api_server.dpv.WrapperRpcClient')
+    def test_dpvs_post(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        get_dpv_info_mock = Mock()
+        client_mock.get_dpv_info = get_dpv_info_mock
+        get_dpv_info_mock.return_value = {
+            'total_size': 512*1024*1024*1024,
+            'free_size': 512*1024*1024*1024,
+        }
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'dpv_name': 'dpv0',
+        }
+        data = json.dumps(data)
+        resp = self.client.post('/dpvs', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        with self.app.app_context():
+            dpv = DistributePhysicalVolume \
+                .query \
+                .filter_by(dpv_name='dpv0') \
+                .one()
+        self.assertEqual(dpv.status, 'available')
+        self.assertEqual(dpv.total_size, 512*1024*1024*1024)
+        self.assertEqual(get_dpv_info_mock.call_count, 1)
