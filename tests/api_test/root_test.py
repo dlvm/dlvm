@@ -9,6 +9,7 @@ from dlvm.api_server.modules import db
 
 class RootTest(unittest.TestCase):
 
+    db_path = '/tmp/dlvm_test.db'
     db_uri = 'sqlite:////tmp/dlvm_test.db'
 
     @patch('dlvm.api_server.loginit')
@@ -22,8 +23,8 @@ class RootTest(unittest.TestCase):
         self.app = app.test_client()
 
     def tearDown(self):
-        if os.path.isfile(self.db_uri):
-            os.remove(self.db_uri)
+        if os.path.isfile(self.db_path):
+            os.remove(self.db_path)
 
     def test_root_get(self):
         resp = self.app.get('/')

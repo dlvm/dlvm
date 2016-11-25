@@ -7,6 +7,7 @@ from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from modules import db
 from handler import handle_dlvm_request
+from dpv import Dpvs
 
 root_get_fields = OrderedDict()
 root_get_fields['endpoints'] = fields.List(fields.String)
@@ -34,6 +35,7 @@ def create_app():
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
     db.init_app(app)
     api.add_resource(Root, '/')
+    api.add_resource(Dpvs, '/dpvs')
     return app
 
 app = create_app()
