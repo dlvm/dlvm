@@ -35,7 +35,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dlvm_init_transaction=dlvm.util.transaction:init_transaction',
-            'dlvm_monitor=dlvm.monitor.monitor:start'
+            'dlvm_monitor=dlvm.monitor:start'
         ],
     },
 )

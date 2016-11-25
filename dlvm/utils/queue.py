@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from dlvm.monitor.monitor import create_tasks
+from dlvm.monitor import create_tasks
 
 queue_functions = None
 

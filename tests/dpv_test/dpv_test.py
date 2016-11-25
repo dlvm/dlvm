@@ -5,7 +5,7 @@ import time
 from multiprocessing import Process
 import unittest
 from mock import Mock, patch
-from dlvm.dpv.dpv_agent import main, \
+from dlvm.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     mj_leg_export, mj_leg_unexport, mj_login, \
     mj_mirror_start, mj_mirror_stop, mj_mirror_status
@@ -18,9 +18,9 @@ class RpcServerTest(unittest.TestCase):
     dpv_listener = '127.0.0.1'
     dpv_port = 9522
 
-    @patch('dlvm.dpv.dpv_agent.conf')
-    @patch('dlvm.dpv.dpv_agent.queue_init')
-    @patch('dlvm.dpv.dpv_agent.loginit')
+    @patch('dlvm.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.queue_init')
+    @patch('dlvm.dpv_agent.loginit')
     def setUp(self, loginit, queue_init, conf):
         conf.dpv_listener = self.dpv_listener
         conf.dpv_port = self.dpv_port
@@ -51,13 +51,13 @@ class RpcFunctionTest(unittest.TestCase):
     def tearDown(self):
         distutils.dir_util.remove_tree(self.tmp_dir)
 
-    @patch('dlvm.dpv.dpv_agent.run_dd')
-    @patch('dlvm.dpv.dpv_agent.iscsi_create')
-    @patch('dlvm.dpv.dpv_agent.lv_create')
-    @patch('dlvm.dpv.dpv_agent.DmLinear')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.run_dd')
+    @patch('dlvm.dpv_agent.iscsi_create')
+    @patch('dlvm.dpv_agent.lv_create')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_leg_create(
             self, conf, dpv_verify,
             encode_target_name,
@@ -81,12 +81,12 @@ class RpcFunctionTest(unittest.TestCase):
         }
         leg_create(leg_id, leg_size, dm_context, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_delete')
-    @patch('dlvm.dpv.dpv_agent.lv_remove')
-    @patch('dlvm.dpv.dpv_agent.DmLinear')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.iscsi_delete')
+    @patch('dlvm.dpv_agent.lv_remove')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_leg_delete(
             self, conf, dpv_verify,
             encode_target_name,
@@ -101,10 +101,10 @@ class RpcFunctionTest(unittest.TestCase):
         }
         leg_delete(leg_id, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_export')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.iscsi_export')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
     def test_leg_export(
             self, dpv_verify,
             encode_target_name,
@@ -119,10 +119,10 @@ class RpcFunctionTest(unittest.TestCase):
         }
         leg_export(leg_id, host_name, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_unexport')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.iscsi_unexport')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
     def test_leg_unexport(
             self, dpv_verify,
             encode_target_name,
@@ -137,13 +137,13 @@ class RpcFunctionTest(unittest.TestCase):
         }
         leg_unexport(leg_id, host_name, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_export')
-    @patch('dlvm.dpv.dpv_agent.iscsi_create')
-    @patch('dlvm.dpv.dpv_agent.DmLinear')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.iscsi_export')
+    @patch('dlvm.dpv_agent.iscsi_create')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_leg_export(
             self, conf, dpv_verify,
             encode_target_name,
@@ -162,13 +162,13 @@ class RpcFunctionTest(unittest.TestCase):
         }
         mj_leg_export(leg_id, mj_name, src_name, leg_size, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_unexport')
-    @patch('dlvm.dpv.dpv_agent.iscsi_delete')
-    @patch('dlvm.dpv.dpv_agent.DmLinear')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.encode_initiator_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.iscsi_unexport')
+    @patch('dlvm.dpv_agent.iscsi_delete')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.encode_initiator_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_leg_unexport(
             self, conf, dpv_verify,
             encode_target_name,
@@ -186,11 +186,11 @@ class RpcFunctionTest(unittest.TestCase):
         }
         mj_leg_unexport(leg_id, mj_name, src_name, tran)
 
-    @patch('dlvm.dpv.dpv_agent.iscsi_login')
-    @patch('dlvm.dpv.dpv_agent.lv_create')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv_agent.lv_create')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_login(
             self, conf, dpv_verify,
             encode_target_name,
@@ -208,14 +208,14 @@ class RpcFunctionTest(unittest.TestCase):
         mj_login(
             leg_id, mj_name, dst_name, dst_id, tran)
 
-    @patch('dlvm.dpv.dpv_agent.Thread')
-    @patch('dlvm.dpv.dpv_agent.run_dd')
-    @patch('dlvm.dpv.dpv_agent.DmMirror')
-    @patch('dlvm.dpv.dpv_agent.DmBasic')
-    @patch('dlvm.dpv.dpv_agent.iscsi_login')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.Thread')
+    @patch('dlvm.dpv_agent.run_dd')
+    @patch('dlvm.dpv_agent.DmMirror')
+    @patch('dlvm.dpv_agent.DmBasic')
+    @patch('dlvm.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_mirror_start(
             self, conf, dpv_verify,
             encode_target_name,
@@ -241,12 +241,12 @@ class RpcFunctionTest(unittest.TestCase):
         mj_mirror_start(
             leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm, tran)
 
-    @patch('dlvm.dpv.dpv_agent.DmLinear')
-    @patch('dlvm.dpv.dpv_agent.lv_remove')
-    @patch('dlvm.dpv.dpv_agent.iscsi_logout')
-    @patch('dlvm.dpv.dpv_agent.encode_target_name')
-    @patch('dlvm.dpv.dpv_agent.dpv_verify')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.lv_remove')
+    @patch('dlvm.dpv_agent.iscsi_logout')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_mirror_stop(
             self, conf, dpv_verify,
             encode_target_name,
@@ -264,9 +264,9 @@ class RpcFunctionTest(unittest.TestCase):
         mj_mirror_stop(
             leg_id, mj_name, dst_id, leg_size, tran)
 
-    @patch('dlvm.dpv.dpv_agent.DmMirror')
-    @patch('dlvm.dpv.dpv_agent.DmBasic')
-    @patch('dlvm.dpv.dpv_agent.conf')
+    @patch('dlvm.dpv_agent.DmMirror')
+    @patch('dlvm.dpv_agent.DmBasic')
+    @patch('dlvm.dpv_agent.conf')
     def test_mj_mirror_status(
             self, conf,
             DmBasic, DmMirror,
