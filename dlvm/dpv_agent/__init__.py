@@ -10,7 +10,7 @@ from dlvm.utils.rpc_wrapper import WrapperRpcServer
 from dlvm.utils.transaction import dpv_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmMirror, \
-    lv_create, lv_remove, lv_get_path, \
+    lv_create, lv_remove, lv_get_path, vg_get_size, \
     run_dd, \
     iscsi_create, iscsi_delete, \
     iscsi_export, iscsi_unexport, \
@@ -70,6 +70,14 @@ def mj_thread_check(leg_id):
 
 def ping(message):
     return message
+
+
+def get_dpv_info():
+    total_size, free_size = vg_get_size(conf.local_vg)
+    return {
+        'total_size': total_size,
+        'free_size': free_size,
+    }
 
 
 def get_layer1_name(leg_id):
@@ -409,6 +417,7 @@ def main():
     queue_init()
     s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port)
     s.register_function(ping)
+    s.register_function(get_dpv_info)
     s.register_function(leg_create)
     s.register_function(leg_delete)
     s.register_function(leg_export)

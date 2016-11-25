@@ -424,6 +424,21 @@ def lv_remove(lv_name, vg_name):
         run_cmd(cmd)
 
 
+def vg_get_size(vg_name):
+    cmd = [
+        ctx.conf.lvm_path, 'vgs',
+        '-o', 'vg_size,vg_free',
+        '--units', 'b',
+        '--nosuffix', '--noheadings',
+        vg_name,
+    ]
+    r = run_cmd(cmd)
+    sizes = r.out.strip().split(' ')
+    total_size = int(sizes[0].strip())
+    free_size = int(sizes[1].strip())
+    return total_size, free_size
+
+
 def iscsi_get_context(target_name, iscsi_ip_port):
     cmd = [
         ctx.conf.iscsiadm_path,

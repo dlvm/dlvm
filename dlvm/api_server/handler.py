@@ -51,3 +51,19 @@ def handle_dlvm_request(params, parser, handler):
                     request_id, body, return_code)
         response['body'] = body
         return response, return_code
+
+
+def make_body(message, context=None):
+    body = {'message': message}
+    if context is not None:
+        body['context'] = context
+    return body
+
+
+def check_limit(limit):
+    def _check_limit(val):
+        val = int(val)
+        if val > limit:
+            val = limit
+        return val
+    return _check_limit
