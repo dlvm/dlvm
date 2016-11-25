@@ -8,6 +8,7 @@ from dlvm.utils.loginit import loginit
 from modules import db
 from handler import handle_dlvm_request
 from dpv import Dpvs, Dpv
+from dvg import Dvgs
 
 root_get_fields = OrderedDict()
 root_get_fields['endpoints'] = fields.List(fields.String)
@@ -37,6 +38,7 @@ def create_app():
     api.add_resource(Root, '/')
     api.add_resource(Dpvs, '/dpvs')
     api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
+    api.add_resource(Dvgs, '/dvgs')
     return app
 
 app = create_app()
