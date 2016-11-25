@@ -7,3 +7,11 @@ class TransactionConflictError(Exception):
 
 class TransactionMissError(Exception):
     pass
+
+
+class NoEnoughDpvError(Exception):
+    pass
+
+
+class DpvError(Exception):
+    pass

@@ -315,10 +315,6 @@ class Transaction(db.Model):
         db.Integer,
         nullable=False,
     )
-    status = db.Column(
-        db.Enum('doing', 'done', name='t_status'),
-        nullable=False,
-    )
     timestamp = db.Column(
         db.DateTime,
         nullable=False,
