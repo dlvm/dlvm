@@ -14,7 +14,8 @@ def loginit():
     global inited
     if inited is True:
         return
-    with open(logger_conf_path) as f:
-        logger_conf = yaml.safe_load(f)
-        logging.config.dictConfig(logger_conf)
-    inited = True
+    if os.path.isfile(logger_conf_path):
+        with open(logger_conf_path) as f:
+            logger_conf = yaml.safe_load(f)
+            logging.config.dictConfig(logger_conf)
+            inited = True

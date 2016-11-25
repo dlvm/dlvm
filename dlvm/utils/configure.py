@@ -50,8 +50,11 @@ class Conf(object):
 
     def __getattr__(self, attr):
         if self.conf is None:
-            with open(self.conf_path) as f:
-                self.conf = yaml.safe_load(f)
+            if os.path.isfile(self.conf_path):
+                with open(self.conf_path) as f:
+                    self.conf = yaml.safe_load(f)
+            else:
+                self.conf = {}
         if attr in self.conf:
             return self.conf[attr]
         else:

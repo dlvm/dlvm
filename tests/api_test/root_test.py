@@ -1,0 +1,30 @@
+#!/usr/bin/env python
+
+import os
+import unittest
+from mock import patch
+from dlvm.api_server import create_app
+from dlvm.api_server.modules import db
+
+
+class RootTest(unittest.TestCase):
+
+    db_uri = 'sqlite:////tmp/dlvm_test.db'
+
+    @patch('dlvm.api_server.loginit')
+    @patch('dlvm.api_server.conf')
+    def setUp(self, conf, loginit):
+        conf.db_uri = self.db_uri
+        app = create_app()
+        app.config['TESTING'] = True
+        with app.app_context():
+            db.create_all()
+        self.app = app.test_client()
+
+    def tearDown(self):
+        if os.path.isfile(self.db_uri):
+            os.remove(self.db_uri)
+
+    def test_root_get(self):
+        resp = self.app.get('/')
+        self.assertEqual(resp.status_code, 200)
