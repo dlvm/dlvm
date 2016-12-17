@@ -155,8 +155,8 @@ def transaction_refresh(transaction):
     db.session.add(t)
 
 
-def dlv_get(dlv_name, t_id, owner):
-    transaction = transaction_get(t_id, owner)
+def dlv_get(dlv_name, t_id, owner, stage):
+    transaction = transaction_get(t_id, owner, stage)
     dlv = dlv_get_by_name(dlv_name)
     if dlv.transaction is None:
         dlv.transaction = transaction

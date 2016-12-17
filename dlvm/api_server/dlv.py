@@ -234,9 +234,9 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
                 raise DpvError(dpv_name)
 
 
-def dlv_create_new(dlv_name, t_id, owner):
+def dlv_create_new(dlv_name, t_id, owner, stage):
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, owner)
+        dlv, transaction = dlv_get(dlv_name, t_id, owner, stage)
         for group in dlv.groups:
             allocate_dpvs_for_group(
                 group, dlv.dlv_name, dlv.dvg_name, transaction)
@@ -278,7 +278,6 @@ def handle_dlvs_create_new(params, args):
         partition_count=partition_count,
         status='creating',
         timestamp=datetime.datetime.utcnow(),
-        first_attach=True,
         dvg_name=dvg_name,
         active_snap_name=snap_name,
         t_id=transaction.t_id,
@@ -294,12 +293,11 @@ def handle_dlvs_create_new(params, args):
     )
     db.session.add(snapshot)
     thin_meta_size = conf.thin_meta_factor * div_round_up(
-        dlv_size, conf.block_size)
+        dlv_size, conf.thin_block_size)
     group = Group(
         group_id=uuid.uuid4().hex,
         idx=0,
         group_size=thin_meta_size,
-        nosync=True,
         dlv_name=dlv_name,
     )
     db.session.add(group)
@@ -314,9 +312,9 @@ def handle_dlvs_create_new(params, args):
         db.session.add(leg)
     group_size = init_size
     group = Group(
+        group_id=uuid.uuid4().hex,
         idx=1,
         group_size=group_size,
-        nosync=True,
         dlv_name=dlv_name,
     )
     db.session.add(group)
@@ -325,6 +323,7 @@ def handle_dlvs_create_new(params, args):
     legs_per_group = 2 * partition_count
     for i in xrange(legs_per_group):
         leg = Leg(
+            leg_id=uuid.uuid4().hex,
             idx=i,
             group=group,
             leg_size=leg_size,
@@ -332,7 +331,7 @@ def handle_dlvs_create_new(params, args):
         db.session.add(leg)
     transaction_refresh(transaction)
     db.session.commit()
-    return dlv_create_new(dlv_name, t_id, owner)
+    return dlv_create_new(dlv_name, t_id, owner, stage)
 
 
 def handle_dlvs_clone(params, args):
