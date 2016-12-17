@@ -15,3 +15,15 @@ class NoEnoughDpvError(Exception):
 
 class DpvError(Exception):
     pass
+
+
+class HostError(Exception):
+    pass
+
+
+class DlvStatusError(Exception):
+    pass
+
+
+class HasMjsError(Exception):
+    pass

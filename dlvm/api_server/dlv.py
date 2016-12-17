@@ -12,7 +12,8 @@ from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    TransactionConflictError
+    TransactionConflictError, DlvStatusError, HasMjsError, \
+    HostError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
@@ -130,13 +131,13 @@ dlvs_post_parser.add_argument(
     location='json',
 )
 dlvs_post_parser.add_argument(
-    'owner',
+    't_owner',
     type=str,
     required=True,
     location='json',
 )
 dlvs_post_parser.add_argument(
-    'stage',
+    't_stage',
     type=int,
     required=True,
     location='json',
@@ -234,9 +235,9 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
                 raise DpvError(dpv_name)
 
 
-def dlv_create_new(dlv_name, t_id, owner, stage):
+def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, owner, stage)
+        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
         for group in dlv.groups:
             allocate_dpvs_for_group(
                 group, dlv.dlv_name, dlv.dvg_name, transaction)
@@ -263,14 +264,14 @@ def handle_dlvs_create_new(params, args):
     dvg_name = args['dvg_name']
     snap_name = '%s/base' % dlv_name
     t_id = args['t_id']
-    owner = args['owner']
-    stage = args['stage']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
     init_size = dlv_size / conf.init_factor
     if init_size > conf.init_max:
         init_size = conf.init_max
     elif init_size < conf.init_min:
         init_size = conf.init_min
-    transaction = transaction_get(t_id, owner, stage)
+    transaction = transaction_get(t_id, t_owner, t_stage)
 
     dlv = DistributeLogicalVolume(
         dlv_name=dlv_name,
@@ -331,7 +332,7 @@ def handle_dlvs_create_new(params, args):
         db.session.add(leg)
     transaction_refresh(transaction)
     db.session.commit()
-    return dlv_create_new(dlv_name, t_id, owner, stage)
+    return dlv_create_new(dlv_name, t_id, t_owner, t_stage)
 
 
 def handle_dlvs_clone(params, args):
@@ -352,3 +353,436 @@ class Dlvs(Resource):
 
     def post(self):
         return handle_dlvm_request(None, dlvs_post_parser, handle_dlvs_post)
+
+
+dlv_delete_parser = reqparse.RequestParser()
+dlv_delete_parser.add_argument(
+    't_id',
+    type=str,
+    required=True,
+    location='json',
+)
+dlv_delete_parser.add_argument(
+    't_owner',
+    type=str,
+    required=True,
+    location='json',
+)
+dlv_delete_parser.add_argument(
+    't_stage',
+    type=int,
+    required=True,
+    location='json',
+)
+
+
+CAN_DELETE_STATUS = (
+    'detached',
+    'create_failed',
+    'delete_failed',
+)
+
+
+def free_dpvs_from_group(group, dlv_name, dvg_name, transaction):
+    dpv_dict = {}
+    for leg in group.legs:
+        dpv_name = leg.dpv_name
+        dpv = DistributePhysicalVolume \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+        dpv_dict[dpv_name] = dpv
+        if dpv.status != 'available':
+            continue
+        try:
+            client = WrapperRpcClient(
+                str(dpv_name),
+                conf.dpv_port,
+                conf.dpv_timeout,
+            )
+            client.leg_delete(
+                leg.leg_id,
+                transaction_encode(transaction),
+            )
+        except socket.error, socket.timeout:
+            logger.error('connect to dpv failed: %s', dpv_name)
+            raise DpvError(dpv_name)
+        except Fault as e:
+            if 'TransactionConflict' in str(e):
+                raise TransactionConflictError()
+            else:
+                logger.error('dpv rpc failed: %s', e)
+                raise DpvError(dpv_name)
+
+    total_free_size = 0
+    for leg in group.legs:
+        leg_size = leg.leg_size
+        db.session.delete(leg)
+        dpv = dpv_dict[leg.dpv_name]
+        if dpv.status != 'available':
+            continue
+        dpv.free_size += leg_size
+        total_free_size += leg_size
+        db.session.add(dpv)
+    dvg = DistributeVolumeGroup \
+        .query \
+        .with_lockmode('update') \
+        .filter_by(dvg_name=dvg_name) \
+        .one()
+    dvg.free_size += total_free_size
+    db.session.add(dvg)
+    db.session.delete(group)
+
+
+def dlv_delete(dlv, transaction):
+    if dlv.status not in CAN_DELETE_STATUS:
+        raise DlvStatusError(dlv.status)
+    if len(dlv.mjs) != 0:
+        raise HasMjsError()
+    dlv.status = 'deleting'
+    dlv.timestamp = datetime.datetime.utcnow()
+    transaction_refresh(transaction)
+    db.session.commit()
+    for group in dlv.groups:
+        free_dpvs_from_group(group, dlv.dlv_name, dlv.dvg_name, transaction)
+    for snapshot in dlv.snapshots:
+        db.session.delete(snapshot)
+    db.session.delete(dlv)
+    transaction_refresh(transaction)
+    db.session.commit()
+
+
+def handle_dlv_delete(params, args):
+    dlv_name = params[0]
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    try:
+        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_delete(dlv, transaction)
+    except DpvError as e:
+        dlv.status = 'delete_failed'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        transaction_refresh(transaction)
+        db.session.comit()
+        return make_body('dpv_failed', e.message), 500
+    except DlvStatusError as e:
+        return make_body('invalid_dlv_status', e.message), 400
+    except HasMjsError:
+        return make_body('has_mj'), 400
+    else:
+        return make_body('success'), 200
+
+
+dlv_put_parser = reqparse.RequestParser()
+dlv_put_parser.add_argument(
+    'action',
+    type=str,
+    choices=('attach', 'detach'),
+    required=True,
+    location='json',
+)
+dlv_put_parser.add_argument(
+    'host_name',
+    type=str,
+    location='json',
+)
+dlv_put_parser.add_argument(
+    't_id',
+    type=str,
+    required=True,
+    location='json',
+)
+dlv_put_parser.add_argument(
+    't_owner',
+    type=str,
+    required=True,
+    location='json',
+)
+dlv_put_parser.add_argument(
+    't_stage',
+    type=int,
+    required=True,
+    location='json',
+)
+
+
+def do_attach(dlv, transaction):
+    dlv_info = {}
+    dlv_info['dlv_name'] = dlv.dlv_name
+    dlv_info['dlv_size'] = dlv.dlv_size
+    dlv_info['first_attach'] = dlv.first_attach
+    dm_context = get_dm_context()
+    dm_context['stripe_number'] = dlv.partition_count
+    dlv_info['dm_context'] = dm_context
+    snapshot = Snapshot \
+        .query \
+        .filter_by(snap_name=dlv.active_snap_name) \
+        .with_entities(Snapshot.thin_id) \
+        .one()
+    dlv_info['thin_id'] = snapshot.thin_id
+    dlv_info['groups'] = []
+    for group in dlv.groups:
+        igroup = {}
+        igroup['group_id'] = group.group_id
+        igroup['idx'] = group.idx
+        igroup['group_size'] = group.group_size
+        igroup['nosync'] = group.nosync
+        igroup['legs'] = []
+        for leg in group.legs:
+            ileg = {}
+            ileg['dpv_name'] = leg.dpv_name
+            ileg['leg_id'] = leg.leg_id
+            ileg['idx'] = leg.idx
+            ileg['leg_size'] = leg.leg_size
+            igroup['legs'].append(ileg)
+            dpv_name = leg.dpv_name
+            dpv = DistributePhysicalVolume \
+                .query \
+                .with_lockmode('update') \
+                .filter_by(dpv_name=dpv_name) \
+                .one()
+            if dpv.status != 'available':
+                continue
+            try:
+                client = WrapperRpcClient(
+                    str(dpv_name),
+                    conf.dpv_port,
+                    conf.dpv_timeout,
+                )
+                client.leg_export(
+                    dlv.dlv_name,
+                    group.idx,
+                    leg.idx,
+                    dlv.host_name,
+                    transaction_encode(transaction),
+                )
+            except socket.error, socket.timeout:
+                logger.error('connect to dpv failed: %s', dpv_name)
+                continue
+            except Fault as e:
+                if 'TransactionConflict' in str(e):
+                    raise TransactionConflictError()
+                else:
+                    logger.error('dpv rpc failed: %s', e)
+                    continue
+        dlv_info['groups'].append(igroup)
+
+    try:
+        client = WrapperRpcClient(
+            str(dlv.host_name),
+            conf.host_port,
+            conf.host_timeout,
+        )
+        client.aggregate_dlv(
+            dlv_info,
+            transaction_encode(transaction),
+        )
+    except socket.error, socket.timeout:
+        logger.error('connect to host failed: %s', dlv.host_name)
+        raise HostError(dlv.host_name)
+    except Fault as e:
+        if 'TransactionConflict' in str(e):
+            raise TransactionConflictError()
+        else:
+            logger.error('host rpc failed: %s', e)
+            raise HostError(dlv.host_name)
+
+
+def dlv_attach(dlv, host_name, transaction):
+    if dlv.status != 'detached':
+        raise DlvStatusError(dlv.status)
+    dlv.status = 'attaching'
+    dlv.timestamp = datetime.datetime.utcnow()
+    dlv.host_name = host_name
+    db.session.add(dlv)
+    transaction_refresh(transaction)
+    db.session.commit()
+    return do_attach(dlv, transaction)
+
+
+def handle_dlv_attach(dlv_name, host_name, t_id, t_owner, t_stage):
+    try:
+        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_attach(dlv, host_name, transaction)
+    except HostError as e:
+        dlv.status = 'attach_failed'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        transaction_refresh(transaction)
+        db.session.commit()
+        return make_body('host_failed', e.message), 500
+    except DlvStatusError as e:
+        return make_body('invalid_dlv_status', e.message), 400
+    else:
+        dlv.status = 'attached'
+        dlv.timestamp = datetime.datetime.utcnow()
+        dlv.first_attach = False
+        db.session.add(dlv)
+        for group in dlv.groups:
+            group.nosync = False
+            db.session.add(group)
+        transaction_refresh(transaction)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+CAN_DETACH_STATUS = (
+    'attached',
+    'attach_failed',
+    'detach_failed',
+)
+
+
+def do_detach(dlv, transaction):
+    dlv_info = {}
+    dlv_info['dlv_name'] = dlv.dlv_name
+    dm_context = get_dm_context()
+    dm_context['stripe_number'] = dlv.partition_count
+    dlv_info['dm_context'] = dm_context
+    snapshot = Snapshot \
+        .query \
+        .filter_by(snap_name=dlv.active_snap_name) \
+        .with_entities(Snapshot.thin_id) \
+        .one()
+    dlv_info['thin_id'] = snapshot.thin_id
+    dlv_info['groups'] = []
+    for group in dlv.groups:
+        igroup = {}
+        igroup['group_id'] = group.group_id
+        igroup['idx'] = group.idx
+        igroup['legs'] = []
+        for leg in group.legs:
+            ileg = {}
+            ileg['dpv_name'] = leg.dpv_name
+            ileg['leg_id'] = leg.leg_id
+            ileg['idx'] = leg.idx
+            igroup['legs'].append(ileg)
+        dlv_info['groups'].append(igroup)
+
+    try:
+        client = WrapperRpcClient(
+            str(dlv.host_name),
+            conf.host_port,
+            conf.host_timeout,
+        )
+        client.degregate_dlv(
+            dlv_info,
+            transaction_encode(transaction),
+        )
+    except socket.error, socket.timeout:
+        logger.error('connect to host failed: %s', dlv.host_name)
+        raise HostError(dlv.host_name)
+    except Fault as e:
+        if 'TransactionConflict' in str(e):
+            raise TransactionConflictError()
+        else:
+            logger.error('host rpc failed: %s', e)
+            raise HostError(dlv.host_name)
+
+    for group in dlv.groups:
+        for leg in group.legs:
+            dpv_name = leg.dpv_name
+            dpv = DistributePhysicalVolume \
+                .query \
+                .with_lockmode('update') \
+                .filter_by(dpv_name=dpv_name) \
+                .one()
+            if dpv.status != 'available':
+                continue
+            try:
+                client = WrapperRpcClient(
+                    str(dpv_name),
+                    conf.dpv_port,
+                    conf.dpv_timeout,
+                )
+                client.leg_unexport(
+                    leg.leg_id,
+                    dlv.host_name,
+                    transaction_encode(transaction),
+                )
+            except socket.error, socket.timeout:
+                logger.error('connect to dpv failed: %s', dpv_name)
+                raise DpvError(dlv.host_name)
+            except Fault as e:
+                if 'TransactionConflict' in str(e):
+                    raise TransactionConflictError()
+                else:
+                    raise DpvError(dlv.host_name)
+
+
+def dlv_detach(dlv, transaction):
+    if dlv.status not in CAN_DETACH_STATUS:
+        raise DlvStatusError(dlv.status)
+    dlv.status = 'detaching'
+    dlv.timestamp = datetime.datetime.utcnow()
+    db.session.add(dlv)
+    transaction_refresh(transaction)
+    db.session.commit()
+    return do_detach(dlv, transaction)
+
+
+def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
+    try:
+        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_detach(dlv, transaction)
+    except DpvError as e:
+        dlv.status = 'attach_failed'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        transaction_refresh(transaction)
+        db.session.commit()
+        return make_body('dpv_failed', e.message), 500
+    except HostError as e:
+        dlv.status = 'attach_failed'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        transaction_refresh(transaction)
+        db.session.commit()
+        return make_body('host_failed', e.message), 500
+    except DlvStatusError as e:
+        return make_body('invalid_dlv_status', e.message), 400
+    else:
+        dlv.status = 'detached'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        transaction_refresh(transaction)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+def handle_dlv_put(params, args):
+    dlv_name = params[0]
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    if args['action'] == 'attach':
+        if 'host_name' not in args:
+            return make_body('no_host_name'), 500
+        else:
+            return handle_dlv_attach(
+                dlv_name, args['host_name'], t_id, t_owner, t_stage)
+    elif args['action'] == 'detach':
+        return handle_dlv_detach(
+            dlv_name, t_id, t_owner, t_stage)
+    else:
+        assert(False)
+
+
+class Dlv(Resource):
+
+    def put(self, dlv_name):
+        return handle_dlvm_request(
+            [dlv_name],
+            dlv_put_parser,
+            handle_dlv_put,
+        )
+
+    def delete(self, dlv_name):
+        return handle_dlvm_request(
+            [dlv_name],
+            dlv_delete_parser,
+            handle_dlv_delete,
+        )

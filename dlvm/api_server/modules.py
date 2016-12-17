@@ -307,11 +307,11 @@ class Transaction(db.Model):
         db.String(32),
         primary_key=True,
     )
-    owner = db.Column(
+    t_owner = db.Column(
         db.String(32),
         nullable=False,
     )
-    stage = db.Column(
+    t_stage = db.Column(
         db.Integer,
         nullable=False,
     )

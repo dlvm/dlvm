@@ -109,7 +109,7 @@ def snapshot_get_by_name(snap_name):
     return snapshot
 
 
-def transaction_get(t_id, owner, stage):
+def transaction_get(t_id, t_owner, t_stage):
     try:
         t = Transaction \
             .query \
@@ -118,12 +118,12 @@ def transaction_get(t_id, owner, stage):
             .one()
     except NoResultFound:
         raise TransactionMissError()
-    if t.owner != owner:
+    if t.t_owner != t_owner:
         raise TransactionConflictError()
     counter = Counter()
     db.session.delete(t.counter)
     t.counter = counter
-    t.stage = stage
+    t.t_stage = t_stage
     db.session.add(t)
     db.session.commit()
     try:
@@ -134,7 +134,7 @@ def transaction_get(t_id, owner, stage):
             .one()
     except NoResultFound:
         raise TransactionMissError()
-    if t.owner != owner:
+    if t.t_owner != t_owner:
         raise TransactionConflictError()
     t.minor_count = 0
     return t
@@ -149,14 +149,14 @@ def transaction_refresh(transaction):
             .one()
     except NoResultFound:
         raise TransactionMissError()
-    if t.owner != transaction.owner:
+    if t.t_owner != transaction.t_owner:
         raise TransactionConflictError()
     t.timestamp = datetime.datetime.utcnow()
     db.session.add(t)
 
 
-def dlv_get(dlv_name, t_id, owner, stage):
-    transaction = transaction_get(t_id, owner, stage)
+def dlv_get(dlv_name, t_id, t_owner, t_stage):
+    transaction = transaction_get(t_id, t_owner, t_stage)
     dlv = dlv_get_by_name(dlv_name)
     if dlv.transaction is None:
         dlv.transaction = transaction

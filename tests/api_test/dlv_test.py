@@ -96,14 +96,14 @@ class DlvTest(unittest.TestCase):
             db.session.add(dvg)
             db.session.commit()
 
-    def _prepare_transaction(self, t_id, owner, stage):
+    def _prepare_transaction(self, t_id, t_owner, t_stage):
         with self.app.app_context():
             counter = Counter()
             db.session.add(counter)
             t = Transaction(
                 t_id=t_id,
-                owner=owner,
-                stage=stage,
+                t_owner=t_owner,
+                t_stage=t_stage,
                 timestamp=datetime.datetime.utcnow(),
                 counter=counter,
             )
@@ -118,9 +118,9 @@ class DlvTest(unittest.TestCase):
         client_mock.leg_create = leg_create_mock
         self._prepare_dpvs_and_dvg()
         t_id = 't0'
-        owner = 'owner'
-        stage = 0
-        self._prepare_transaction(t_id, owner, stage)
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_transaction(t_id, t_owner, t_stage)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -131,8 +131,8 @@ class DlvTest(unittest.TestCase):
             'partition_count': 2,
             'dvg_name': 'dvg0',
             't_id': t_id,
-            'owner': owner,
-            'stage': stage,
+            't_owner': t_owner,
+            't_stage': t_stage,
         }
         data = json.dumps(data)
         resp = self.client.post('/dlvs', headers=headers, data=data)
