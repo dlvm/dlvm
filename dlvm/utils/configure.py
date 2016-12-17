@@ -15,6 +15,7 @@ DEFAULT_CONF = {
     'dlv_list_limit': 100,
     'mj_list_limit': 100,
     'dpv_timeout': 10,
+    'host_timeout': 10,
     'cross_dpv': False,
     'init_factor': 4,
     'init_max': 1024*1024*1024*200,

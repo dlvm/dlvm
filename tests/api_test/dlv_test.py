@@ -9,7 +9,7 @@ from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, Transaction, Counter
+    Snapshot, Group, Leg, Transaction, Counter, Host
 from dlvm.api_server.handler import div_round_up
 
 
@@ -170,6 +170,16 @@ class DlvTest(unittest.TestCase):
 
             db.session.commit()
 
+    def _prepare_host(self, host_name):
+        with self.app.app_context():
+            host = Host(
+                host_name=host_name,
+                status='available',
+                timestamp=datetime.datetime.utcnow(),
+            )
+            db.session.add(host)
+            db.session.commit()
+
     def _prepare_transaction(self, t_id, t_owner, t_stage):
         with self.app.app_context():
             counter = Counter()
@@ -240,4 +250,53 @@ class DlvTest(unittest.TestCase):
         data = json.dumps(data)
         resp = self.client.delete('/dlvs/dlv0', headers=headers, data=data)
         print(resp.data)
+        self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.dlv.WrapperRpcClient')
+    def test_dlv_attach(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_host('host0')
+        self._prepare_dlv('detached')
+        t_id = 't0'
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_transaction(t_id, t_owner, t_stage)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'attach',
+            'host_name': 'host0',
+            't_id': t_id,
+            't_owner': t_owner,
+            't_stage': t_stage,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.dlv.WrapperRpcClient')
+    def test_dlv_detach(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_host('host0')
+        self._prepare_dlv('attached', 'host0')
+        t_id = 't0'
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_transaction(t_id, t_owner, t_stage)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'detach',
+            't_id': t_id,
+            't_owner': t_owner,
+            't_stage': t_stage,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)

@@ -513,7 +513,6 @@ def do_attach(dlv, transaction):
     dlv_info = {}
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
-    dlv_info['first_attach'] = dlv.first_attach
     dm_context = get_dm_context()
     dm_context['stripe_number'] = dlv.partition_count
     dlv_info['dm_context'] = dm_context
@@ -529,7 +528,6 @@ def do_attach(dlv, transaction):
         igroup['group_id'] = group.group_id
         igroup['idx'] = group.idx
         igroup['group_size'] = group.group_size
-        igroup['nosync'] = group.nosync
         igroup['legs'] = []
         for leg in group.legs:
             ileg = {}
@@ -619,10 +617,8 @@ def handle_dlv_attach(dlv_name, host_name, t_id, t_owner, t_stage):
     else:
         dlv.status = 'attached'
         dlv.timestamp = datetime.datetime.utcnow()
-        dlv.first_attach = False
         db.session.add(dlv)
         for group in dlv.groups:
-            group.nosync = False
             db.session.add(group)
         transaction_refresh(transaction)
         db.session.commit()
