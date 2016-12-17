@@ -3,12 +3,14 @@
 import os
 import datetime
 import json
+import uuid
 import unittest
 from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg, Transaction, Counter
+from dlvm.api_server.handler import div_round_up
 
 
 class DlvTest(unittest.TestCase):
@@ -96,6 +98,78 @@ class DlvTest(unittest.TestCase):
             db.session.add(dvg)
             db.session.commit()
 
+    def _prepare_dlv(self, status, host_name=None):
+        dlv_name = 'dlv0'
+        dlv_size = 200*1024*1024*1024
+        init_size = dlv_size
+        partition_count = 2
+        dvg_name = 'dvg0'
+        snap_name = 'dlv0/base'
+        with self.app.app_context():
+            dlv = DistributeLogicalVolume(
+                dlv_name=dlv_name,
+                dlv_size=dlv_size,
+                partition_count=partition_count,
+                active_snap_name=snap_name,
+                status=status,
+                timestamp=datetime.datetime.utcnow(),
+                dvg_name=dvg_name,
+                host_name=host_name,
+            )
+            db.session.add(dlv)
+            snapshot = Snapshot(
+                snap_name=snap_name,
+                thin_id=0,
+                ori_thin_id=0,
+                status='available',
+                timestamp=datetime.datetime.utcnow(),
+                dlv_name=dlv_name,
+            )
+            db.session.add(snapshot)
+            group = Group(
+                group_id=uuid.uuid4().hex,
+                idx=0,
+                group_size=1024*1024,
+                dlv_name=dlv_name,
+            )
+            db.session.add(group)
+            group_size = init_size
+            group = Group(
+                group_id=uuid.uuid4().hex,
+                idx=1,
+                group_size=group_size,
+                dlv_name=dlv_name,
+            )
+            db.session.add(group)
+            leg_size = div_round_up(group_size, partition_count)
+            legs_per_group = 2 * partition_count
+            for i in xrange(legs_per_group):
+                dpv_name = 'dpv%d' % i
+                dpv = DistributePhysicalVolume \
+                    .query \
+                    .filter_by(dpv_name=dpv_name) \
+                    .one()
+                dpv.free_size -= leg_size
+                db.session.add(dpv)
+
+                dvg = DistributeVolumeGroup \
+                    .query \
+                    .filter_by(dvg_name='dvg0') \
+                    .one()
+                dvg.free_size -= leg_size
+                db.session.add(dvg)
+
+                leg = Leg(
+                    leg_id=uuid.uuid4().hex,
+                    idx=i,
+                    leg_size=leg_size,
+                    group=group,
+                    dpv_name=dpv_name,
+                )
+                db.session.add(leg)
+
+            db.session.commit()
+
     def _prepare_transaction(self, t_id, t_owner, t_stage):
         with self.app.app_context():
             counter = Counter()
@@ -144,3 +218,26 @@ class DlvTest(unittest.TestCase):
                 .one()
         self.assertEqual(dlv.status, 'detached')
         self.assertEqual(leg_create_mock.call_count, 6)
+
+    @patch('dlvm.api_server.dlv.WrapperRpcClient')
+    def test_dlv_delete(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_dlv('detached')
+        t_id = 't0'
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_transaction(t_id, t_owner, t_stage)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            't_id': t_id,
+            't_owner': t_owner,
+            't_stage': t_stage,
+        }
+        data = json.dumps(data)
+        resp = self.client.delete('/dlvs/dlv0', headers=headers, data=data)
+        print(resp.data)
+        self.assertEqual(resp.status_code, 200)
