@@ -13,7 +13,7 @@ from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     TransactionConflictError, DlvStatusError, HasMjsError, \
-    HostError
+    ThostError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
@@ -68,7 +68,7 @@ dlv_summary_fields['partition_count'] = fields.Integer
 dlv_summary_fields['status'] = fields.String
 dlv_summary_fields['timestamp'] = fields.String
 dlv_summary_fields['dvg_name'] = fields.String
-dlv_summary_fields['host_name'] = fields.String
+dlv_summary_fields['thost_name'] = fields.String
 dlv_summary_fields['active_snap_name'] = fields.String
 dlv_summary_fields['t_id'] = fields.String
 dlvs_get_fields = OrderedDict()
@@ -485,7 +485,7 @@ dlv_put_parser.add_argument(
     location='json',
 )
 dlv_put_parser.add_argument(
-    'host_name',
+    'thost_name',
     type=str,
     location='json',
 )
@@ -554,7 +554,7 @@ def do_attach(dlv, transaction):
                     dlv.dlv_name,
                     group.idx,
                     leg.idx,
-                    dlv.host_name,
+                    dlv.thost_name,
                     transaction_encode(transaction),
                 )
             except socket.error, socket.timeout:
@@ -570,48 +570,48 @@ def do_attach(dlv, transaction):
 
     try:
         client = WrapperRpcClient(
-            str(dlv.host_name),
-            conf.host_port,
-            conf.host_timeout,
+            str(dlv.thost_name),
+            conf.thost_port,
+            conf.thost_timeout,
         )
         client.aggregate_dlv(
             dlv_info,
             transaction_encode(transaction),
         )
     except socket.error, socket.timeout:
-        logger.error('connect to host failed: %s', dlv.host_name)
-        raise HostError(dlv.host_name)
+        logger.error('connect to thost failed: %s', dlv.thost_name)
+        raise ThostError(dlv.thost_name)
     except Fault as e:
         if 'TransactionConflict' in str(e):
             raise TransactionConflictError()
         else:
-            logger.error('host rpc failed: %s', e)
-            raise HostError(dlv.host_name)
+            logger.error('thost rpc failed: %s', e)
+            raise ThostError(dlv.thost_name)
 
 
-def dlv_attach(dlv, host_name, transaction):
+def dlv_attach(dlv, thost_name, transaction):
     if dlv.status != 'detached':
         raise DlvStatusError(dlv.status)
     dlv.status = 'attaching'
     dlv.timestamp = datetime.datetime.utcnow()
-    dlv.host_name = host_name
+    dlv.thost_name = thost_name
     db.session.add(dlv)
     transaction_refresh(transaction)
     db.session.commit()
     return do_attach(dlv, transaction)
 
 
-def handle_dlv_attach(dlv_name, host_name, t_id, t_owner, t_stage):
+def handle_dlv_attach(dlv_name, thost_name, t_id, t_owner, t_stage):
     try:
         dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_attach(dlv, host_name, transaction)
-    except HostError as e:
+        dlv_attach(dlv, thost_name, transaction)
+    except ThostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         transaction_refresh(transaction)
         db.session.commit()
-        return make_body('host_failed', e.message), 500
+        return make_body('thost_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
     else:
@@ -660,23 +660,23 @@ def do_detach(dlv, transaction):
 
     try:
         client = WrapperRpcClient(
-            str(dlv.host_name),
-            conf.host_port,
-            conf.host_timeout,
+            str(dlv.thost_name),
+            conf.thost_port,
+            conf.thost_timeout,
         )
         client.degregate_dlv(
             dlv_info,
             transaction_encode(transaction),
         )
     except socket.error, socket.timeout:
-        logger.error('connect to host failed: %s', dlv.host_name)
-        raise HostError(dlv.host_name)
+        logger.error('connect to thost failed: %s', dlv.thost_name)
+        raise ThostError(dlv.thost_name)
     except Fault as e:
         if 'TransactionConflict' in str(e):
             raise TransactionConflictError()
         else:
-            logger.error('host rpc failed: %s', e)
-            raise HostError(dlv.host_name)
+            logger.error('thost rpc failed: %s', e)
+            raise ThostError(dlv.thost_name)
 
     for group in dlv.groups:
         for leg in group.legs:
@@ -696,17 +696,17 @@ def do_detach(dlv, transaction):
                 )
                 client.leg_unexport(
                     leg.leg_id,
-                    dlv.host_name,
+                    dlv.thost_name,
                     transaction_encode(transaction),
                 )
             except socket.error, socket.timeout:
                 logger.error('connect to dpv failed: %s', dpv_name)
-                raise DpvError(dlv.host_name)
+                raise DpvError(dlv.thost_name)
             except Fault as e:
                 if 'TransactionConflict' in str(e):
                     raise TransactionConflictError()
                 else:
-                    raise DpvError(dlv.host_name)
+                    raise DpvError(dlv.thost_name)
 
 
 def dlv_detach(dlv, transaction):
@@ -731,13 +731,13 @@ def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
         transaction_refresh(transaction)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
-    except HostError as e:
+    except ThostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         transaction_refresh(transaction)
         db.session.commit()
-        return make_body('host_failed', e.message), 500
+        return make_body('thost_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
     else:
@@ -755,11 +755,11 @@ def handle_dlv_put(params, args):
     t_owner = args['t_owner']
     t_stage = args['t_stage']
     if args['action'] == 'attach':
-        if 'host_name' not in args:
-            return make_body('no_host_name'), 500
+        if 'thost_name' not in args:
+            return make_body('no_thost_name'), 500
         else:
             return handle_dlv_attach(
-                dlv_name, args['host_name'], t_id, t_owner, t_stage)
+                dlv_name, args['thost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'detach':
         return handle_dlv_detach(
             dlv_name, t_id, t_owner, t_stage)

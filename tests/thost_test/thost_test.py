@@ -4,7 +4,7 @@ import time
 from multiprocessing import Process
 import unittest
 from mock import Mock, patch
-from dlvm.host_agent import main, bm_get, \
+from dlvm.thost_agent import main, bm_get, \
     dlv_aggregate, dlv_degregate, \
     dlv_suspend, dlv_resume, \
     snapshot_create, snapshot_delete, \
@@ -16,15 +16,15 @@ from dlvm.utils.bitmap import BitMap
 
 class RpcServerTest(unittest.TestCase):
 
-    host_listener = '127.0.0.1'
-    host_port = 9523
+    thost_listener = '127.0.0.1'
+    thost_port = 9523
 
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def setUp(self, loginit, queue_init, conf):
-        conf.host_listener = self.host_listener
-        conf.host_port = self.host_port
+        conf.thost_listener = self.thost_listener
+        conf.thost_port = self.thost_port
         self.server = Process(target=main)
         self.server.start()
         time.sleep(0.1)
@@ -35,7 +35,7 @@ class RpcServerTest(unittest.TestCase):
     def test_rpc_server(self):
         client = WrapperRpcClient(
             'localhost',
-            self.host_port,
+            self.thost_port,
             5,
         )
         ret = client.ping('hello')
@@ -44,17 +44,17 @@ class RpcServerTest(unittest.TestCase):
 
 class RpcFunctionTest(unittest.TestCase):
 
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_bm_get_simple(
             self,
             loginit,
             queue_init,
             conf,
-            host_verify,
+            thost_verify,
             DmPool,
     ):
         conf.bm_throttle = 0
@@ -127,28 +127,28 @@ class RpcFunctionTest(unittest.TestCase):
                 for i in xrange(bm_size):
                     self.assertTrue(bm.test(i))
 
-    @patch('dlvm.host_agent.Thread')
-    @patch('dlvm.host_agent.iscsi_login')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.encode_target_name')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.report_pool')
-    @patch('dlvm.host_agent.report_multi_legs')
-    @patch('dlvm.host_agent.report_single_leg')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.Thread')
+    @patch('dlvm.thost_agent.iscsi_login')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.encode_target_name')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.report_pool')
+    @patch('dlvm.thost_agent.report_multi_legs')
+    @patch('dlvm.thost_agent.report_single_leg')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_dlv_aggregate(
             self, loginit,
             queue_init, report_single_leg,
             report_multi_legs, report_pool,
-            conf, host_verify, encode_target_name,
+            conf, thost_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_login, Thread,
@@ -203,22 +203,22 @@ class RpcFunctionTest(unittest.TestCase):
         }
         dlv_aggregate('dlv0', tran, dlv_info)
 
-    @patch('dlvm.host_agent.iscsi_logout')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.encode_target_name')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.iscsi_logout')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.encode_target_name')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_dlv_degregate(
             self, loginit, queue_init, conf,
-            host_verify, encode_target_name,
+            thost_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_logout,
@@ -255,22 +255,22 @@ class RpcFunctionTest(unittest.TestCase):
         }
         dlv_degregate('dlv0', tran, dlv_info)
 
-    @patch('dlvm.host_agent.Thread')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.report_pool')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.Thread')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.report_pool')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_dlv_suspend(
             self, loginit, queue_init,
-            report_pool, conf, host_verify,
+            report_pool, conf, thost_verify,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             Thread,
@@ -284,22 +284,22 @@ class RpcFunctionTest(unittest.TestCase):
         }
         dlv_suspend('dlv0', tran, dlv_info)
 
-    @patch('dlvm.host_agent.Thread')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.report_pool')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.Thread')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.report_pool')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_dlv_resume(
             self, loginit, queue_init,
-            report_pool, conf, host_verify,
+            report_pool, conf, thost_verify,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             Thread,
@@ -324,10 +324,10 @@ class RpcFunctionTest(unittest.TestCase):
         }
         dlv_resume('dlv0', tran, dlv_info)
 
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.host_verify')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.thost_verify')
     def test_snapshot_create(
-            self, host_verify, DmPool,
+            self, thost_verify, DmPool,
     ):
         dlv_name = 'dlv0'
         thin_id = 1
@@ -338,10 +338,10 @@ class RpcFunctionTest(unittest.TestCase):
         }
         snapshot_create(dlv_name, tran, thin_id, ori_thin_id)
 
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.host_verify')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.thost_verify')
     def test_snapshot_delete(
-            self, host_verify, DmPool,
+            self, thost_verify, DmPool,
     ):
         dlv_name = 'dlv0'
         thin_id = 1
@@ -351,28 +351,28 @@ class RpcFunctionTest(unittest.TestCase):
         }
         snapshot_delete(dlv_name, tran, thin_id)
 
-    @patch('dlvm.host_agent.Thread')
-    @patch('dlvm.host_agent.iscsi_login')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.encode_target_name')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.report_pool')
-    @patch('dlvm.host_agent.report_multi_legs')
-    @patch('dlvm.host_agent.report_single_leg')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.Thread')
+    @patch('dlvm.thost_agent.iscsi_login')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.encode_target_name')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.report_pool')
+    @patch('dlvm.thost_agent.report_multi_legs')
+    @patch('dlvm.thost_agent.report_single_leg')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_remirror(
             self, loginit,
             queue_init, report_single_leg,
             report_multi_legs, report_pool,
-            conf, host_verify, encode_target_name,
+            conf, thost_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_login, Thread,
@@ -434,22 +434,22 @@ class RpcFunctionTest(unittest.TestCase):
         }
         remirror('dlv0', tran, dlv_info, src_id, dst_leg)
 
-    @patch('dlvm.host_agent.iscsi_logout')
-    @patch('dlvm.host_agent.DmError')
-    @patch('dlvm.host_agent.DmThin')
-    @patch('dlvm.host_agent.DmPool')
-    @patch('dlvm.host_agent.DmMirror')
-    @patch('dlvm.host_agent.DmStripe')
-    @patch('dlvm.host_agent.DmLinear')
-    @patch('dlvm.host_agent.DmBasic')
-    @patch('dlvm.host_agent.encode_target_name')
-    @patch('dlvm.host_agent.host_verify')
-    @patch('dlvm.host_agent.conf')
-    @patch('dlvm.host_agent.queue_init')
-    @patch('dlvm.host_agent.loginit')
+    @patch('dlvm.thost_agent.iscsi_logout')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.encode_target_name')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
     def test_leg_remove(
             self, loginit, queue_init, conf,
-            host_verify, encode_target_name,
+            thost_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
             iscsi_logout,

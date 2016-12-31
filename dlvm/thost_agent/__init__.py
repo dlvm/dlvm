@@ -5,7 +5,7 @@ import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
-from dlvm.utils.transaction import host_verify
+from dlvm.utils.transaction import thost_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmStripe, DmMirror, \
     DmPool, DmThin, DmError, \
@@ -16,7 +16,7 @@ from dlvm.utils.queue import queue_init, report_single_leg, \
     report_multi_legs, report_pool
 
 
-logger = logging.getLogger('dlvm_host')
+logger = logging.getLogger('dlvm_thost')
 
 global_rpc_lock = Lock()
 global_rpc_set = set()
@@ -141,7 +141,7 @@ def do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id):
 
 def bm_get(dlv_name, tran, dlv_info, thin_id_list, leg_id):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         return do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id)
 
 
@@ -505,7 +505,7 @@ def do_dlv_aggregate(dlv_name, dlv_info):
 
 def dlv_aggregate(dlv_name, tran, dlv_info):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         return do_dlv_aggregate(dlv_name, dlv_info)
 
 
@@ -590,7 +590,7 @@ def do_dlv_degregate(dlv_name, dlv_info):
 
 def dlv_degregate(dlv_name, tran, dlv_info):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_dlv_degregate(dlv_name, dlv_info)
 
 
@@ -620,7 +620,7 @@ def do_dlv_suspend(dlv_name, dlv_info):
 
 def dlv_suspend(dlv_name, tran, dlv_info):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_dlv_suspend(dlv_name, dlv_info)
 
 
@@ -684,7 +684,7 @@ def do_dlv_resume(dlv_name, dlv_info):
 
 def dlv_resume(dlv_name, tran, dlv_info):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_dlv_resume(dlv_name, dlv_info)
 
 
@@ -701,7 +701,7 @@ def do_snapshot_create(dlv_name, thin_id, ori_thin_id):
 
 def snapshot_create(dlv_name, tran, thin_id, ori_thin_id):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_snapshot_create(
             dlv_name, thin_id, ori_thin_id)
 
@@ -718,7 +718,7 @@ def do_snapshot_delete(dlv_name, thin_id):
 
 def snapshot_delete(dlv_name, tran, thin_id):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_snapshot_delete(dlv_name, thin_id)
 
 
@@ -819,7 +819,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
 
 def remirror(dlv_name, tran, dlv_info, src_id, dst_leg):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_remirror(dlv_name, dlv_info, src_id, dst_leg)
 
 
@@ -846,7 +846,7 @@ def do_leg_remove(dlv_name, dlv_info, leg_id):
 
 def leg_remove(dlv_name, tran, dlv_info, leg_id):
     with RpcLock(dlv_name):
-        host_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, tran['major'], tran['minor'])
         do_leg_remove(dlv_name, dlv_info, leg_id)
 
 
@@ -854,7 +854,7 @@ def main():
     loginit()
     context_init(conf, logger)
     queue_init()
-    s = WrapperRpcServer(conf.host_listener, conf.host_port)
+    s = WrapperRpcServer(conf.thost_listener, conf.thost_port)
     s.register_function(ping)
     s.register_function(bm_get)
     s.register_function(dlv_aggregate)
@@ -865,5 +865,5 @@ def main():
     s.register_function(snapshot_delete)
     s.register_function(remirror)
     s.register_function(leg_remove)
-    logger.info('host_agent start')
+    logger.info('thost_agent start')
     s.serve_forever()

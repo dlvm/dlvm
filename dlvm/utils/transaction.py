@@ -28,8 +28,8 @@ class Transaction(Base):
 def get_context():
     dpv_engine = create_engine(conf.dpv_transaction_db)
     DpvSession = sessionmaker(bind=dpv_engine)
-    host_engine = create_engine(conf.host_transaction_db)
-    HostSession = sessionmaker(bind=host_engine)
+    thost_engine = create_engine(conf.thost_transaction_db)
+    ThostSession = sessionmaker(bind=thost_engine)
 
     context = {
         'dpv': {
@@ -39,12 +39,12 @@ def get_context():
             'major_file': conf.dpv_major_file,
             'logger': getLogger('dlvm_dpv'),
         },
-        'host': {
-            'engine': host_engine,
-            'Session': HostSession,
+        'thost': {
+            'engine': thost_engine,
+            'Session': ThostSession,
             'default_major': None,
-            'major_file': conf.host_major_file,
-            'logger': getLogger('host_dpv'),
+            'major_file': conf.thost_major_file,
+            'logger': getLogger('thost_dpv'),
         },
     }
     return context
@@ -110,9 +110,9 @@ def do_verify(name, major, minor, c):
         session.close()
 
 
-def host_verify(name, major, minor):
+def thost_verify(name, major, minor):
     context = get_context()
-    do_verify(name, major, minor, context['host'])
+    do_verify(name, major, minor, context['thost'])
 
 
 def dpv_verify(name, major, minor):

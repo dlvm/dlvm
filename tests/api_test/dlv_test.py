@@ -9,7 +9,7 @@ from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, Transaction, Counter, Host
+    Snapshot, Group, Leg, Transaction, Counter, TargetHost
 from dlvm.api_server.handler import div_round_up
 
 
@@ -98,7 +98,7 @@ class DlvTest(unittest.TestCase):
             db.session.add(dvg)
             db.session.commit()
 
-    def _prepare_dlv(self, status, host_name=None):
+    def _prepare_dlv(self, status, thost_name=None):
         dlv_name = 'dlv0'
         dlv_size = 200*1024*1024*1024
         init_size = dlv_size
@@ -114,7 +114,7 @@ class DlvTest(unittest.TestCase):
                 status=status,
                 timestamp=datetime.datetime.utcnow(),
                 dvg_name=dvg_name,
-                host_name=host_name,
+                thost_name=thost_name,
             )
             db.session.add(dlv)
             snapshot = Snapshot(
@@ -170,14 +170,14 @@ class DlvTest(unittest.TestCase):
 
             db.session.commit()
 
-    def _prepare_host(self, host_name):
+    def _prepare_thost(self, thost_name):
         with self.app.app_context():
-            host = Host(
-                host_name=host_name,
+            thost = TargetHost(
+                thost_name=thost_name,
                 status='available',
                 timestamp=datetime.datetime.utcnow(),
             )
-            db.session.add(host)
+            db.session.add(thost)
             db.session.commit()
 
     def _prepare_transaction(self, t_id, t_owner, t_stage):
@@ -257,7 +257,7 @@ class DlvTest(unittest.TestCase):
         client_mock = Mock()
         WrapperRpcClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
-        self._prepare_host('host0')
+        self._prepare_thost('thost0')
         self._prepare_dlv('detached')
         t_id = 't0'
         t_owner = 't_owner'
@@ -268,7 +268,7 @@ class DlvTest(unittest.TestCase):
         }
         data = {
             'action': 'attach',
-            'host_name': 'host0',
+            'thost_name': 'thost0',
             't_id': t_id,
             't_owner': t_owner,
             't_stage': t_stage,
@@ -282,8 +282,8 @@ class DlvTest(unittest.TestCase):
         client_mock = Mock()
         WrapperRpcClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
-        self._prepare_host('host0')
-        self._prepare_dlv('attached', 'host0')
+        self._prepare_thost('thost0')
+        self._prepare_dlv('attached', 'thost0')
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0

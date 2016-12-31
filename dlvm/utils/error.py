@@ -17,7 +17,7 @@ class DpvError(Exception):
     pass
 
 
-class HostError(Exception):
+class ThostError(Exception):
     pass
 
 
