@@ -10,6 +10,7 @@ from handler import handle_dlvm_request
 from dpv import Dpvs, Dpv
 from dvg import Dvgs, Dvg
 from dlv import Dlvs, Dlv
+from transaction import Transactions, Tran
 
 root_get_fields = OrderedDict()
 root_get_fields['endpoints'] = fields.List(fields.String)
@@ -43,6 +44,8 @@ def create_app():
     api.add_resource(Dvg, '/dvgs/<string:dvg_name>')
     api.add_resource(Dlvs, '/dlvs')
     api.add_resource(Dlv, '/dlvs/<string:dlv_name>')
+    api.add_resource(Transactions, '/transactions')
+    api.add_resource(Tran, '/transactions/<string:t_id>')
     return app
 
 app = create_app()
