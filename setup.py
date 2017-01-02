@@ -18,6 +18,14 @@ setup(
     author='yupeng',
     author_email='yupeng0921@gmail.com',
     license='MIT',
+    install_requires=[
+        'celery>=4.0.0',
+        'Flask>=0.11.1',
+        'Flask-RESTful>=0.3.5',
+        'Flask-SQLAlchemy>=2.1',
+        'PyYAML>=3.12',
+        'SQLAlchemy>=1.1.3',
+    ],
     classifiers=(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
