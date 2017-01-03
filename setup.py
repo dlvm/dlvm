@@ -42,8 +42,10 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'dlvm_dpv_agent=dlvm.dpv_agent:main',
+            'dlvm_thost_agent=dlvm.thost_agent:main',
             'dlvm_init_transaction=dlvm.util.transaction:init_transaction',
-            'dlvm_monitor=dlvm.monitor:start'
+            'dlvm_monitor=dlvm.monitor:start',
         ],
     },
 )
