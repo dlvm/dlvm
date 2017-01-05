@@ -51,5 +51,7 @@ def create_app():
 app = create_app()
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=conf.api_port, debug=True)
+def init_db():
+    app = create_app()
+    with app.app_context():
+        db.create_all()
