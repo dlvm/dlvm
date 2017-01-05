@@ -6,10 +6,6 @@ from constant import lc_path
 
 
 DEFAULT_CONF = {
-    'thost_db': 'sqlite:////data/dlvm/thost.db',
-    'dpv_db': 'sqlite:////data/dlvm/dpv.db',
-    'api_port': 9521,
-    'api_listener': '127.0.0.1',
     'dpv_port': 9522,
     'dpv_listener': '127.0.0.1',
     'thost_port': 9523,
@@ -55,9 +51,9 @@ DEFAULT_CONF = {
     'target_prefix': 'iqn.2016-12.dlvm.target',
     'initiator_prefix': 'iqn.2016-12.dlvm.initiator',
     'iscsi_path_fmt': '/dev/disk',
-    'dpv_transaction_db': '/run/dlvm/dpv_transaction_db',
+    'dpv_transaction_db': 'sqlite:////run/dlvm/dpv_transaction_db',
     'dpv_major_file': '/run/dlvm/dpv_major_file',
-    'thost_transaction_db': '/run/dlvm/thost_transaction_db',
+    'thost_transaction_db': 'sqlite:////run/dlvm/thost_transaction_db',
     'thost_major_file': '/run/dlvm/thost_major_file',
     'broker_url':
     'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
