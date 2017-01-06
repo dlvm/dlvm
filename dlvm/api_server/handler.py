@@ -5,10 +5,10 @@ import uuid
 import datetime
 import logging
 from sqlalchemy.orm.exc import NoResultFound
-from dlvm.utils.error import TransactionConflictError, TransactionMissError
+from dlvm.utils.error import ObtConflictError, ObtMissError
 from dlvm.utils.configure import conf
 from modules import db, DistributePhysicalVolume, DistributeVolumeGroup, \
-    DistributeLogicalVolume, Snapshot, Transaction, Counter
+    DistributeLogicalVolume, Snapshot, OwnerBasedTransaction, Counter
 
 logger = logging.getLogger('dlvm_api')
 
@@ -25,19 +25,19 @@ def handle_dlvm_request(params, parser, handler):
                 request_id, params, args, handler.__name__)
     try:
         body, return_code = handler(params, args)
-    except TransactionConflictError:
+    except ObtConflictError:
         db.session.rollback()
         logger.warning('request_id=%s', request_id, exc_info=True)
         body = {
-            'message': 'transaction_conflict',
+            'message': 'obt_conflict',
         }
         return_code = 400
         response['body'] = body
-    except TransactionMissError:
+    except ObtMissError:
         db.session.rollback()
         logger.warning('request_id=%s', request_id, exc_info=True)
         body = {
-            'message': 'transaction_miss',
+            'message': 'obt_miss',
         }
         return_code = 400
         response['body'] = body
@@ -109,71 +109,71 @@ def snapshot_get_by_name(snap_name):
     return snapshot
 
 
-def transaction_get(t_id, t_owner, t_stage):
+def obt_get(t_id, t_owner, t_stage):
     try:
-        t = Transaction \
+        obt = OwnerBasedTransaction \
             .query \
             .with_lockmode('update') \
             .filter_by(t_id=t_id) \
             .one()
     except NoResultFound:
-        raise TransactionMissError()
-    if t.t_owner != t_owner:
-        raise TransactionConflictError()
+        raise ObtMissError()
+    if obt.t_owner != t_owner:
+        raise ObtConflictError()
     counter = Counter()
-    db.session.delete(t.counter)
-    t.counter = counter
-    t.t_stage = t_stage
-    db.session.add(t)
+    db.session.delete(obt.counter)
+    obt.counter = counter
+    obt.t_stage = t_stage
+    db.session.add(obt)
     db.session.commit()
     try:
-        t = Transaction \
+        obt = OwnerBasedTransaction \
             .query \
             .with_lockmode('update') \
             .filter_by(t_id=t_id) \
             .one()
     except NoResultFound:
-        raise TransactionMissError()
-    if t.t_owner != t_owner:
-        raise TransactionConflictError()
-    t.minor_count = 0
-    return t
+        raise ObtMissError()
+    if obt.t_owner != t_owner:
+        raise ObtConflictError()
+    obt.minor_count = 0
+    return obt
 
 
-def transaction_refresh(transaction):
+def obt_refresh(obt):
     try:
-        t = Transaction \
+        obt1 = OwnerBasedTransaction \
             .query \
             .with_lockmode('update') \
-            .filter_by(t_id=transaction.t_id) \
+            .filter_by(t_id=obt.t_id) \
             .one()
     except NoResultFound:
-        raise TransactionMissError()
-    if t.t_owner != transaction.t_owner:
-        raise TransactionConflictError()
-    t.timestamp = datetime.datetime.utcnow()
-    db.session.add(t)
+        raise ObtMissError()
+    if obt1.t_owner != obt.t_owner:
+        raise ObtConflictError()
+    obt1.timestamp = datetime.datetime.utcnow()
+    db.session.add(obt1)
 
 
 def dlv_get(dlv_name, t_id, t_owner, t_stage):
-    transaction = transaction_get(t_id, t_owner, t_stage)
+    obt = obt_get(t_id, t_owner, t_stage)
     dlv = dlv_get_by_name(dlv_name)
-    if dlv.transaction is None:
-        dlv.transaction = transaction
+    if dlv.obt is None:
+        dlv.obt = obt
         db.session.add(dlv)
         db.session.commit()
-        return dlv, transaction
+        return dlv, obt
     else:
-        if dlv.transaction.t_id != t_id:
-            raise TransactionConflictError()
-        return dlv, transaction
+        if dlv.obt.t_id != t_id:
+            raise ObtConflictError()
+        return dlv, obt
 
 
-def transaction_encode(transaction):
-    transaction.minor_count += 1
+def obt_encode(obt):
+    obt.minor_count += 1
     return {
-        'major': transaction.count,
-        'minor': transaction.minor_count,
+        'major': obt.count,
+        'minor': obt.minor_count,
     }
 
 

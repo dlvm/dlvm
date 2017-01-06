@@ -11,7 +11,7 @@ from utils import FixtureManager
 
 timestamp = datetime.datetime(2016, 7, 21, 23, 58, 59)
 
-fixture_transaction = {
+fixture_obt = {
     't_id': 't0',
     't_owner': 't_owner0',
     't_stage': 0,
@@ -19,7 +19,7 @@ fixture_transaction = {
 }
 
 
-class TransactionTest(unittest.TestCase):
+class ObtTest(unittest.TestCase):
 
     db_path = '/tmp/dlvm_test.db'
     db_uri = 'sqlite:////tmp/dlvm_test.db'
@@ -40,12 +40,12 @@ class TransactionTest(unittest.TestCase):
         if os.path.isfile(self.db_path):
             os.remove(self.db_path)
 
-    def test_transactions_get(self):
-        self.fm.transaction_create(**fixture_transaction)
-        resp = self.client.get('/transactions')
+    def test_obts_get(self):
+        self.fm.obt_create(**fixture_obt)
+        resp = self.client.get('/obts')
         self.assertEqual(resp.status_code, 200)
 
-    def test_transactions_post(self):
+    def test_obts_post(self):
         headers = {
             'Content-Type': 'application/json',
         }
@@ -55,11 +55,11 @@ class TransactionTest(unittest.TestCase):
             't_stage': 0,
         }
         data = json.dumps(data)
-        resp = self.client.post('/transactions', headers=headers, data=data)
+        resp = self.client.post('/obts', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    def test_transaction_preempt(self):
-        self.fm.transaction_create(**fixture_transaction)
+    def test_obt_preempt(self):
+        self.fm.obt_create(**fixture_obt)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -69,11 +69,11 @@ class TransactionTest(unittest.TestCase):
             'new_owner': 't_owner1',
         }
         data = json.dumps(data)
-        resp = self.client.put('/transactions/t0', headers=headers, data=data)
+        resp = self.client.put('/obts/t0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    def test_transaction_delete(self):
-        self.fm.transaction_create(**fixture_transaction)
+    def test_obt_delete(self):
+        self.fm.obt_create(**fixture_obt)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -82,5 +82,5 @@ class TransactionTest(unittest.TestCase):
         }
         data = json.dumps(data)
         resp = self.client.delete(
-            '/transactions/t0', headers=headers, data=data)
+            '/obts/t0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)

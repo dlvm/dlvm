@@ -9,7 +9,7 @@ from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, Transaction, Counter, TargetHost
+    Snapshot, Group, Leg, OwnerBasedTransaction, Counter, TargetHost
 from dlvm.api_server.handler import div_round_up
 
 
@@ -180,18 +180,18 @@ class DlvTest(unittest.TestCase):
             db.session.add(thost)
             db.session.commit()
 
-    def _prepare_transaction(self, t_id, t_owner, t_stage):
+    def _prepare_obt(self, t_id, t_owner, t_stage):
         with self.app.app_context():
             counter = Counter()
             db.session.add(counter)
-            t = Transaction(
+            obt = OwnerBasedTransaction(
                 t_id=t_id,
                 t_owner=t_owner,
                 t_stage=t_stage,
                 timestamp=datetime.datetime.utcnow(),
                 counter=counter,
             )
-            db.session.add(t)
+            db.session.add(obt)
             db.session.commit()
 
     @patch('dlvm.api_server.dlv.WrapperRpcClient')
@@ -204,7 +204,7 @@ class DlvTest(unittest.TestCase):
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0
-        self._prepare_transaction(t_id, t_owner, t_stage)
+        self._prepare_obt(t_id, t_owner, t_stage)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -238,7 +238,7 @@ class DlvTest(unittest.TestCase):
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0
-        self._prepare_transaction(t_id, t_owner, t_stage)
+        self._prepare_obt(t_id, t_owner, t_stage)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -262,7 +262,7 @@ class DlvTest(unittest.TestCase):
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0
-        self._prepare_transaction(t_id, t_owner, t_stage)
+        self._prepare_obt(t_id, t_owner, t_stage)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -287,7 +287,7 @@ class DlvTest(unittest.TestCase):
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0
-        self._prepare_transaction(t_id, t_owner, t_stage)
+        self._prepare_obt(t_id, t_owner, t_stage)
         headers = {
             'Content-Type': 'application/json',
         }

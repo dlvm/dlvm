@@ -8,27 +8,27 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
 from configure import conf
 
-conflict_error = 'TransactionConflict'
+conflict_error = 'ObtConflict'
 
 Base = declarative_base()
 
 
-class Transaction(Base):
-    __tablename__ = 'transaction'
+class Obt(Base):
+    __tablename__ = 'obt'
 
     name = Column(String, primary_key=True)
     major = Column(Integer)
     minor = Column(Integer)
 
     def __repr__(self):
-        return 'Transaction(name=%s major=%s minor=%s)' % (
+        return 'Obt(name=%s major=%s minor=%s)' % (
             self.name, self.major, self.minor)
 
 
 def get_context():
-    dpv_engine = create_engine(conf.dpv_transaction_db)
+    dpv_engine = create_engine(conf.dpv_obt_db)
     DpvSession = sessionmaker(bind=dpv_engine)
-    thost_engine = create_engine(conf.thost_transaction_db)
+    thost_engine = create_engine(conf.thost_obt_db)
     ThostSession = sessionmaker(bind=thost_engine)
 
     context = {
@@ -50,7 +50,7 @@ def get_context():
     return context
 
 
-def init_transaction_db(role, major):
+def init_obt_db(role, major):
     context = get_context()
     c = context[role]
     Base.metadata.create_all(c['engine'])
@@ -67,12 +67,12 @@ def get_default_major(c):
 
 def _do_verify(
         name, major, minor, default_major, session, logger):
-    q = session.query(Transaction).filter_by(name=name)
+    q = session.query(Obt).filter_by(name=name)
     ret = session.query(q.exists()).scalar()
     if ret:
         t = q.one()
     else:
-        t = Transaction(
+        t = Obt(
             name=name,
             major=default_major,
             minor=0,
@@ -120,7 +120,7 @@ def dpv_verify(name, major, minor):
     do_verify(name, major, minor, context['dpv'])
 
 
-def init_transaction():
+def init_obt():
     role = sys.argv[1]
     major = sys.argv[2]
-    init_transaction_db(role, major)
+    init_obt_db(role, major)

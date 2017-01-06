@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 
-class TransactionConflictError(Exception):
+class ObtConflictError(Exception):
     pass
 
 
-class TransactionMissError(Exception):
+class ObtMissError(Exception):
     pass
 
 

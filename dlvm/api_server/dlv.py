@@ -12,14 +12,14 @@ from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    TransactionConflictError, DlvStatusError, HasMjsError, \
+    ObtConflictError, DlvStatusError, HasMjsError, \
     ThostError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, div_round_up, dlv_get, \
-    transaction_get, transaction_refresh, transaction_encode
+    obt_get, obt_refresh, obt_encode
 
 
 logger = logging.getLogger('dlvm_api')
@@ -159,7 +159,7 @@ def select_dpvs(dvg_name, required_size, batch_count, offset):
     return dpvs
 
 
-def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
+def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
     dpvs = []
     dpv_name_set = set()
     batch_count = len(group.legs) * dpv_search_overhead
@@ -206,7 +206,7 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
     assert(dvg.free_size >= total_leg_size)
     dvg.free_size -= total_leg_size
     db.session.add(dvg)
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
 
     dm_context = get_dm_context()
@@ -222,14 +222,14 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
                 leg.leg_id,
                 leg.leg_size,
                 dm_context,
-                transaction_encode(transaction),
+                obt_encode(obt),
             )
         except socket.error, socket.timeout:
             logger.error('connect to dpv failed: %s', dpv_name)
             raise DpvError(dpv_name)
         except Fault as e:
-            if 'TransactionConflict' in str(e):
-                raise TransactionConflictError()
+            if 'ObtConflict' in str(e):
+                raise ObtConflictError()
             else:
                 logger.error('dpv rpc failed: %s', e)
                 raise DpvError(dpv_name)
@@ -237,22 +237,22 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, transaction):
 
 def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
         for group in dlv.groups:
             allocate_dpvs_for_group(
-                group, dlv.dlv_name, dlv.dvg_name, transaction)
+                group, dlv.dlv_name, dlv.dvg_name, obt)
     except DpvError as e:
         dlv.status = 'create_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
     else:
         dlv.status = 'detached'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
 
@@ -271,7 +271,7 @@ def handle_dlvs_create_new(params, args):
         init_size = conf.init_max
     elif init_size < conf.init_min:
         init_size = conf.init_min
-    transaction = transaction_get(t_id, t_owner, t_stage)
+    obt = obt_get(t_id, t_owner, t_stage)
 
     dlv = DistributeLogicalVolume(
         dlv_name=dlv_name,
@@ -281,7 +281,7 @@ def handle_dlvs_create_new(params, args):
         timestamp=datetime.datetime.utcnow(),
         dvg_name=dvg_name,
         active_snap_name=snap_name,
-        t_id=transaction.t_id,
+        t_id=obt.t_id,
     )
     db.session.add(dlv)
     snapshot = Snapshot(
@@ -330,7 +330,7 @@ def handle_dlvs_create_new(params, args):
             leg_size=leg_size,
         )
         db.session.add(leg)
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
     return dlv_create_new(dlv_name, t_id, t_owner, t_stage)
 
@@ -383,7 +383,7 @@ CAN_DELETE_STATUS = (
 )
 
 
-def free_dpvs_from_group(group, dlv_name, dvg_name, transaction):
+def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
     dpv_dict = {}
     for leg in group.legs:
         dpv_name = leg.dpv_name
@@ -403,14 +403,14 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, transaction):
             )
             client.leg_delete(
                 leg.leg_id,
-                transaction_encode(transaction),
+                obt_encode(obt),
             )
         except socket.error, socket.timeout:
             logger.error('connect to dpv failed: %s', dpv_name)
             raise DpvError(dpv_name)
         except Fault as e:
-            if 'TransactionConflict' in str(e):
-                raise TransactionConflictError()
+            if 'ObtConflict' in str(e):
+                raise ObtConflictError()
             else:
                 logger.error('dpv rpc failed: %s', e)
                 raise DpvError(dpv_name)
@@ -435,21 +435,21 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, transaction):
     db.session.delete(group)
 
 
-def dlv_delete(dlv, transaction):
+def dlv_delete(dlv, obt):
     if dlv.status not in CAN_DELETE_STATUS:
         raise DlvStatusError(dlv.status)
     if len(dlv.mjs) != 0:
         raise HasMjsError()
     dlv.status = 'deleting'
     dlv.timestamp = datetime.datetime.utcnow()
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
     for group in dlv.groups:
-        free_dpvs_from_group(group, dlv.dlv_name, dlv.dvg_name, transaction)
+        free_dpvs_from_group(group, dlv.dlv_name, dlv.dvg_name, obt)
     for snapshot in dlv.snapshots:
         db.session.delete(snapshot)
     db.session.delete(dlv)
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
 
 
@@ -459,13 +459,13 @@ def handle_dlv_delete(params, args):
     t_owner = args['t_owner']
     t_stage = args['t_stage']
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_delete(dlv, transaction)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_delete(dlv, obt)
     except DpvError as e:
         dlv.status = 'delete_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.comit()
         return make_body('dpv_failed', e.message), 500
     except DlvStatusError as e:
@@ -509,7 +509,7 @@ dlv_put_parser.add_argument(
 )
 
 
-def do_attach(dlv, transaction):
+def do_attach(dlv, obt):
     dlv_info = {}
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
@@ -555,14 +555,14 @@ def do_attach(dlv, transaction):
                     group.idx,
                     leg.idx,
                     dlv.thost_name,
-                    transaction_encode(transaction),
+                    obt_encode(obt),
                 )
             except socket.error, socket.timeout:
                 logger.error('connect to dpv failed: %s', dpv_name)
                 continue
             except Fault as e:
-                if 'TransactionConflict' in str(e):
-                    raise TransactionConflictError()
+                if 'ObtConflict' in str(e):
+                    raise ObtConflictError()
                 else:
                     logger.error('dpv rpc failed: %s', e)
                     continue
@@ -576,40 +576,40 @@ def do_attach(dlv, transaction):
         )
         client.aggregate_dlv(
             dlv_info,
-            transaction_encode(transaction),
+            obt_encode(obt),
         )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)
         raise ThostError(dlv.thost_name)
     except Fault as e:
-        if 'TransactionConflict' in str(e):
-            raise TransactionConflictError()
+        if 'ObtConflict' in str(e):
+            raise ObtConflictError()
         else:
             logger.error('thost rpc failed: %s', e)
             raise ThostError(dlv.thost_name)
 
 
-def dlv_attach(dlv, thost_name, transaction):
+def dlv_attach(dlv, thost_name, obt):
     if dlv.status != 'detached':
         raise DlvStatusError(dlv.status)
     dlv.status = 'attaching'
     dlv.timestamp = datetime.datetime.utcnow()
     dlv.thost_name = thost_name
     db.session.add(dlv)
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
-    return do_attach(dlv, transaction)
+    return do_attach(dlv, obt)
 
 
 def handle_dlv_attach(dlv_name, thost_name, t_id, t_owner, t_stage):
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_attach(dlv, thost_name, transaction)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_attach(dlv, thost_name, obt)
     except ThostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('thost_failed', e.message), 500
     except DlvStatusError as e:
@@ -620,7 +620,7 @@ def handle_dlv_attach(dlv_name, thost_name, t_id, t_owner, t_stage):
         db.session.add(dlv)
         for group in dlv.groups:
             db.session.add(group)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
 
@@ -632,7 +632,7 @@ CAN_DETACH_STATUS = (
 )
 
 
-def do_detach(dlv, transaction):
+def do_detach(dlv, obt):
     dlv_info = {}
     dlv_info['dlv_name'] = dlv.dlv_name
     dm_context = get_dm_context()
@@ -666,14 +666,14 @@ def do_detach(dlv, transaction):
         )
         client.degregate_dlv(
             dlv_info,
-            transaction_encode(transaction),
+            obt_encode(obt),
         )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)
         raise ThostError(dlv.thost_name)
     except Fault as e:
-        if 'TransactionConflict' in str(e):
-            raise TransactionConflictError()
+        if 'ObtConflict' in str(e):
+            raise ObtConflictError()
         else:
             logger.error('thost rpc failed: %s', e)
             raise ThostError(dlv.thost_name)
@@ -697,45 +697,45 @@ def do_detach(dlv, transaction):
                 client.leg_unexport(
                     leg.leg_id,
                     dlv.thost_name,
-                    transaction_encode(transaction),
+                    obt_encode(obt),
                 )
             except socket.error, socket.timeout:
                 logger.error('connect to dpv failed: %s', dpv_name)
                 raise DpvError(dlv.thost_name)
             except Fault as e:
-                if 'TransactionConflict' in str(e):
-                    raise TransactionConflictError()
+                if 'ObtConflict' in str(e):
+                    raise ObtConflictError()
                 else:
                     raise DpvError(dlv.thost_name)
 
 
-def dlv_detach(dlv, transaction):
+def dlv_detach(dlv, obt):
     if dlv.status not in CAN_DETACH_STATUS:
         raise DlvStatusError(dlv.status)
     dlv.status = 'detaching'
     dlv.timestamp = datetime.datetime.utcnow()
     db.session.add(dlv)
-    transaction_refresh(transaction)
+    obt_refresh(obt)
     db.session.commit()
-    return do_detach(dlv, transaction)
+    return do_detach(dlv, obt)
 
 
 def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
     try:
-        dlv, transaction = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_detach(dlv, transaction)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_detach(dlv, obt)
     except DpvError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
     except ThostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('thost_failed', e.message), 500
     except DlvStatusError as e:
@@ -744,7 +744,7 @@ def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
         dlv.status = 'detached'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
-        transaction_refresh(transaction)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
 

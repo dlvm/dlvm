@@ -5,7 +5,7 @@ import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
-from dlvm.utils.transaction import thost_verify
+from dlvm.utils.obt import thost_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmStripe, DmMirror, \
     DmPool, DmThin, DmError, \

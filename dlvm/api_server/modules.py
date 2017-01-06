@@ -131,10 +131,10 @@ class DistributeLogicalVolume(db.Model):
     )
     t_id = db.Column(
         db.String(32),
-        db.ForeignKey('transaction.t_id'),
+        db.ForeignKey('owner_based_transaction.t_id'),
     )
-    transaction = db.relationship(
-        'Transaction',
+    obt = db.relationship(
+        'OwnerBasedTransaction',
     )
 
 
@@ -302,7 +302,7 @@ class MoveJob(db.Model):
     )
 
 
-class Transaction(db.Model):
+class OwnerBasedTransaction(db.Model):
     t_id = db.Column(
         db.String(32),
         primary_key=True,
@@ -339,7 +339,7 @@ class Counter(db.Model):
         primary_key=True,
     )
     transaction = db.relationship(
-        'Transaction',
+        'OwnerBasedTransaction',
         back_populates='counter',
         uselist=False,
     )

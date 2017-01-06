@@ -7,7 +7,7 @@ import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
-from dlvm.utils.transaction import dpv_verify
+from dlvm.utils.obt import dpv_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmMirror, \
     lv_create, lv_remove, lv_get_path, vg_get_size, \

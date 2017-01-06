@@ -2,7 +2,7 @@
 
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, TargetHost, MoveJob, Transaction, Counter
+    Snapshot, Group, Leg, TargetHost, MoveJob, OwnerBasedTransaction, Counter
 
 mirror_meta_size = 1024*1024*2
 
@@ -132,17 +132,17 @@ class FixtureManager(object):
             db.session.commit()
 
     @app_context
-    def transaction_create(self, t_id, t_owner, t_stage, timestamp):
+    def obt_create(self, t_id, t_owner, t_stage, timestamp):
         counter = Counter()
         db.session.add(counter)
-        t = Transaction(
+        obt = OwnerBasedTransaction(
             t_id=t_id,
             t_owner=t_owner,
             t_stage=t_stage,
             timestamp=timestamp,
             counter=counter,
         )
-        db.session.add(t)
+        db.session.add(obt)
         db.session.commit()
 
     @app_context
