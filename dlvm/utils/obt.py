@@ -25,10 +25,22 @@ class Obt(Base):
             self.name, self.major, self.minor)
 
 
+def obt_db(role, work_dir):
+    return 'sqlite:///{work_dir}/{role}.db'.format(
+        role=role, work_dir=work_dir)
+
+
+def obt_major_file(role, work_dir):
+    return '{work_dir}/{role}_major_file'.format(
+        role=role, work_dir=work_dir)
+
+
 def get_context():
-    dpv_engine = create_engine(conf.dpv_obt_db)
+    dpv_engine = create_engine(
+        obt_db('dpv', conf.work_dir))
     DpvSession = sessionmaker(bind=dpv_engine)
-    thost_engine = create_engine(conf.thost_obt_db)
+    thost_engine = create_engine(
+        obt_db('thost', conf.work_dir))
     ThostSession = sessionmaker(bind=thost_engine)
 
     context = {
@@ -36,14 +48,14 @@ def get_context():
             'engine': dpv_engine,
             'Session': DpvSession,
             'default_major': None,
-            'major_file': conf.dpv_major_file,
+            'major_file': obt_major_file('dpv', conf.work_dir),
             'logger': getLogger('dlvm_dpv'),
         },
         'thost': {
             'engine': thost_engine,
             'Session': ThostSession,
             'default_major': None,
-            'major_file': conf.thost_major_file,
+            'major_file': obt_major_file('thost', conf.work_dir),
             'logger': getLogger('thost_dpv'),
         },
     }

@@ -51,13 +51,10 @@ DEFAULT_CONF = {
     'target_prefix': 'iqn.2016-12.dlvm.target',
     'initiator_prefix': 'iqn.2016-12.dlvm.initiator',
     'iscsi_path_fmt': '/dev/disk',
-    'dpv_obt_db': 'sqlite:////run/dlvm/dpv_obt_db',
-    'dpv_major_file': '/run/dlvm/dpv_major_file',
-    'thost_obt_db': 'sqlite:////run/dlvm/thost_obt_db',
-    'thost_major_file': '/run/dlvm/thost_major_file',
+    'work_dir': '/opt/dlvm_work_dir',
     'broker_url':
     'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
-    'db_uri':  'sqlite:////run/dlvm/dlvm.db',
+    'db_uri':  'sqlite:////tmp/dlvm.db',
 }
 
 
