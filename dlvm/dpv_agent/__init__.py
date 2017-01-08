@@ -75,8 +75,8 @@ def ping(message):
 def get_dpv_info():
     total_size, free_size = vg_get_size(conf.local_vg)
     return {
-        'total_size': total_size,
-        'free_size': free_size,
+        'total_size': str(total_size),
+        'free_size': str(free_size),
     }
 
 
