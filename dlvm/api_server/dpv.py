@@ -164,7 +164,7 @@ def handle_dpv_delete(params, args):
             .filter_by(dpv_name=dpv_name) \
             .one()
     except NoResultFound:
-        return make_body('not_exist', 404)
+        return make_body('not_exist'), 404
     else:
         if dpv.dvg:
             return make_body('dpv_busy', dpv.dvg.dvg_name), 403
