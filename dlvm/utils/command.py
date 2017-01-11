@@ -52,7 +52,7 @@ def run_cmd(cmd, inp=None, accept_error=False):
     cmd = ' '.join(cmd)
     ctx.logger.debug('cmd enter: [%s]', cmd)
     ctx.logger.debug('cmd input: [%s]', inp)
-    sub = Popen(cmd, stdout=PIPE, shell=True)
+    sub = Popen(cmd, stdin=PIPE, stdout=PIPE, shell=True)
     out, err = sub.communicate(input=inp)
     ctx.logger.debug('cmd exit: [%s] [%s] [%s]', out, err, sub.returncode)
     if not accept_error and sub.returncode != 0:
@@ -176,7 +176,7 @@ class DmBasic(object):
 
     def create(self, param):
         table = self._format_table(param)
-        dm_create(self.name, table)
+        return dm_create(self.name, table)
 
     def reload(self, param):
         table = self._format_table(param)

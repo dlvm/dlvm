@@ -145,6 +145,9 @@ dlvs_post_parser.add_argument(
 
 
 def select_dpvs(dvg_name, required_size, batch_count, offset):
+    logger.debug(
+        'select_dpvs: %s %d %d %d',
+        dvg_name, required_size, batch_count, offset)
     dpvs = DistributePhysicalVolume \
         .query \
         .filter_by(dvg_name=dvg_name) \
@@ -172,9 +175,16 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
         leg_size = leg.leg_size
         while True:
             if len(dpvs) == 0:
-                dpvs = select_dpvs(
-                    dvg_name, leg_size, batch_count, i)
+                if conf.cross_dpv is True:
+                    dpvs = select_dpvs(
+                        dvg_name, leg_size, batch_count, i)
+                else:
+                    dpvs = select_dpvs(
+                        dvg_name, leg_size, batch_count, 0)
             if len(dpvs) == 0:
+                logger.warning(
+                    'allocate dpvs failed, %s %s %d',
+                    dlv_name, dvg_name, leg.leg_size)
                 raise NoEnoughDpvError()
             dpv = dpvs.pop()
             if dpv.dpv_name in dpv_name_set:
@@ -248,6 +258,13 @@ def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
         obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
+    except NoEnoughDpvError:
+        dlv.status = 'create_failed'
+        dlv.timestamp = datetime.datetime.utcnow()
+        db.session.add(dlv)
+        obt_refresh(obt)
+        db.session.commit()
+        return make_body('dpv_failed', 'no_enough_dpv'), 500
     else:
         dlv.status = 'detached'
         dlv.timestamp = datetime.datetime.utcnow()
@@ -295,6 +312,8 @@ def handle_dlvs_create_new(params, args):
     db.session.add(snapshot)
     thin_meta_size = conf.thin_meta_factor * div_round_up(
         dlv_size, conf.thin_block_size)
+    if thin_meta_size < conf.thin_meta_min:
+        thin_meta_size = conf.thin_meta_min
     group = Group(
         group_id=uuid.uuid4().hex,
         idx=0,
@@ -303,6 +322,7 @@ def handle_dlvs_create_new(params, args):
     )
     db.session.add(group)
     leg_size = thin_meta_size + conf.mirror_meta_size
+    leg_size = div_round_up(leg_size, conf.lvm_unit) * conf.lvm_unit
     for i in xrange(2):
         leg = Leg(
             leg_id=uuid.uuid4().hex,
@@ -321,6 +341,7 @@ def handle_dlvs_create_new(params, args):
     db.session.add(group)
     leg_size = div_round_up(
         group_size, partition_count) + conf.mirror_meta_size
+    leg_size = div_round_up(leg_size, conf.lvm_unit) * conf.lvm_unit
     legs_per_group = 2 * partition_count
     for i in xrange(legs_per_group):
         leg = Leg(
@@ -380,6 +401,8 @@ CAN_DELETE_STATUS = (
     'detached',
     'create_failed',
     'delete_failed',
+    'deleting',
+    'creating',
 )
 
 
@@ -387,6 +410,8 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
     dpv_dict = {}
     for leg in group.legs:
         dpv_name = leg.dpv_name
+        if dpv_name is None:
+            continue
         dpv = DistributePhysicalVolume \
             .query \
             .with_lockmode('update') \
@@ -418,8 +443,11 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
     total_free_size = 0
     for leg in group.legs:
         leg_size = leg.leg_size
+        dpv_name = leg.dpv_name
         db.session.delete(leg)
-        dpv = dpv_dict[leg.dpv_name]
+        if dpv_name is None:
+            continue
+        dpv = dpv_dict[dpv_name]
         if dpv.status != 'available':
             continue
         dpv.free_size += leg_size
@@ -466,7 +494,7 @@ def handle_dlv_delete(params, args):
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         obt_refresh(obt)
-        db.session.comit()
+        db.session.commit()
         return make_body('dpv_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400

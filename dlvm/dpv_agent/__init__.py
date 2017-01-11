@@ -162,9 +162,9 @@ def leg_create(leg_id, leg_size, dm_context, tran):
 def do_leg_delete(leg_id):
     layer2_name = get_layer2_name(leg_id)
     dm = DmLinear(layer2_name)
-    layer2_path = dm.get_path()
+    # layer2_path = dm.get_path()
     target_name = encode_target_name(leg_id)
-    iscsi_delete(target_name, layer2_path)
+    iscsi_delete(target_name, leg_id)
     dm.remove()
     layer1_name = get_layer1_name(leg_id)
     dm = DmLinear(layer1_name)

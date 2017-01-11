@@ -194,7 +194,7 @@ def handle_obt_delete(params, args):
             .filter_by(t_id=t_id) \
             .one()
     except NoResultFound:
-        return make_body('not_exist', 404)
+        return make_body('not_exist'), 404
     if obt.t_owner != t_owner:
         return make_body('wrong_owner', obt.t_owner), 400
     db.session.delete(obt)

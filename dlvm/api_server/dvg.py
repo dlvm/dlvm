@@ -158,7 +158,7 @@ def dvg_extend(dvg_name, dpv_name):
             'total_size': dpv.total_size,
             'free_size': dpv.free_size,
         }
-        return make_body('size_error', context)
+        return make_body('size_error', context), 500
 
     dpv.dvg_name = dvg_name
     dvg.total_size += dpv.total_size
