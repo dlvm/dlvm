@@ -14,6 +14,7 @@ DEFAULT_CONF = {
     'dpv_list_limit': 100,
     'dvg_list_limit': 100,
     'dlv_list_limit': 100,
+    'thost_list_limit': 100,
     'mj_list_limit': 100,
     'obt_list_limit': 100,
     'dpv_timeout': 10,

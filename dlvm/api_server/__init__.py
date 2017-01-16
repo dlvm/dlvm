@@ -10,6 +10,7 @@ from handler import handle_dlvm_request
 from dpv import Dpvs, Dpv
 from dvg import Dvgs, Dvg
 from dlv import Dlvs, Dlv
+from thost import Thosts, Thost
 from obt import Obts, Obt
 
 root_get_fields = OrderedDict()
@@ -44,6 +45,8 @@ def create_app():
     api.add_resource(Dvg, '/dvgs/<string:dvg_name>')
     api.add_resource(Dlvs, '/dlvs')
     api.add_resource(Dlv, '/dlvs/<string:dlv_name>')
+    api.add_resource(Thosts, '/thosts')
+    api.add_resource(Thost, '/thosts/<string:thost_name>')
     api.add_resource(Obts, '/obts')
     api.add_resource(Obt, '/obts/<string:t_id>')
     return app
