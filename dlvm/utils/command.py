@@ -326,7 +326,7 @@ class DmMirror(DmBasic):
 
 class DmPool(DmBasic):
 
-    def _format_talbe(self, param):
+    def _format_table(self, param):
         table = (
             '{start} {length} thin-pool '
             '{meta_path} {data_path} '
@@ -376,7 +376,7 @@ class DmThin(DmBasic):
 
 class DmError(DmBasic):
 
-    def _format_talbe(self, param):
+    def _format_table(self, param):
         table = '{start} {length} error'.format(**param)
         return table
 

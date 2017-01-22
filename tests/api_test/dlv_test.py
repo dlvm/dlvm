@@ -46,6 +46,7 @@ class DlvTest(unittest.TestCase):
             dlv0 = DistributeLogicalVolume(
                 dlv_name='dlv0',
                 dlv_size=10*1024*1024*1024,
+                data_size=10*1024*1024*1024,
                 partition_count=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),
@@ -55,6 +56,7 @@ class DlvTest(unittest.TestCase):
             dlv1 = DistributeLogicalVolume(
                 dlv_name='dlv1',
                 dlv_size=10*1024*1024*1024,
+                data_size=10*1024*1024*1024,
                 partition_count=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),
@@ -109,6 +111,7 @@ class DlvTest(unittest.TestCase):
             dlv = DistributeLogicalVolume(
                 dlv_name=dlv_name,
                 dlv_size=dlv_size,
+                data_size=dlv_size,
                 partition_count=partition_count,
                 active_snap_name=snap_name,
                 status=status,

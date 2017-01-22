@@ -64,6 +64,7 @@ dlvs_get_parser.add_argument(
 dlv_summary_fields = OrderedDict()
 dlv_summary_fields['dlv_name'] = fields.String
 dlv_summary_fields['dlv_size'] = fields.Integer
+dlv_summary_fields['data_size'] = fields.Integer
 dlv_summary_fields['partition_count'] = fields.Integer
 dlv_summary_fields['status'] = fields.String
 dlv_summary_fields['timestamp'] = fields.String
@@ -293,6 +294,7 @@ def handle_dlvs_create_new(params, args):
     dlv = DistributeLogicalVolume(
         dlv_name=dlv_name,
         dlv_size=dlv_size,
+        data_size=init_size,
         partition_count=partition_count,
         status='creating',
         timestamp=datetime.datetime.utcnow(),
@@ -544,6 +546,7 @@ def do_attach(dlv, obt):
     dm_context = get_dm_context()
     dm_context['stripe_number'] = dlv.partition_count
     dlv_info['dm_context'] = dm_context
+    dlv_info['data_size'] = dlv.data_size
     snapshot = Snapshot \
         .query \
         .filter_by(snap_name=dlv.active_snap_name) \
@@ -579,9 +582,7 @@ def do_attach(dlv, obt):
                     conf.dpv_timeout,
                 )
                 client.leg_export(
-                    dlv.dlv_name,
-                    group.idx,
-                    leg.idx,
+                    leg.leg_id,
                     dlv.thost_name,
                     obt_encode(obt),
                 )
@@ -602,9 +603,10 @@ def do_attach(dlv, obt):
             conf.thost_port,
             conf.thost_timeout,
         )
-        client.aggregate_dlv(
-            dlv_info,
+        client.dlv_aggregate(
+            dlv.dlv_name,
             obt_encode(obt),
+            dlv_info,
         )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)
@@ -692,9 +694,10 @@ def do_detach(dlv, obt):
             conf.thost_port,
             conf.thost_timeout,
         )
-        client.degregate_dlv(
-            dlv_info,
+        client.dlv_degregate(
+            dlv.dlv_name,
             obt_encode(obt),
+            dlv_info,
         )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)

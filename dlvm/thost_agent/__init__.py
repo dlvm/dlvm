@@ -328,6 +328,10 @@ def create_mirror(dlv_name, g_idx, m_idx, leg0, leg1, dm_context):
 
 
 def create_thin_meta(dlv_name, group, dm_context):
+    logger.debug(
+        'create_thin_meta: %s %s %s',
+        dlv_name, group, dm_context,
+    )
     assert(group['idx'] == 0)
     legs = group['legs']
     legs.sort(key=lambda x: x['idx'])
@@ -375,6 +379,10 @@ def create_stripe(dlv_name, group, dm_context):
 
 
 def create_thin_data(dlv_name, groups, dm_context):
+    logger.debug(
+        'create_thin_data: %s %s %s',
+        dlv_name, groups, dm_context,
+    )
     current_sectors = 0
     table = []
     for group in groups:
@@ -425,6 +433,12 @@ def create_final(
         dlv_name, dlv_size, thin_id,
         thin_meta_path, thin_data_path, data_size,
         dm_context):
+    logger.debug(
+        'create_final: %s %s %s %s %s %s %s',
+        dlv_name, dlv_size, thin_id,
+        thin_meta_path, thin_data_path, data_size,
+        dm_context,
+    )
     dlv_sectors = dlv_size / 512
     thin_data_sectors = data_size / 512
     thin_block_sectors = dm_context['thin_block_sectors']
@@ -486,10 +500,12 @@ def create_final(
 
 
 def do_dlv_aggregate(dlv_name, dlv_info):
+    logger.debug('dlv_aggregate: %s %s', dlv_name, dlv_info)
     dlv_size = dlv_info['dlv_size']
     data_size = dlv_info['data_size']
     thin_id = dlv_info['thin_id']
     dm_context = generate_dm_context(dlv_info['dm_context'])
+    logger.debug('dm_context: %s', dm_context)
     groups = dlv_info['groups']
     groups.sort(key=lambda x: x['idx'])
     thin_meta_path = create_thin_meta(dlv_name, groups[0], dm_context)

@@ -123,6 +123,7 @@ class DpvTest(unittest.TestCase):
             dlv = DistributeLogicalVolume(
                 dlv_name=dlv_name,
                 dlv_size=64*1024*1024*1024,
+                data_size=64*1024*1024*1024,
                 partition_count=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),

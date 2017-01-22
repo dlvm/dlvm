@@ -77,6 +77,10 @@ class DistributeLogicalVolume(db.Model):
         db.BigInteger,
         nullable=False,
     )
+    data_size = db.Column(
+        db.BigInteger,
+        nullable=False,
+    )
     partition_count = db.Column(
         db.Integer,
         nullable=False,
