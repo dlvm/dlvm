@@ -236,6 +236,10 @@ def login_leg(leg_id, dpv_name):
 
 
 def create_mirror(dlv_name, g_idx, m_idx, leg0, leg1, dm_context):
+    logger.debug(
+        'create_mirror %s %s %s %s %s %s',
+        dlv_name, g_idx, m_idx, leg0, leg1, dm_context,
+    )
     leg0_path = None
     leg1_path = None
     assert(leg0['leg_size'] == leg1['leg_size'])
@@ -351,6 +355,10 @@ def create_thin_meta(dlv_name, group, dm_context):
 
 
 def create_stripe(dlv_name, group, dm_context):
+    logger.debug(
+        'create_stripe: %s %s %s',
+        dlv_name, group, dm_context,
+    )
     stripe_chunk_sectors = dm_context['stripe_chunk_sectors']
     stripe_number = dm_context['stripe_number']
     legs = group['legs']

@@ -277,7 +277,7 @@ class DmLinear(DmBasic):
 class DmStripe(DmBasic):
 
     def _format_table(self, param):
-        header = '{start} {length} {num} {chunk_size}'.format(
+        header = '{start} {length} striped {num} {chunk_size}'.format(
             start=param['start'],
             length=param['length'],
             num=param['num'],
@@ -290,8 +290,8 @@ class DmStripe(DmBasic):
                 offset=device['offset'],
             )
             devs.append(dev)
-        dev_info = devs.join(' ')
-        table = '{header} {dev_info}'.foramt(
+        dev_info = ' '.join(devs)
+        table = '{header} {dev_info}'.format(
             header=header, dev_info=dev_info)
         return table
 
