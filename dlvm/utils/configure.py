@@ -53,7 +53,8 @@ DEFAULT_CONF = {
     'bm_throttle': 0,
     'target_prefix': 'iqn.2016-12.dlvm.target',
     'initiator_prefix': 'iqn.2016-12.dlvm.initiator',
-    'iscsi_path_fmt': '/dev/disk/by-path/ip-{address}:{port}-iscsi-{target_name}-lun-0',
+    'iscsi_path_fmt':
+    '/dev/disk/by-path/ip-{address}:{port}-iscsi-{target_name}-lun-0',
     'work_dir': '/opt/dlvm_work_dir',
     'broker_url':
     'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
