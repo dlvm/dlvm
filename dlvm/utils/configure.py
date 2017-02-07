@@ -17,6 +17,7 @@ DEFAULT_CONF = {
     'thost_list_limit': 100,
     'mj_list_limit': 100,
     'obt_list_limit': 100,
+    'snapshot_list_limit': 100,
     'dpv_timeout': 10,
     'thost_timeout': 10,
     'cross_dpv': False,

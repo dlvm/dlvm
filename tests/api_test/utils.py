@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import uuid
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg, TargetHost, MoveJob, OwnerBasedTransaction, Counter
@@ -65,16 +66,16 @@ class FixtureManager(object):
 
     @app_context
     def dlv_create(
-            self, dlv_name, dlv_size, partition_count, status,
-            timestamp, first_attach, dvg_name, igroups):
+            self, dlv_name, dlv_size, data_size, partition_count, status,
+            timestamp, dvg_name, igroups):
         snap_name = '%s/base' % dlv_name
         dlv = DistributeLogicalVolume(
             dlv_name=dlv_name,
             dlv_size=dlv_size,
+            data_size=data_size,
             partition_count=partition_count,
             status=status,
             timestamp=timestamp,
-            first_attach=first_attach,
             active_snap_name=snap_name,
             dvg_name=dvg_name,
         )
@@ -93,9 +94,9 @@ class FixtureManager(object):
         for idx, igroup in enumerate(igroups):
             group_size = igroup['group_size']
             group = Group(
+                group_id=uuid.uuid4().hex,
                 idx=idx,
                 group_size=group_size,
-                nosync=igroup['nosync'],
                 dlv_name=dlv_name,
             )
             db.session.add(group)
@@ -122,6 +123,7 @@ class FixtureManager(object):
                 db.session.add(dpv)
                 dvg.free_size -= leg_size
                 leg = Leg(
+                    leg_id=uuid.uuid4().hex,
                     idx=i,
                     group=group,
                     leg_size=leg_size,
@@ -130,6 +132,23 @@ class FixtureManager(object):
                 db.session.add(leg)
             db.session.add(dvg)
             db.session.commit()
+
+    @app_context
+    def snapshot_create(
+            self, snap_name, timestamp, thin_id,
+            ori_thin_id, status, dlv_name):
+        snap_name = '{dlv_name}/{snap_name}'.format(
+            dlv_name=dlv_name, snap_name=snap_name)
+        snapshot = Snapshot(
+            snap_name=snap_name,
+            timestamp=timestamp,
+            thin_id=thin_id,
+            ori_thin_id=ori_thin_id,
+            status=status,
+            dlv_name=dlv_name,
+        )
+        db.session.add(snapshot)
+        db.session.commit()
 
     @app_context
     def obt_create(self, t_id, t_owner, t_stage, timestamp):

@@ -27,3 +27,15 @@ class DlvStatusError(Exception):
 
 class HasMjsError(Exception):
     pass
+
+
+class ThinMaxRetryError(Exception):
+    pass
+
+
+class SnapshotStatusError(Exception):
+    pass
+
+
+class DeleteActiveSnapshotError(Exception):
+    pass
