@@ -202,9 +202,9 @@ def snapshots_take(dlv, snapshots, obt):
         for snapshot in snapshots:
             client.snapshot_create(
                 dlv.dlv_name,
+                obt_encode(obt),
                 snapshot.thin_id,
                 snapshot.ori_thin_id,
-                obt_encode(obt),
             )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)
@@ -260,6 +260,7 @@ class Snaps(Resource):
 
 CAN_DELETE_STATUS = (
     'available',
+    'deleting',
     'delete_failed',
     'create_failed',
 )
@@ -292,8 +293,8 @@ def snapshot_delete(dlv, snapshot, obt):
         )
         client.snapshot_delete(
             dlv.dlv_name,
-            snapshot.thin_id,
             obt_encode(obt),
+            snapshot.thin_id,
         )
     except socket.error, socket.timeout:
         logger.error('connect to thost failed: %s', dlv.thost_name)
