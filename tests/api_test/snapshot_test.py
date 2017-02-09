@@ -69,15 +69,15 @@ fixture_snapshots = [
     },
 ]
 
-fixture_host = {
-    'host_name': 'host0',
+fixture_thost = {
+    'thost_name': 'thost0',
     'status': 'available',
     'timestamp': timestamp,
 }
 
-fixture_transaction = {
+fixture_obt = {
     't_id': 't0',
-    't_owner': 'owner0',
+    't_owner': 't_owner0',
     't_stage': 0,
     'timestamp': timestamp,
 }
@@ -112,6 +112,12 @@ class SnapshotTest(unittest.TestCase):
             self.fm.dvg_extend('dvg0', dpv['dpv_name'])
         self.fm.dlv_create(**fixture_dlv)
 
+    def _prepare_obt(self):
+        self.fm.obt_create(**fixture_obt)
+
+    def _prepare_thost(self):
+        self.fm.thost_create(**fixture_thost)
+
     def _prepare_snapshots(self):
         for snapshot in fixture_snapshots:
             self.fm.snapshot_create(**snapshot)
@@ -127,3 +133,42 @@ class SnapshotTest(unittest.TestCase):
         self.assertTrue(snap0['snap_name'] in ('base, snap1'))
         snap1 = data['body'][1]
         self.assertTrue(snap1['snap_name'] in ('base, snap1'))
+
+    @patch('dlvm.api_server.snapshot.WrapperRpcClient')
+    def test_snapshots_post(self, WrapperRpcClient):
+        self._prepare_dlv()
+        self._prepare_obt()
+        self._prepare_thost()
+        self.fm.dlv_attach('dlv0', 'thost0')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'snap_pairs': 'snap1:base',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.post('/dlvs/dlv0/snaps', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.snapshot.WrapperRpcClient')
+    def test_snapshot_delete(self, WrapperRpcClient):
+        self._prepare_dlv()
+        self._prepare_snapshots()
+        self._prepare_obt()
+        self._prepare_thost()
+        self.fm.dlv_attach('dlv0', 'thost0')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.delete(
+            '/dlvs/dlv0/snaps/snap1', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)

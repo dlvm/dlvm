@@ -314,8 +314,14 @@ snapshot_delete_parser.add_argument(
     location='json',
 )
 snapshot_delete_parser.add_argument(
-    'owner',
+    't_owner',
     type=str,
+    required=True,
+    location='json',
+)
+snapshot_delete_parser.add_argument(
+    't_stage',
+    type=int,
     required=True,
     location='json',
 )
@@ -325,9 +331,10 @@ def handle_snapshot_delete(params, args):
     dlv_name = params[0]
     snap_name = '%s/%s' % (dlv_name, params[1])
     t_id = args['t_id']
-    owner = args['owner']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
     try:
-        dlv, obt = dlv_get(dlv_name, t_id, owner)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
         snapshot = get_snapshot_by_name(snap_name)
         snapshot_delete(dlv, snapshot, obt)
     except DlvStatusError as e:
