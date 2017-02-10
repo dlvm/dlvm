@@ -39,3 +39,7 @@ class SnapshotStatusError(Exception):
 
 class DeleteActiveSnapshotError(Exception):
     pass
+
+
+class SnapNameError(Exception):
+    pass

@@ -197,6 +197,22 @@ class DlvTest(unittest.TestCase):
             db.session.add(obt)
             db.session.commit()
 
+    def _prepare_snapshot(
+            self, dlv_name, snap_name, thin_id, ori_thin_id):
+        with self.app.app_context():
+            snap_name = '{dlv_name}/{snap_name}'.format(
+                dlv_name=dlv_name, snap_name=snap_name)
+            snapshot = Snapshot(
+                snap_name=snap_name,
+                thin_id=thin_id,
+                ori_thin_id=ori_thin_id,
+                status='available',
+                timestamp=datetime.datetime.utcnow(),
+                dlv_name=dlv_name,
+            )
+            db.session.add(snapshot)
+            db.session.commit()
+
     @patch('dlvm.api_server.dlv.WrapperRpcClient')
     def test_dlvs_create_new(self, WrapperRpcClient):
         client_mock = Mock()
@@ -296,6 +312,31 @@ class DlvTest(unittest.TestCase):
         }
         data = {
             'action': 'detach',
+            't_id': t_id,
+            't_owner': t_owner,
+            't_stage': t_stage,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.dlv.WrapperRpcClient')
+    def test_dlv_set_active(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_dlv('detached')
+        t_id = 't0'
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_obt(t_id, t_owner, t_stage)
+        self._prepare_snapshot('dlv0', 'snap1', 0, 1)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'set_active',
+            'snap_name': 'snap1',
             't_id': t_id,
             't_owner': t_owner,
             't_stage': t_stage,

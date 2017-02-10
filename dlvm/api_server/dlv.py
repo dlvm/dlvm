@@ -8,12 +8,13 @@ import socket
 import datetime
 from xmlrpclib import Fault
 from flask_restful import reqparse, Resource, fields, marshal
+from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     ObtConflictError, DlvStatusError, HasMjsError, \
-    ThostError
+    ThostError, SnapNameError, SnapshotStatusError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
@@ -510,12 +511,17 @@ dlv_put_parser = reqparse.RequestParser()
 dlv_put_parser.add_argument(
     'action',
     type=str,
-    choices=('attach', 'detach'),
+    choices=('attach', 'detach', 'set_active'),
     required=True,
     location='json',
 )
 dlv_put_parser.add_argument(
     'thost_name',
+    type=str,
+    location='json',
+)
+dlv_put_parser.add_argument(
+    'snap_name',
     type=str,
     location='json',
 )
@@ -780,6 +786,40 @@ def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
         return make_body('success'), 200
 
 
+def dlv_set_active(dlv, snap_name, obt):
+    full_snap_name = '{dlv_name}/{snap_name}'.format(
+        dlv_name=dlv.dlv_name, snap_name=snap_name)
+    if dlv.status != 'detached':
+        raise DlvStatusError(dlv.status)
+    try:
+        snapshot = Snapshot \
+            .query \
+            .filter_by(snap_name=full_snap_name) \
+            .one()
+    except NoResultFound:
+        raise SnapNameError(full_snap_name)
+    if snapshot.status != 'available':
+        raise SnapshotStatusError(snapshot.status)
+    dlv.active_snap_name = full_snap_name
+    db.session.add(dlv)
+    obt_refresh(obt)
+    db.session.commit()
+
+
+def handle_dlv_set_active(dlv_name, snap_name, t_id, t_owner, t_stage):
+    try:
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
+        dlv_set_active(dlv, snap_name, obt)
+    except DlvStatusError as e:
+        return make_body('invalid_dlv_status', e.message), 400
+    except SnapNameError as e:
+        return make_body('invalid_snap_name', e.message), 400
+    except SnapshotStatusError as e:
+        return make_body('invalid_snap_status', e.message), 400
+    else:
+        return make_body('success'), 200
+
+
 def handle_dlv_put(params, args):
     dlv_name = params[0]
     t_id = args['t_id']
@@ -787,13 +827,19 @@ def handle_dlv_put(params, args):
     t_stage = args['t_stage']
     if args['action'] == 'attach':
         if 'thost_name' not in args:
-            return make_body('no_thost_name'), 500
+            return make_body('no_thost_name'), 400
         else:
             return handle_dlv_attach(
                 dlv_name, args['thost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'detach':
         return handle_dlv_detach(
             dlv_name, t_id, t_owner, t_stage)
+    elif args['action'] == 'set_active':
+        if 'snap_name' not in args:
+            return make_body('no_snap_name'), 400
+        else:
+            return handle_dlv_set_active(
+                dlv_name, args['snap_name'], t_id, t_owner, t_stage)
     else:
         assert(False)
 
