@@ -63,24 +63,24 @@ def create_tasks():
     d['pool_full'] = pool_full
 
     @app.task
-    def mj_mirror_failed(mj_name):
-        cmd_name = conf.monitor_mj_mirror_failed
+    def fj_mirror_failed(fj_name):
+        cmd_name = conf.monitor_fj_mirror_failed
         cmd = [
             cmd_name,
-            mj_name,
+            fj_name,
         ]
         run_cmd(cmd)
-    d['mj_mirror_failed'] = mj_mirror_failed
+    d['fj_mirror_failed'] = fj_mirror_failed
 
     @app.task
-    def mj_mirror_complete(mj_name):
-        cmd_name = conf.monitor_mj_mirror_complete
+    def fj_mirror_complete(fj_name):
+        cmd_name = conf.monitor_fj_mirror_complete
         cmd = [
             cmd_name,
-            mj_name,
+            fj_name,
         ]
         run_cmd(cmd)
-    d['mj_mirror_complete'] = mj_mirror_complete
+    d['fj_mirror_complete'] = fj_mirror_complete
     return d
 
 

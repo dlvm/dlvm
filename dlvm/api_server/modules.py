@@ -129,8 +129,8 @@ class DistributeLogicalVolume(db.Model):
         'Group',
         back_populates='dlv',
     )
-    mjs = db.relationship(
-        'MoveJob',
+    fjs = db.relationship(
+        'FailoverJob',
         back_populates='dlv',
     )
     t_id = db.Column(
@@ -257,27 +257,27 @@ class Leg(db.Model):
         'DistributePhysicalVolume',
         back_populates='legs',
     )
-    mj_role = db.Column(
+    fj_role = db.Column(
         db.Enum('ori', 'src', 'dst', name='leg_role'),
     )
-    mj_name = db.Column(
+    fj_name = db.Column(
         db.String(32),
-        db.ForeignKey('move_job.mj_name'),
+        db.ForeignKey('failover_job.fj_name'),
     )
-    mj = db.relationship(
-        'MoveJob',
+    fj = db.relationship(
+        'FailoverJob',
         back_populates='legs',
     )
 
 
-class MoveJob(db.Model):
-    mj_name = db.Column(
+class FailoverJob(db.Model):
+    fj_name = db.Column(
         db.String(32),
         primary_key=True,
     )
     legs = db.relationship(
         'Leg',
-        back_populates='mj',
+        back_populates='fj',
     )
     status = db.Column(
         db.Enum(
@@ -287,7 +287,7 @@ class MoveJob(db.Model):
             'processing',
             'finishing', 'finish_failed',
             'finished',
-            name='mj_status',
+            name='fj_status',
         ),
         nullable=False,
     )
@@ -302,7 +302,7 @@ class MoveJob(db.Model):
     )
     dlv = db.relationship(
         'DistributeLogicalVolume',
-        back_populates='mjs',
+        back_populates='fjs',
     )
 
 

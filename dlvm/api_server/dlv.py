@@ -13,7 +13,7 @@ from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    ObtConflictError, DlvStatusError, HasMjsError, \
+    ObtConflictError, DlvStatusError, HasFjError, \
     ThostError, SnapNameError, SnapshotStatusError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
@@ -469,8 +469,8 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
 def dlv_delete(dlv, obt):
     if dlv.status not in CAN_DELETE_STATUS:
         raise DlvStatusError(dlv.status)
-    if len(dlv.mjs) != 0:
-        raise HasMjsError()
+    if len(dlv.fjs) != 0:
+        raise HasFjError()
     dlv.status = 'deleting'
     dlv.timestamp = datetime.datetime.utcnow()
     obt_refresh(obt)
@@ -501,8 +501,8 @@ def handle_dlv_delete(params, args):
         return make_body('dpv_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
-    except HasMjsError:
-        return make_body('has_mj'), 400
+    except HasFjError:
+        return make_body('has_fj'), 400
     else:
         return make_body('success'), 200
 

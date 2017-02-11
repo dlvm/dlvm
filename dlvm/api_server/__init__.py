@@ -20,7 +20,7 @@ root_get_fields['endpoints'] = fields.List(fields.String)
 
 def handle_root_get(params, args):
     body = marshal(
-        {'endpoints': ['dpvs', 'dvgs', 'dlvs', 'thosts', 'mjs']},
+        {'endpoints': ['dpvs', 'dvgs', 'dlvs', 'thosts', 'fjs']},
         root_get_fields,
     )
     return body['endpoints'], 200

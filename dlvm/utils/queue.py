@@ -25,9 +25,9 @@ def report_pool(dlv_name):
     queue_functions['pool_full'].delay(dlv_name)
 
 
-def report_mj_mirror_failed(mj_name):
-    queue_functions['mj_mirror_failed'].delay(mj_name)
+def report_fj_mirror_failed(fj_name):
+    queue_functions['fj_mirror_failed'].delay(fj_name)
 
 
-def report_mj_mirror_complete(mj_name):
-    queue_functions['mj_mirror_complete'].delay(mj_name)
+def report_fj_mirror_complete(fj_name):
+    queue_functions['fj_mirror_complete'].delay(fj_name)

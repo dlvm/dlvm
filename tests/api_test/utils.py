@@ -3,7 +3,8 @@
 import uuid
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, TargetHost, MoveJob, OwnerBasedTransaction, Counter
+    Snapshot, Group, Leg, TargetHost, FailoverJob, \
+    OwnerBasedTransaction, Counter
 
 mirror_meta_size = 1024*1024*2
 
@@ -186,15 +187,15 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
-    def mj_create(self, mj_name, status, timestamp, dlv_name, g_idx, l_idx):
-        mj = MoveJob(
-            mj_name=mj_name,
+    def fj_create(self, fj_name, status, timestamp, dlv_name, g_idx, l_idx):
+        fj = FailoverJob(
+            fj_name=fj_name,
             status=status,
             g_idx=g_idx,
             timestamp=timestamp,
             dlv_name=dlv_name,
         )
-        db.session.add(mj)
+        db.session.add(fj)
 
         dlv = DistributeLogicalVolume \
             .query \
@@ -216,10 +217,10 @@ class FixtureManager(object):
                 elif leg.idx == src_leg_idx:
                     src_leg = leg
         assert(src_leg is not None and ori_leg is not None)
-        src_leg.mj_role = 'src'
-        ori_leg.mj_role = 'ori'
-        src_leg.mj = mj
-        ori_leg.mj = mj
+        src_leg.fj_role = 'src'
+        ori_leg.fj_role = 'ori'
+        src_leg.fj = fj
+        ori_leg.fj = fj
         db.session.add(src_leg)
         db.session.add(ori_leg)
         legs = ori_leg.group.legs
@@ -242,24 +243,24 @@ class FixtureManager(object):
             idx=ori_leg.idx,
             leg_size=ori_leg.leg_size,
             dpv=dst_dpv,
-            mj_role='dst',
-            mj=mj,
+            fj_role='dst',
+            fj=fj,
         )
         db.session.add(dst_leg)
         db.session.commit()
 
     @app_context
-    def mj_set_status(self, mj_name, status):
-        mj = MoveJob \
+    def fj_set_status(self, fj_name, status):
+        fj = FailoverJob \
             .query \
-            .filter_by(mj_name=mj_name) \
+            .filter_by(fj_name=fj_name) \
             .one()
-        mj.status = status
+        fj.status = status
         if status == 'finished':
-            for leg in mj.legs:
-                if leg.mj_role == 'ori':
+            for leg in fj.legs:
+                if leg.fj_role == 'ori':
                     leg.dpv = None
                     db.session.add(leg)
                     break
-        db.session.add(mj)
+        db.session.add(fj)
         db.session.commit()

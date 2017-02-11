@@ -18,7 +18,7 @@ from dlvm.utils.command import context_init, \
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, \
-    report_mj_mirror_failed, report_mj_mirror_complete
+    report_fj_mirror_failed, report_fj_mirror_complete
 from mirror_meta import generate_mirror_meta
 
 
@@ -48,24 +48,24 @@ class RpcLock(object):
             global_rpc_set.remove(self.name)
 
 
-mj_thread_set = set()
-mj_thread_lock = Lock()
+fj_thread_set = set()
+fj_thread_lock = Lock()
 
 
-def mj_thread_add(leg_id):
-    with mj_thread_lock:
-        mj_thread_set.add(leg_id)
+def fj_thread_add(leg_id):
+    with fj_thread_lock:
+        fj_thread_set.add(leg_id)
 
 
-def mj_thread_remove(leg_id):
-    with mj_thread_lock:
-        if leg_id in mj_thread_set:
-            mj_thread_set.remove(leg_id)
+def fj_thread_remove(leg_id):
+    with fj_thread_lock:
+        if leg_id in fj_thread_set:
+            fj_thread_set.remove(leg_id)
 
 
-def mj_thread_check(leg_id):
-    with mj_thread_lock:
-        return leg_id in mj_thread_set
+def fj_thread_check(leg_id):
+    with fj_thread_lock:
+        return leg_id in fj_thread_set
 
 
 def ping(message):
@@ -90,22 +90,22 @@ def get_layer2_name(leg_id):
         dlvm_prefix=conf.dlvm_prefix, leg_id=leg_id)
 
 
-def get_layer2_name_mj(leg_id, mj_name):
-    return '{dlvm_prefix}-{leg_id}-mj-{mj_name}'.format(
+def get_layer2_name_fj(leg_id, fj_name):
+    return '{dlvm_prefix}-{leg_id}-fj-{fj_name}'.format(
         dlvm_prefix=conf.dlvm_prefix,
         leg_id=leg_id,
-        mj_name=mj_name,
+        fj_name=fj_name,
     )
 
 
-def get_mj_meta0_name(leg_id, mj_name):
-    return '{leg_id}-{mj_name}-0'.format(
-        leg_id=leg_id, mj_name=mj_name)
+def get_fj_meta0_name(leg_id, fj_name):
+    return '{leg_id}-{fj_name}-0'.format(
+        leg_id=leg_id, fj_name=fj_name)
 
 
-def get_mj_meta1_name(leg_id, mj_name):
-    return '{leg_id}-{mj_name}-1'.format(
-        leg_id=leg_id, mj_name=mj_name)
+def get_fj_meta1_name(leg_id, fj_name):
+    return '{leg_id}-{fj_name}-1'.format(
+        leg_id=leg_id, fj_name=fj_name)
 
 
 def do_leg_create(leg_id, leg_size, dm_context):
@@ -207,12 +207,12 @@ def leg_unexport(leg_id, host_name, tran):
         do_leg_unexport(leg_id, host_name)
 
 
-def do_mj_leg_export(leg_id, mj_name, src_name, leg_size):
+def do_fj_leg_export(leg_id, fj_name, src_name, leg_size):
     leg_sectors = leg_size / 512
     layer1_name = get_layer1_name(leg_id)
     dm = DmLinear(layer1_name)
     layer1_path = dm.get_path()
-    layer2_name = get_layer2_name_mj(leg_id, mj_name)
+    layer2_name = get_layer2_name_fj(leg_id, fj_name)
     dm = DmLinear(layer2_name)
     table = [{
         'start': 0,
@@ -227,15 +227,15 @@ def do_mj_leg_export(leg_id, mj_name, src_name, leg_size):
     iscsi_export(target_name, initiator_name)
 
 
-def mj_leg_export(
-        leg_id, mj_name, src_name, leg_size, tran):
+def fj_leg_export(
+        leg_id, fj_name, src_name, leg_size, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
-        do_mj_leg_export(leg_id, mj_name, src_name, leg_size)
+        do_fj_leg_export(leg_id, fj_name, src_name, leg_size)
 
 
-def do_mj_leg_unexport(leg_id, mj_name, src_name):
-    layer2_name = get_layer2_name_mj(leg_id, mj_name)
+def do_fj_leg_unexport(leg_id, fj_name, src_name):
+    layer2_name = get_layer2_name_fj(leg_id, fj_name)
     target_name = encode_initiator_name(layer2_name)
     initiator_name = encode_initiator_name(src_name)
     iscsi_unexport(target_name, initiator_name)
@@ -245,82 +245,82 @@ def do_mj_leg_unexport(leg_id, mj_name, src_name):
     dm.remove()
 
 
-def mj_leg_unexport(
-        leg_id, mj_name, src_name, tran):
+def fj_leg_unexport(
+        leg_id, fj_name, src_name, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
-        do_mj_leg_unexport(leg_id, mj_name, src_name)
+        do_fj_leg_unexport(leg_id, fj_name, src_name)
 
 
-def do_mj_login(leg_id, mj_name, dst_name, dst_id):
-    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+def do_fj_login(leg_id, fj_name, dst_name, dst_id):
+    dst_layer2_name = get_layer2_name_fj(dst_id, fj_name)
     target_name = encode_target_name(dst_layer2_name)
     iscsi_login(target_name, dst_name)
-    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
-    lv_create(mj_meta0_name, conf.mj_meta_size, conf.local_vg)
-    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
-    lv_create(mj_meta1_name, conf.mj_meta_size, conf.local_vg)
+    fj_meta0_name = get_fj_meta0_name(leg_id, fj_name)
+    lv_create(fj_meta0_name, conf.fj_meta_size, conf.local_vg)
+    fj_meta1_name = get_fj_meta1_name(leg_id, fj_name)
+    lv_create(fj_meta1_name, conf.fj_meta_size, conf.local_vg)
 
 
-def mj_login(
-        leg_id, mj_name,
+def fj_login(
+        leg_id, fj_name,
         dst_name, dst_id, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
-        do_mj_login(
-            leg_id, mj_name, dst_name, dst_id)
+        do_fj_login(
+            leg_id, fj_name, dst_name, dst_id)
 
 
-def mj_mirror_event(args):
+def fj_mirror_event(args):
     leg_id = args['leg_id']
-    mj_name = args['mj_name']
+    fj_name = args['fj_name']
     mirror_name = args['mirror_name']
     dm = DmMirror(mirror_name)
     while 1:
-        time.sleep(conf.mj_mirror_interval)
-        if mj_thread_check(leg_id) is False:
+        time.sleep(conf.fj_mirror_interval)
+        if fj_thread_check(leg_id) is False:
             break
         try:
             status = dm.status()
         except Exception as e:
-            logger.info('mj mirror status failed: %s %s', args, e)
-            report_mj_mirror_failed(mj_name)
+            logger.info('fj mirror status failed: %s %s', args, e)
+            report_fj_mirror_failed(fj_name)
             break
         if status['hc0'] == 'D' or status['hc1'] == 'D':
-            report_mj_mirror_failed(mj_name)
+            report_fj_mirror_failed(fj_name)
             break
         elif status['hc0'] == 'A' and status['hc1'] == 'A':
-            report_mj_mirror_complete(mj_name)
+            report_fj_mirror_complete(fj_name)
             break
 
 
-def do_mj_mirror_start(
-        leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm):
+def do_fj_mirror_start(
+        leg_id, fj_name, dst_name, dst_id, leg_size, dmc, bm):
     layer1_name = get_layer1_name(leg_id)
     dm = DmBasic(layer1_name)
     dm_type = dm.get_type()
     if dm_type == 'raid':
         return
     bm = BitMap.fromhexstring(bm)
-    file_name = 'dlvm-{mj_name}'.format(mj_name=mj_name)
+    file_name = 'dlvm-{fj_name}'.format(fj_name=fj_name)
     file_path = os.path.join(conf.tmp_dir, file_name)
-    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
-    mj_meta0_path = lv_get_path(mj_meta0_name, conf.local_vg)
-    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
-    mj_meta1_path = lv_get_path(mj_meta1_name, conf.local_vg)
+    fj_meta0_name = get_fj_meta0_name(leg_id, fj_name)
+    fj_meta0_path = lv_get_path(fj_meta0_name, conf.local_vg)
+    fj_meta1_name = get_fj_meta1_name(leg_id, fj_name)
+    fj_meta1_path = lv_get_path(fj_meta1_name, conf.local_vg)
     generate_mirror_meta(
         file_path,
-        conf.mj_meta_size,
+        conf.fj_meta_size,
         leg_size,
         dmc['thin_block_size'],
         bm,
     )
-    run_dd(file_path, mj_meta0_path)
-    run_dd(file_path, mj_meta1_path)
+    run_dd(file_path, fj_meta0_path)
+    run_dd(file_path, fj_meta1_path)
     os.remove(file_path)
 
     leg_sectors = leg_size / 512
-    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+    dst_layer2_name = get_layer2_name_fj(dst_id, fj_name)
     target_name = encode_target_name(dst_layer2_name)
     # the dst should have already login, the iscsi_login is
     # an idempotent option, call it again just for getting dev path
@@ -332,34 +332,34 @@ def do_mj_mirror_start(
         'start': 0,
         'offset': leg_sectors,
         'region_size': dmc['thin_block_size'],
-        'meta0': mj_meta0_path,
+        'meta0': fj_meta0_path,
         'data0': src_dev_path,
-        'meta1': mj_meta1_path,
+        'meta1': fj_meta1_path,
         'data1': dst_dev_path,
     }
     dm.reload(table)
-    mj_thread_add(leg_id)
+    fj_thread_add(leg_id)
     args = {
         'leg_id': leg_id,
-        'mj_name': mj_name,
+        'fj_name': fj_name,
         'mirror_name': layer1_name,
     }
-    t = Thread(target=mj_mirror_event, args=(args,))
+    t = Thread(target=fj_mirror_event, args=(args,))
     t.start()
 
 
-def mj_mirror_start(
-        leg_id, mj_name,
+def fj_mirror_start(
+        leg_id, fj_name,
         dst_name, dst_id,
         leg_size, dmc, bm, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
-        do_mj_mirror_start(
-            leg_id, mj_name, dst_name, dst_id, leg_size, dmc, bm)
+        do_fj_mirror_start(
+            leg_id, fj_name, dst_name, dst_id, leg_size, dmc, bm)
 
 
-def do_mj_mirror_stop(leg_id, mj_name, dst_id, leg_size):
-    mj_thread_remove(leg_id)
+def do_fj_mirror_stop(leg_id, fj_name, dst_id, leg_size):
+    fj_thread_remove(leg_id)
     leg_sectors = leg_size / 512
     layer1_name = get_layer1_name(leg_id)
     dm = DmLinear(layer1_name)
@@ -371,24 +371,24 @@ def do_mj_mirror_stop(leg_id, mj_name, dst_id, leg_size):
         'offset': 0,
     }]
     dm.reload(table)
-    mj_meta0_name = get_mj_meta0_name(leg_id, mj_name)
-    lv_remove(mj_meta0_name, conf.local_vg)
-    mj_meta1_name = get_mj_meta1_name(leg_id, mj_name)
-    lv_remove(mj_meta1_name, conf.local_vg)
-    dst_layer2_name = get_layer2_name_mj(dst_id, mj_name)
+    fj_meta0_name = get_fj_meta0_name(leg_id, fj_name)
+    lv_remove(fj_meta0_name, conf.local_vg)
+    fj_meta1_name = get_fj_meta1_name(leg_id, fj_name)
+    lv_remove(fj_meta1_name, conf.local_vg)
+    dst_layer2_name = get_layer2_name_fj(dst_id, fj_name)
     target_name = encode_target_name(dst_layer2_name)
     iscsi_logout(target_name)
 
 
-def mj_mirror_stop(
-        leg_id, mj_name, dst_id, leg_size, tran):
+def fj_mirror_stop(
+        leg_id, fj_name, dst_id, leg_size, tran):
     with RpcLock(leg_id):
         dpv_verify(leg_id, tran['major'], tran['minor'])
-        do_mj_mirror_stop(
-            leg_id, mj_name, dst_id, leg_size)
+        do_fj_mirror_stop(
+            leg_id, fj_name, dst_id, leg_size)
 
 
-def do_mj_mirror_status(leg_id):
+def do_fj_mirror_status(leg_id):
     layer1_name = get_layer1_name(leg_id)
     dm = DmBasic(layer1_name)
     dm_type = dm.get_type()
@@ -406,9 +406,9 @@ def do_mj_mirror_status(leg_id):
     }
 
 
-def mj_mirror_status(leg_id):
+def fj_mirror_status(leg_id):
     with RpcLock(leg_id):
-        return do_mj_mirror_status(leg_id)
+        return do_fj_mirror_status(leg_id)
 
 
 def main():
@@ -422,11 +422,11 @@ def main():
     s.register_function(leg_delete)
     s.register_function(leg_export)
     s.register_function(leg_unexport)
-    s.register_function(mj_leg_export)
-    s.register_function(mj_leg_unexport)
-    s.register_function(mj_login)
-    s.register_function(mj_mirror_start)
-    s.register_function(mj_mirror_stop)
-    s.register_function(mj_mirror_status)
+    s.register_function(fj_leg_export)
+    s.register_function(fj_leg_unexport)
+    s.register_function(fj_login)
+    s.register_function(fj_mirror_start)
+    s.register_function(fj_mirror_stop)
+    s.register_function(fj_mirror_status)
     logger.info('dpv_agent start')
     s.serve_forever()

@@ -25,7 +25,7 @@ class DlvStatusError(Exception):
     pass
 
 
-class HasMjsError(Exception):
+class HasFjError(Exception):
     pass
 
 
