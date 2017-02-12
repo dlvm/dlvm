@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import uuid
 from collections import OrderedDict
 import logging
 import random
@@ -97,6 +98,31 @@ def handle_fjs_get(params, args):
     return body['fjs'], 200
 
 
+def get_dlv_info(dlv):
+    dlv_info = {}
+    dlv_info['dlv_name'] = dlv.dlv_name
+    dlv_info['dlv_size'] = dlv.dlv_size
+    dlv_info['data_size'] = dlv.data_size
+    dm_context = get_dm_context()
+    dm_context['stripe_number'] = dlv.partition_count
+    dlv_info['dm_context'] = dm_context
+    dlv_info['groups'] = []
+    for group in dlv.groups:
+        igroup = {}
+        igroup['group_id'] = group.group_id
+        igroup['idx'] = group.idx
+        igroup['group_size'] = group.group_size
+        igroup['legs'] = []
+        for leg in group.legs:
+            ileg = {}
+            ileg['leg_id'] = leg.leg_id
+            ileg['dpv_name'] = leg.dpv_name
+            ileg['idx'] = leg.idx
+            ileg['leg_size'] = leg.leg_size
+            igroup['legs'].append(ileg)
+        dlv_info['groups'].append(igroup)
+
+
 def get_fj_legs(fj):
     src_leg = None
     dst_leg = None
@@ -115,6 +141,8 @@ def get_fj_legs(fj):
     assert(ori_leg is not None)
     assert(src_leg.group_id == ori_leg.group_id)
     return src_leg, dst_leg, ori_leg
+
+
 fjs_post_parser = reqparse.RequestParser()
 fjs_post_parser.add_argument(
     'fj_name',
@@ -129,14 +157,8 @@ fjs_post_parser.add_argument(
     location='json',
 )
 fjs_post_parser.add_argument(
-    'g_idx',
-    type=int,
-    required=True,
-    location='json',
-)
-fjs_post_parser.add_argument(
-    'l_idx',
-    type=int,
+    'leg_id',
+    type=str,
     required=True,
     location='json',
 )
@@ -147,8 +169,14 @@ fjs_post_parser.add_argument(
     location='json',
 )
 fjs_post_parser.add_argument(
-    'owner',
+    't_owner',
     type=str,
+    required=True,
+    location='json',
+)
+fjs_post_parser.add_argument(
+    't_stage',
+    type=int,
     required=True,
     location='json',
 )
@@ -216,80 +244,58 @@ def do_fj_create(fj, dlv, obt):
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     if dst_leg.dpv is None:
         allocate_dpv(dst_leg, ori_leg.group, dlv.dvg_name, obt)
-    group = src_leg.group
+    dm_context = get_dm_context()
     dst_client = DpvClient(dst_leg.dpv_name)
-    dst_client.create_leg(
-        dlv.dlv_name,
+    dst_client.leg_create(
+        dst_leg.leg_id,
         obt_encode(obt),
-        group.idx,
-        dst_leg.idx,
+        dst_leg.leg_size,
+        dm_context,
+    )
+    dst_client.fj_leg_export(
+        dst_leg.leg_id,
+        obt_encode(obt),
+        fj.fj_name,
+        src_leg.dpv_name,
         dst_leg.leg_size,
     )
-    dst_client.export_leg_for_fj(
-        dlv.dlv_name,
-        obt_encode(obt),
-        fj.fj_name,
-        group.idx,
-        dst_leg.idx,
-        src_leg.dpv_name,
-    )
     src_client = DpvClient(src_leg.dpv_name)
-    src_client.login_for_fj(
-        dlv.dlv_name,
+    src_client.fj_login(
+        src_leg.leg_id,
         obt_encode(obt),
-        fj.fj_name,
-        group.idx,
-        src_leg.idx,
         dst_leg.dpv_name,
-        dst_leg.idx,
+        dst_leg.leg_id,
     )
-    dlv_info = {}
-    dlv_info['dlv_name'] = dlv.dlv_name
-    dlv_info['dlv_size'] = dlv.dlv_size
-    dlv_info['data_size'] = dlv.data_size
-    dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.partition_count
-    dlv_info['dm_context'] = dm_context
-    dlv_info['groups'] = []
-    for group in dlv.groups:
-        igroup = {}
-        igroup['group_id'] = group.group_id
-        igroup['idx'] = group.idx
-        igroup['group_size'] = group.group_size
-        igroup['legs'] = []
-        for leg in group.legs:
-            ileg = {}
-            ileg['leg_id'] = leg.leg_id
-            ileg['dpv_name'] = leg.dpv_name
-            ileg['idx'] = leg.idx
-            ileg['leg_size'] = leg.leg_size
-            igroup['legs'].append(ileg)
-        dlv_info['groups'].append(igroup)
+    dlv_info = get_dlv_info(dlv)
     thost_client = ThostClient(dlv.thost_name)
     try:
-        thost_client.suspend_dlv(
+        thost_client.dlv_suspend(
             dlv.dlv_name,
             obt_encode(obt),
-        )
-        bm = thost_client.get_bitmap(
             dlv_info,
-            group.idx,
-            ori_leg.idx,
-            obt_encode(obt),
         )
-        src_client.start_fj_mirror(
+        bm = thost_client.bm_get(
             dlv.dlv_name,
-            fj.fj_name,
-            group.idx,
-            src_leg.idx,
-            dst_leg.idx,
-            bm,
             obt_encode(obt),
+            dlv_info,
+            'all',
+            ori_leg.leg_id,
+        )
+        src_client.fj_mirror_start(
+            src_leg.leg_id,
+            obt_encode(obt),
+            fj.fj_name,
+            dst_leg.dpv_name,
+            dst_leg.leg_id,
+            src_leg.leg_size,
+            dm_context,
+            bm,
         )
     finally:
         thost_client.resume_dlv(
             dlv.dlv_name,
             obt_encode(obt),
+            dlv_info,
         )
 
 
@@ -337,39 +343,38 @@ def fj_create(fj, dlv, obt):
 def handle_fjs_post(params, args):
     fj_name = args['fj_name']
     dlv_name = args['dlv_name']
-    g_idx = args['g_idx']
-    l_idx = args['l_idx']
+    ori_id = args['leg_id']
     t_id = args['t_id']
-    owner = args['owner']
-    dlv, obt = dlv_get(dlv_name, t_id, owner)
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
     fj = FailoverJob(
         fj_name=fj_name,
         status='creating',
-        g_idx=g_idx,
         timestamp=datetime.datetime.utcnow(),
         dlv_name=dlv_name,
     )
-    if l_idx % 2 == 0:
-        src_leg_idx = l_idx + 1
+    ori_leg = Leg \
+        .query \
+        .filter_by(leg_id=ori_id) \
+        .one()
+    ori_idx = ori_leg.idx
+    if ori_idx % 2 == 0:
+        src_idx = ori_idx + 1
     else:
-        src_leg_idx = l_idx - 1
-    ori_leg_idx = l_idx
-    ori_leg = None
+        src_idx = ori_idx - 1
+    group = ori_leg.group
     src_leg = None
-    for group in dlv.groups:
-        if group.idx != g_idx:
-            continue
-        for leg in group.legs:
-            if leg.idx == ori_leg_idx:
-                ori_leg = leg
-            elif leg.idx == src_leg_idx:
-                src_leg = leg
-    assert(src_leg is not None and ori_leg is not None)
+    for leg in group.legs:
+        if leg.idx == src_idx:
+            src_leg = leg
+    assert(src_leg is not None)
     src_leg.fj_role = 'src'
     ori_leg.fj_role = 'ori'
     src_leg.fj = fj
     ori_leg.fj = fj
     dst_leg = Leg(
+        leg_id=uuid.uuid4().hex,
         idx=ori_leg.idx,
         leg_size=ori_leg.leg_size,
         fj_role='dst',
@@ -467,8 +472,14 @@ fj_put_parser.add_argument(
     location='json',
 )
 fj_put_parser.add_argument(
-    'owner',
+    't_owner',
     type=str,
+    required=True,
+    location='json',
+)
+fj_put_parser.add_argument(
+    't_stage',
+    type=int,
     required=True,
     location='json',
 )
@@ -498,6 +509,7 @@ def free_dpv(leg, dlv_name, dvg_name, obt):
 
 
 FJ_CAN_CANCEL_STATUS = (
+    'creating',
     'create_failed',
     'cancel_failed',
     'processing',
@@ -510,22 +522,23 @@ def do_fj_cancel(fj, dlv, obt):
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     if src_leg.dpv.status == 'available':
         src_client = DpvClient(src_leg.dpv_name)
-        src_client.cancel_mirror(
-            dlv.dlv_name,
+        src_client.fj_mirror_stop(
+            src_leg.leg_id,
             obt_encode(obt),
             fj.fj_name,
+            dst_leg.leg_id,
+            src_leg.leg_size,
         )
     if dst_leg.dpv is not None and dst_leg.dpv.status == 'available':
         dst_client = DpvClient(dst_leg.dpv_name)
-        dst_client.unexport_for_fj(
-            dlv.dlv_name,
-            fj.fj_name,
+        dst_client.fj_leg_unexport(
+            dst_leg.leg_id,
             obt_encode(obt),
+            fj.fj_name,
+            src_leg.dpv_name,
         )
-        dst_client.delete_leg(
-            dlv.dlv_name,
-            fj.g_idx,
-            dst_leg.idx,
+        dst_client.leg_delete(
+            dst_leg.leg_id,
             obt_encode(obt),
         )
 
@@ -536,7 +549,8 @@ def do_fj_cancel(fj, dlv, obt):
 def handle_fj_cancel(params, args):
     fj_name = params[0]
     t_id = args['t_id']
-    owner = args['owner']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
     try:
         fj = FailoverJob \
             .query \
@@ -544,7 +558,7 @@ def handle_fj_cancel(params, args):
             .filter_by(fj_name=fj_name) \
             .one()
         dlv_name = fj.dlv_name
-        dlv, obt = dlv_get(dlv_name, t_id, owner)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
         do_fj_cancel(fj, dlv, obt)
     except FjStatusError as e:
         return make_body('invalid_fj_status', e.message), 400
@@ -582,25 +596,26 @@ def do_fj_finish(fj, dlv, obt):
     dst_client = DpvClient(dst_leg.dpv_name)
     ori_client = DpvClient(ori_leg.dpv_name)
     if src_leg.dpv.status == 'available':
-        src_client.finish_mirror(
-            fj.fj_name,
-            dlv.dlv_name,
+        src_client.fj_mirror_stop(
+            src_leg.leg_id,
             obt_encode(obt),
+            fj.fj_name,
+            dst_leg.leg_id,
+            dst_leg.leg_size,
         )
     if dst_leg.dpv.status == 'available':
-        dst_client.unexport_for_fj(
-            fj.fj_name,
-            dlv.dlv_name,
+        dst_client.fj_leg_unexport(
+            dst_leg.leg_id,
             obt_encode(obt),
+            fj.fj_name,
+            src_leg.dpv_name,
         )
     if dlv.status == 'attached':
         if dst_leg.dpv.status == 'available':
-            dst_client.export_leg(
-                dlv.dlv_name,
-                fj.g_idx,
-                dst_leg.idx,
-                dlv.thost_name,
+            dst_client.leg_export(
+                dst_leg.leg_id,
                 obt_encode(obt),
+                dlv.dlv_name,
             )
         if dlv.thost.status == 'available':
             thost_client = WrapperRpcClient(
@@ -608,27 +623,29 @@ def do_fj_finish(fj, dlv, obt):
                 conf.thost_port,
                 conf.thost_timeout,
             )
+            dlv_info = get_dlv_info(dlv)
+            d_leg = {}
+            d_leg['leg_id'] = dst_leg.leg_id
+            d_leg['idx'] = dst_leg.idx
+            d_leg['leg_size'] = dst_leg.leg_size
+            d_leg['dpv_name'] = dst_leg.dpv_name
             thost_client.remirror(
                 dlv.dlv_name,
-                fj.g_idx,
-                dst_leg.idx,
-                dlv.thost_name,
                 obt_encode(obt),
+                dlv_info,
+                src_leg.leg_id,
+                d_leg,
             )
         if ori_leg.dpv.status == 'available':
             ori_client.unexport_leg(
-                dlv.dlv_name,
-                fj.g_idx,
-                ori_leg.idx,
-                dlv.thost_name,
+                ori_leg.leg_id,
                 obt_encode(obt),
+                dlv.dlv_name,
             )
 
     if ori_leg.dpv.status == 'available':
         ori_client.delete_leg(
-            dlv.dlv_name,
-            fj.g_idx,
-            ori_leg.idx,
+            ori_leg.leg_id,
             obt_encode(obt),
         )
 
@@ -649,7 +666,8 @@ def do_fj_finish(fj, dlv, obt):
 def handle_fj_finish(params, args):
     fj_name = params[0]
     t_id = args['t_id']
-    owner = args['owner']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
     try:
         fj = FailoverJob \
             .query \
@@ -657,7 +675,7 @@ def handle_fj_finish(params, args):
             .filter_by(fj_name=fj_name) \
             .one()
         dlv_name = fj.dlv_name
-        dlv, obt = dlv_get(dlv_name, t_id, owner)
+        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
         do_fj_finish(fj, dlv, obt)
     except FjStatusError as e:
         return make_body('invalid_fj_status', e.message), 400

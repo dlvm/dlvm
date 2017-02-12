@@ -128,15 +128,17 @@ def bm_get_simple(dlv_name, dlv_info, thin_id_list, leg_id_list):
 
 
 def do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id):
-    pool_name = get_pool_name(dlv_name)
-    dm = DmPool(pool_name)
-    status = dm.status()
-    if status['used_data'] < conf.bm_throttle:
-        return bm_get_real(
+    return bm_get_simple(
             dlv_name, dlv_info, thin_id_list, leg_id)
-    else:
-        return bm_get_simple(
-            dlv_name, dlv_info, thin_id_list, leg_id)
+    # pool_name = get_pool_name(dlv_name)
+    # dm = DmPool(pool_name)
+    # status = dm.status()
+    # if status['used_data'] < conf.bm_throttle:
+    #     return bm_get_real(
+    #         dlv_name, dlv_info, thin_id_list, leg_id)
+    # else:
+    #     return bm_get_simple(
+    #         dlv_name, dlv_info, thin_id_list, leg_id)
 
 
 def bm_get(dlv_name, obt, dlv_info, thin_id_list, leg_id):
