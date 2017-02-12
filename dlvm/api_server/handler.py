@@ -4,13 +4,98 @@ from collections import OrderedDict
 import uuid
 import datetime
 import logging
+import socket
+from xmlrpclib import Fault
+from types import MethodType
 from sqlalchemy.orm.exc import NoResultFound
-from dlvm.utils.error import ObtConflictError, ObtMissError
+from dlvm.utils.error import ObtConflictError, ObtMissError, \
+    DpvError, ThostError
 from dlvm.utils.configure import conf
+from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from modules import db, DistributePhysicalVolume, DistributeVolumeGroup, \
     DistributeLogicalVolume, Snapshot, OwnerBasedTransaction, Counter
 
 logger = logging.getLogger('dlvm_api')
+
+
+class DpvClient(object):
+
+    def __init__(self, dpv_name):
+        self.client = WrapperRpcClient(
+            str(dpv_name),
+            conf.dpv_port,
+            conf.dpv_timeout,
+        )
+        self.dpv_name = dpv_name
+
+    def __getattr__(self, name):
+        def wrapper_func(self, *args, **kwargs):
+            func = getattr(self.client, name)
+            try:
+                logger.info(
+                    'dpv call: %s %s %s',
+                    self.dpv_name,
+                    args,
+                    kwargs,
+                )
+                ret = func(*args, **kwargs)
+                logger.info(
+                    'dpv ret: %s %s',
+                    self.dpv_name,
+                    ret,
+                )
+                return ret
+            except socket.error, socket.timeout:
+                logger.error('connect to dpv failed: %s', self.dpv_name)
+                raise DpvError(self.dpv_name)
+            except Fault as e:
+                if 'ObtConflict' in str(e):
+                    raise ObtConflictError()
+                else:
+                    logger.error('dpv rpc failed: %s', e)
+                    raise DpvError(self.dpv_name)
+        setattr(self, name, MethodType(wrapper_func, self, self.__class__))
+        return getattr(self, name)
+
+
+class ThostClient(object):
+
+    def __init__(self, thost_name):
+        self.client = WrapperRpcClient(
+            str(thost_name),
+            conf.thost_port,
+            conf.thost_timeout,
+        )
+        self.thost_name = thost_name
+
+    def __getattr__(self, name):
+        def wrapper_func(self, *args, **kwargs):
+            func = getattr(self.client, name)
+            try:
+                logger.info(
+                    'thost call: %s %s %s',
+                    self.thost_name,
+                    args,
+                    kwargs,
+                )
+                ret = func(*args, **kwargs)
+                logger.info(
+                    'thost ret: %s %s',
+                    self.thost_name,
+                    ret,
+                )
+                return ret
+            except socket.error, socket.timeout:
+                logger.error('connect to thost failed: %s', self.thost_name)
+                raise ThostError(self.thost_name)
+            except Fault as e:
+                if 'ObtConflict' in str(e):
+                    raise ObtConflictError()
+                else:
+                    logger.error('thost rpc failed: %s', e)
+                    raise ThostError(self.thost_name)
+        setattr(self, name, MethodType(wrapper_func, self, self.__class__))
+        return getattr(self, name)
 
 
 def handle_dlvm_request(params, parser, handler):

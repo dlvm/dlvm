@@ -75,11 +75,11 @@ class RpcFunctionTest(unittest.TestCase):
             'stripe_chunk_blocks': 1,
             'low_water_mark': 100,
         }
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        leg_create(leg_id, leg_size, dm_context, tran)
+        leg_create(leg_id, obt, leg_size, dm_context)
 
     @patch('dlvm.dpv_agent.iscsi_delete')
     @patch('dlvm.dpv_agent.lv_remove')
@@ -95,11 +95,11 @@ class RpcFunctionTest(unittest.TestCase):
     ):
         conf.tmp_dir = self.tmp_dir
         leg_id = '001'
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        leg_delete(leg_id, tran)
+        leg_delete(leg_id, obt)
 
     @patch('dlvm.dpv_agent.iscsi_export')
     @patch('dlvm.dpv_agent.encode_target_name')
@@ -113,11 +113,11 @@ class RpcFunctionTest(unittest.TestCase):
     ):
         leg_id = '001'
         host_name = 'host0'
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        leg_export(leg_id, host_name, tran)
+        leg_export(leg_id, obt, host_name)
 
     @patch('dlvm.dpv_agent.iscsi_unexport')
     @patch('dlvm.dpv_agent.encode_target_name')
@@ -131,11 +131,11 @@ class RpcFunctionTest(unittest.TestCase):
     ):
         leg_id = '001'
         host_name = 'host0'
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        leg_unexport(leg_id, host_name, tran)
+        leg_unexport(leg_id, obt, host_name)
 
     @patch('dlvm.dpv_agent.iscsi_export')
     @patch('dlvm.dpv_agent.iscsi_create')
@@ -156,11 +156,11 @@ class RpcFunctionTest(unittest.TestCase):
         fj_name = 'fj0'
         src_name = 'dpv1'
         leg_size = 1024*1024*1024
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        fj_leg_export(leg_id, fj_name, src_name, leg_size, tran)
+        fj_leg_export(leg_id, obt, fj_name, src_name, leg_size)
 
     @patch('dlvm.dpv_agent.iscsi_unexport')
     @patch('dlvm.dpv_agent.iscsi_delete')
@@ -180,11 +180,11 @@ class RpcFunctionTest(unittest.TestCase):
         leg_id = '001'
         fj_name = 'fj0'
         src_name = 'dpv1'
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        fj_leg_unexport(leg_id, fj_name, src_name, tran)
+        fj_leg_unexport(leg_id, obt, fj_name, src_name)
 
     @patch('dlvm.dpv_agent.iscsi_login')
     @patch('dlvm.dpv_agent.lv_create')
@@ -201,12 +201,12 @@ class RpcFunctionTest(unittest.TestCase):
         fj_name = 'fj0'
         dst_name = 'dpv2'
         dst_id = '002'
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
         fj_login(
-            leg_id, fj_name, dst_name, dst_id, tran)
+            leg_id, obt, fj_name, dst_name, dst_id)
 
     @patch('dlvm.dpv_agent.Thread')
     @patch('dlvm.dpv_agent.run_dd')
@@ -234,12 +234,12 @@ class RpcFunctionTest(unittest.TestCase):
         }
         bm_size = leg_size / dmc['thin_block_size']
         bm = BitMap(bm_size).tohexstring()
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
         fj_mirror_start(
-            leg_id, fj_name, dst_name, dst_id, leg_size, dmc, bm, tran)
+            leg_id, obt, fj_name, dst_name, dst_id, leg_size, dmc, bm)
 
     @patch('dlvm.dpv_agent.DmLinear')
     @patch('dlvm.dpv_agent.lv_remove')
@@ -257,12 +257,12 @@ class RpcFunctionTest(unittest.TestCase):
         fj_name = 'fj0'
         dst_id = '002'
         leg_size = 1024*1024*1024
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
         fj_mirror_stop(
-            leg_id, fj_name, dst_id, leg_size, tran)
+            leg_id, obt, fj_name, dst_id, leg_size)
 
     @patch('dlvm.dpv_agent.DmMirror')
     @patch('dlvm.dpv_agent.DmBasic')

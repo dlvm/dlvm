@@ -153,9 +153,9 @@ def do_leg_create(leg_id, leg_size, dm_context):
     iscsi_create(target_name, leg_id, layer2_path)
 
 
-def leg_create(leg_id, leg_size, dm_context, tran):
+def leg_create(leg_id, obt, leg_size, dm_context):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_leg_create(leg_id, leg_size, dm_context)
 
 
@@ -177,9 +177,9 @@ def do_leg_delete(leg_id):
         os.remove(file_path)
 
 
-def leg_delete(leg_id, tran):
+def leg_delete(leg_id, obt):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_leg_delete(leg_id)
 
 
@@ -189,9 +189,9 @@ def do_leg_export(leg_id, host_name):
     iscsi_export(target_name, initiator_name)
 
 
-def leg_export(leg_id, host_name, tran):
+def leg_export(leg_id, obt, host_name):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_leg_export(leg_id, host_name)
 
 
@@ -201,9 +201,9 @@ def do_leg_unexport(leg_id, host_name):
     iscsi_unexport(target_name, initiator_name)
 
 
-def leg_unexport(leg_id, host_name, tran):
+def leg_unexport(leg_id, obt, host_name):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_leg_unexport(leg_id, host_name)
 
 
@@ -228,9 +228,9 @@ def do_fj_leg_export(leg_id, fj_name, src_name, leg_size):
 
 
 def fj_leg_export(
-        leg_id, fj_name, src_name, leg_size, tran):
+        leg_id, obt, fj_name, src_name, leg_size):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_leg_export(leg_id, fj_name, src_name, leg_size)
 
 
@@ -246,9 +246,9 @@ def do_fj_leg_unexport(leg_id, fj_name, src_name):
 
 
 def fj_leg_unexport(
-        leg_id, fj_name, src_name, tran):
+        leg_id, obt, fj_name, src_name):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_leg_unexport(leg_id, fj_name, src_name)
 
 
@@ -263,10 +263,10 @@ def do_fj_login(leg_id, fj_name, dst_name, dst_id):
 
 
 def fj_login(
-        leg_id, fj_name,
-        dst_name, dst_id, tran):
+        leg_id, obt, fj_name,
+        dst_name, dst_id):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_login(
             leg_id, fj_name, dst_name, dst_id)
 
@@ -349,11 +349,11 @@ def do_fj_mirror_start(
 
 
 def fj_mirror_start(
-        leg_id, fj_name,
+        leg_id, obt, fj_name,
         dst_name, dst_id,
-        leg_size, dmc, bm, tran):
+        leg_size, dmc, bm):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_mirror_start(
             leg_id, fj_name, dst_name, dst_id, leg_size, dmc, bm)
 
@@ -381,9 +381,9 @@ def do_fj_mirror_stop(leg_id, fj_name, dst_id, leg_size):
 
 
 def fj_mirror_stop(
-        leg_id, fj_name, dst_id, leg_size, tran):
+        leg_id, obt, fj_name, dst_id, leg_size):
     with RpcLock(leg_id):
-        dpv_verify(leg_id, tran['major'], tran['minor'])
+        dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_mirror_stop(
             leg_id, fj_name, dst_id, leg_size)
 

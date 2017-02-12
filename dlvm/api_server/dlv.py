@@ -232,9 +232,9 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
             )
             client.leg_create(
                 leg.leg_id,
+                obt_encode(obt),
                 leg.leg_size,
                 dm_context,
-                obt_encode(obt),
             )
         except socket.error, socket.timeout:
             logger.error('connect to dpv failed: %s', dpv_name)
@@ -589,8 +589,8 @@ def do_attach(dlv, obt):
                 )
                 client.leg_export(
                     leg.leg_id,
-                    dlv.thost_name,
                     obt_encode(obt),
+                    dlv.thost_name,
                 )
             except socket.error, socket.timeout:
                 logger.error('connect to dpv failed: %s', dpv_name)
@@ -733,8 +733,8 @@ def do_detach(dlv, obt):
                 )
                 client.leg_unexport(
                     leg.leg_id,
-                    dlv.thost_name,
                     obt_encode(obt),
+                    dlv.thost_name,
                 )
             except socket.error, socket.timeout:
                 logger.error('connect to dpv failed: %s', dpv_name)

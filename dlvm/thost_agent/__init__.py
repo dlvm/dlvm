@@ -139,9 +139,9 @@ def do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id):
             dlv_name, dlv_info, thin_id_list, leg_id)
 
 
-def bm_get(dlv_name, tran, dlv_info, thin_id_list, leg_id):
+def bm_get(dlv_name, obt, dlv_info, thin_id_list, leg_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         return do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id)
 
 
@@ -527,9 +527,9 @@ def do_dlv_aggregate(dlv_name, dlv_info):
     return final_path
 
 
-def dlv_aggregate(dlv_name, tran, dlv_info):
+def dlv_aggregate(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         return do_dlv_aggregate(dlv_name, dlv_info)
 
 
@@ -612,9 +612,9 @@ def do_dlv_degregate(dlv_name, dlv_info):
     remove_thin_meta(dlv_name, groups[0])
 
 
-def dlv_degregate(dlv_name, tran, dlv_info):
+def dlv_degregate(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_dlv_degregate(dlv_name, dlv_info)
 
 
@@ -642,9 +642,9 @@ def do_dlv_suspend(dlv_name, dlv_info):
     dm.remove()
 
 
-def dlv_suspend(dlv_name, tran, dlv_info):
+def dlv_suspend(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_dlv_suspend(dlv_name, dlv_info)
 
 
@@ -706,9 +706,9 @@ def do_dlv_resume(dlv_name, dlv_info):
     t.start()
 
 
-def dlv_resume(dlv_name, tran, dlv_info):
+def dlv_resume(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_dlv_resume(dlv_name, dlv_info)
 
 
@@ -723,9 +723,9 @@ def do_snapshot_create(dlv_name, thin_id, ori_thin_id):
     dm.message(message)
 
 
-def snapshot_create(dlv_name, tran, thin_id, ori_thin_id):
+def snapshot_create(dlv_name, obt, thin_id, ori_thin_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_snapshot_create(
             dlv_name, thin_id, ori_thin_id)
 
@@ -740,9 +740,9 @@ def do_snapshot_delete(dlv_name, thin_id):
     dm.message(message)
 
 
-def snapshot_delete(dlv_name, tran, thin_id):
+def snapshot_delete(dlv_name, obt, thin_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_snapshot_delete(dlv_name, thin_id)
 
 
@@ -841,9 +841,9 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
         t.start()
 
 
-def remirror(dlv_name, tran, dlv_info, src_id, dst_leg):
+def remirror(dlv_name, obt, dlv_info, src_id, dst_leg):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_remirror(dlv_name, dlv_info, src_id, dst_leg)
 
 
@@ -868,9 +868,9 @@ def do_leg_remove(dlv_name, dlv_info, leg_id):
     logout_leg(leg['leg_id'])
 
 
-def leg_remove(dlv_name, tran, dlv_info, leg_id):
+def leg_remove(dlv_name, obt, dlv_info, leg_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, tran['major'], tran['minor'])
+        thost_verify(dlv_name, obt['major'], obt['minor'])
         do_leg_remove(dlv_name, dlv_info, leg_id)
 
 

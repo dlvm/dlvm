@@ -25,6 +25,10 @@ class DlvStatusError(Exception):
     pass
 
 
+class FjStatusError(Exception):
+    pass
+
+
 class HasFjError(Exception):
     pass
 
