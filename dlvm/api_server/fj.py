@@ -9,7 +9,7 @@ from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    ObtConflictError, DlvStatusError, \
+    DlvStatusError, \
     ThostError, FjStatusError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
@@ -17,7 +17,7 @@ from modules import db, \
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, ThostClient, \
-    obt_get, obt_refresh, obt_encode
+    obt_refresh, obt_encode
 
 
 logger = logging.getLogger('dlvm_api')
@@ -311,14 +311,14 @@ def fj_create(fj, dlv, obt):
         obt_refresh(obt)
         db.session.commit()
         return make_body('invalid_dlv_status', e.message), 400
-    except ThostError:
+    except ThostError as e:
         fj.status = 'create_failed'
         fj.timestamp = datetime.datetime.utcnow()
         db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('thost_failed', e.message), 500
-    except DpvError:
+    except DpvError as e:
         fj.status = 'create_failed'
         fj.timestamp = datetime.datetime.utcnow()
         db.session.add(fj)
