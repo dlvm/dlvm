@@ -124,3 +124,28 @@ class FjTest(unittest.TestCase):
         self.assertEqual(fj['fj_name'], 'fj0')
         self.assertEqual(fj['status'], 'processing')
         self.assertEqual(fj['dlv_name'], 'dlv0')
+
+    @patch('dlvm.api_server.fj.DpvClient')
+    @patch('dlvm.api_server.fj.ThostClient')
+    def test_fjs_post(self, ThostClient, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.thost_create(**fixture_thost)
+        self.fm.dlv_attach('dlv0', 'thost0')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        ori_id = self.fm.dlv_get_leg_id('dlv0', 1, 0)
+        data = {
+            'fj_name': 'fj0',
+            'dlv_name': 'dlv0',
+            'ori_id': ori_id,
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.post('/fjs', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        fj = self.fm.fj_get('fj0')
+        self.assertEqual(fj.status, 'processing')

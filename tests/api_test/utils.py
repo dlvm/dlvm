@@ -187,6 +187,20 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
+    def dlv_get_leg_id(self, dlv_name, g_idx, l_idx):
+        dlv = DistributeLogicalVolume \
+            .query \
+            .filter_by(dlv_name=dlv_name) \
+            .one()
+        for group in dlv.groups:
+            if group.idx == g_idx:
+                for leg in group.legs:
+                    if leg.idx == l_idx:
+                        return leg.leg_id
+                assert(False)
+        assert(False)
+
+    @app_context
     def fj_create(self, fj_name, status, timestamp, dlv_name, g_idx, l_idx):
         fj = FailoverJob(
             fj_name=fj_name,
@@ -269,3 +283,11 @@ class FixtureManager(object):
                     break
         db.session.add(fj)
         db.session.commit()
+
+    @app_context
+    def fj_get(self, fj_name):
+        fj = FailoverJob \
+            .query \
+            .filter_by(fj_name=fj_name) \
+            .one()
+        return fj

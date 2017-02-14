@@ -157,7 +157,7 @@ fjs_post_parser.add_argument(
     location='json',
 )
 fjs_post_parser.add_argument(
-    'leg_id',
+    'ori_id',
     type=str,
     required=True,
     location='json',
@@ -347,7 +347,7 @@ def fj_create(fj, dlv, obt):
 def handle_fjs_post(params, args):
     fj_name = args['fj_name']
     dlv_name = args['dlv_name']
-    ori_id = args['leg_id']
+    ori_id = args['ori_id']
     t_id = args['t_id']
     t_owner = args['t_owner']
     t_stage = args['t_stage']
