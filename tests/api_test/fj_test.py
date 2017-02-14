@@ -178,3 +178,26 @@ class FjTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         fj = self.fm.fj_get('fj0')
         self.assertEqual(fj.status, 'canceled')
+
+    @patch('dlvm.api_server.fj.DpvClient')
+    @patch('dlvm.api_server.fj.ThostClient')
+    def test_fj_finish(self, ThostClient, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.thost_create(**fixture_thost)
+        self.fm.dlv_attach('dlv0', 'thost0')
+        self._prepare_fj()
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'finish',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/fjs/fj0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        fj = self.fm.fj_get('fj0')
+        self.assertEqual(fj.status, 'finished')

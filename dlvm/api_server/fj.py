@@ -6,7 +6,6 @@ import logging
 import random
 import datetime
 from flask_restful import reqparse, Resource, fields, marshal
-from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
@@ -627,16 +626,12 @@ def do_fj_finish(fj, dlv, obt):
                 dlv.dlv_name,
             )
         if dlv.thost.status == 'available':
-            thost_client = WrapperRpcClient(
-                str(dlv.thost_name),
-                conf.thost_port,
-                conf.thost_timeout,
-            )
+            thost_client = ThostClient(dlv.thost_name)
             dlv_info = get_dlv_info(dlv)
             d_leg = {}
             d_leg['leg_id'] = dst_leg.leg_id
             d_leg['idx'] = dst_leg.idx
-            d_leg['leg_size'] = dst_leg.leg_size
+            d_leg['leg_size'] = str(dst_leg.leg_size)
             d_leg['dpv_name'] = dst_leg.dpv_name
             thost_client.remirror(
                 dlv.dlv_name,
