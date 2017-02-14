@@ -13,6 +13,7 @@ from dlv import Dlvs, Dlv
 from thost import Thosts, Thost
 from obt import Obts, Obt
 from snapshot import Snaps, Snap
+from fj import Fjs, Fj
 
 root_get_fields = OrderedDict()
 root_get_fields['endpoints'] = fields.List(fields.String)
@@ -52,7 +53,10 @@ def create_app():
     api.add_resource(Obt, '/obts/<string:t_id>')
     api.add_resource(Snaps, '/dlvs/<string:dlv_name>/snaps')
     api.add_resource(Snap, '/dlvs/<string:dlv_name>/snaps/<string:snap_name>')
+    api.add_resource(Fjs, '/fjs')
+    api.add_resource(Fj, '/fjs/<string:fj_name>')
     return app
+
 
 app = create_app()
 

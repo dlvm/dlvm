@@ -191,7 +191,6 @@ class FixtureManager(object):
         fj = FailoverJob(
             fj_name=fj_name,
             status=status,
-            g_idx=g_idx,
             timestamp=timestamp,
             dlv_name=dlv_name,
         )
@@ -201,22 +200,27 @@ class FixtureManager(object):
             .query \
             .filter_by(dlv_name=dlv_name) \
             .one()
-        if l_idx % 2 == 0:
-            src_leg_idx = l_idx + 1
-        else:
-            src_leg_idx = l_idx - 1
-        ori_leg_idx = l_idx
         ori_leg = None
-        src_leg = None
         for group in dlv.groups:
-            if group.idx != g_idx:
-                continue
-            for leg in group.legs:
-                if leg.idx == ori_leg_idx:
-                    ori_leg = leg
-                elif leg.idx == src_leg_idx:
-                    src_leg = leg
-        assert(src_leg is not None and ori_leg is not None)
+            if group.idx == g_idx:
+                for leg in group.legs:
+                    if leg.idx == l_idx:
+                        ori_leg = leg
+                        break
+                break
+        assert(ori_leg is not None)
+        ori_idx = ori_leg.idx
+        if ori_idx % 2 == 0:
+            src_idx = ori_idx + 1
+        else:
+            src_idx = ori_idx - 1
+        group = ori_leg.group
+        src_leg = None
+        for leg in group.legs:
+            if leg.idx == src_idx:
+                src_leg = leg
+                break
+        assert(src_leg is not None)
         src_leg.fj_role = 'src'
         ori_leg.fj_role = 'ori'
         src_leg.fj = fj
@@ -240,6 +244,7 @@ class FixtureManager(object):
                 break
         assert(dst_dpv is not None)
         dst_leg = Leg(
+            leg_id=uuid.uuid4().hex,
             idx=ori_leg.idx,
             leg_size=ori_leg.leg_size,
             dpv=dst_dpv,

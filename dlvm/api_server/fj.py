@@ -201,14 +201,18 @@ def allocate_dpv(leg, group, dvg_name, obt):
     dpvs = []
     batch_count = dpv_search_overhead
     exclude_name_set = set()
-    for ileg in group.legs:
-        assert(ileg.dpv_name not in exclude_name_set)
-        exclude_name_set.add(ileg.dpv_name)
+    if conf.cross_dpv is True:
+        for ileg in group.legs:
+            assert(ileg.dpv_name not in exclude_name_set)
+            exclude_name_set.add(ileg.dpv_name)
     while True:
         if len(dpvs) == 0:
             dpvs = select_dpvs(
                 dvg_name, leg.leg_size, batch_count, 0)
             if len(dpvs) == 0:
+                logger.warning(
+                    'allocate dpv failed, %s %s %d',
+                    leg.fj.fj_name, dvg_name, leg.leg_size)
                 raise NoEnoughDpvError()
         dpv = dpvs.pop()
         if dpv.dpv_name in exclude_name_set:
@@ -368,6 +372,7 @@ def handle_fjs_post(params, args):
     for leg in group.legs:
         if leg.idx == src_idx:
             src_leg = leg
+            break
     assert(src_leg is not None)
     src_leg.fj_role = 'src'
     ori_leg.fj_role = 'ori'
@@ -660,7 +665,7 @@ def do_fj_finish(fj, dlv, obt):
     dvg.free_size += ori_leg.leg_size
     db.session.add(dvg)
     db.session.delete(ori_leg)
-    # do not commit currently, commit with the fj status chagne togetehr
+    # do not commit currently, commit with the fj status change togetehr
 
 
 def handle_fj_finish(params, args):
@@ -716,8 +721,14 @@ fj_delete_parser.add_argument(
     location='json',
 )
 fj_delete_parser.add_argument(
-    'owner',
+    't_owner',
     type=str,
+    required=True,
+    location='json',
+)
+fj_delete_parser.add_argument(
+    't_stage',
+    type=int,
     required=True,
     location='json',
 )
@@ -726,14 +737,15 @@ fj_delete_parser.add_argument(
 def handle_fj_delete(params, args):
     fj_name = params[0]
     t_id = args['t_id']
-    owner = args['owner']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
     fj = FailoverJob \
         .query \
         .with_lockmode('update') \
         .filter_by(fj_name=fj_name) \
         .one()
     dlv_name = fj.dlv_name
-    dlv, obt = dlv_get(dlv_name, t_id, owner)
+    dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
     if fj.status != 'finished':
         return make_body('invalid_fj_status', fj.status), 400
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)

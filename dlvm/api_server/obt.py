@@ -126,6 +126,7 @@ class Obts(Resource):
             handle_obts_post,
         )
 
+
 obt_put_parser = reqparse.RequestParser()
 obt_put_parser.add_argument(
     'action',

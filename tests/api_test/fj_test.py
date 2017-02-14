@@ -122,3 +122,5 @@ class FjTest(unittest.TestCase):
         self.assertEqual(len(data['body']), 1)
         fj = data['body'][0]
         self.assertEqual(fj['fj_name'], 'fj0')
+        self.assertEqual(fj['status'], 'processing')
+        self.assertEqual(fj['dlv_name'], 'dlv0')
