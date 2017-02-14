@@ -362,6 +362,8 @@ def handle_fjs_post(params, args):
         .query \
         .filter_by(leg_id=ori_id) \
         .one()
+    if ori_leg.fj is not None:
+        return make_body('ori_busy'), 400
     ori_idx = ori_leg.idx
     if ori_idx % 2 == 0:
         src_idx = ori_idx + 1
@@ -374,6 +376,8 @@ def handle_fjs_post(params, args):
             src_leg = leg
             break
     assert(src_leg is not None)
+    if src_leg.fj is not None:
+        return make_body('src_busy'), 400
     src_leg.fj_role = 'src'
     ori_leg.fj_role = 'ori'
     src_leg.fj = fj
