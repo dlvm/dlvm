@@ -201,3 +201,22 @@ class FjTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         fj = self.fm.fj_get('fj0')
         self.assertEqual(fj.status, 'finished')
+
+    def test_fj_delete(self):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.thost_create(**fixture_thost)
+        self.fm.dlv_attach('dlv0', 'thost0')
+        self._prepare_fj()
+        self.fm.fj_set_status('fj0', 'finished')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.delete('/fjs/fj0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
