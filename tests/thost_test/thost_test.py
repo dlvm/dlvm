@@ -10,7 +10,7 @@ from dlvm.thost_agent import main, bm_get, \
     snapshot_create, snapshot_delete, \
     remirror, leg_remove
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
-from dlvm.utils.helper import chunks
+from dlvm.utils.helper import chunks, dlv_info_encode
 from dlvm.utils.bitmap import BitMap
 
 
@@ -110,11 +110,12 @@ class RpcFunctionTest(unittest.TestCase):
             'dm_context': dm_context,
             'groups': groups,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        bm_dict = bm_get('dlv0', tran, dlv_info, [], [])
+        bm_dict = bm_get('dlv0', obt, dlv_info, [], [])
         for group in groups:
             legs = group['legs']
             legs.sort(key=lambda x: x['idx'])
@@ -197,11 +198,12 @@ class RpcFunctionTest(unittest.TestCase):
             'dm_context': dm_context,
             'groups': groups,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        dlv_aggregate('dlv0', tran, dlv_info)
+        dlv_aggregate('dlv0', obt, dlv_info)
 
     @patch('dlvm.thost_agent.iscsi_logout')
     @patch('dlvm.thost_agent.DmError')
@@ -249,11 +251,12 @@ class RpcFunctionTest(unittest.TestCase):
         dlv_info = {
             'groups': groups,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        dlv_degregate('dlv0', tran, dlv_info)
+        dlv_degregate('dlv0', obt, dlv_info)
 
     @patch('dlvm.thost_agent.Thread')
     @patch('dlvm.thost_agent.DmError')
@@ -278,11 +281,12 @@ class RpcFunctionTest(unittest.TestCase):
         dlv_info = {
             'dlv_size': 1024*1024*1024,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        dlv_suspend('dlv0', tran, dlv_info)
+        dlv_suspend('dlv0', obt, dlv_info)
 
     @patch('dlvm.thost_agent.Thread')
     @patch('dlvm.thost_agent.DmError')
@@ -318,11 +322,12 @@ class RpcFunctionTest(unittest.TestCase):
             'thin_id': 0,
             'dm_context': dm_context,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        dlv_resume('dlv0', tran, dlv_info)
+        dlv_resume('dlv0', obt, dlv_info)
 
     @patch('dlvm.thost_agent.DmPool')
     @patch('dlvm.thost_agent.thost_verify')
@@ -332,11 +337,11 @@ class RpcFunctionTest(unittest.TestCase):
         dlv_name = 'dlv0'
         thin_id = 1
         ori_thin_id = 0
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        snapshot_create(dlv_name, tran, thin_id, ori_thin_id)
+        snapshot_create(dlv_name, obt, thin_id, ori_thin_id)
 
     @patch('dlvm.thost_agent.DmPool')
     @patch('dlvm.thost_agent.thost_verify')
@@ -345,11 +350,11 @@ class RpcFunctionTest(unittest.TestCase):
     ):
         dlv_name = 'dlv0'
         thin_id = 1
-        tran = {
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        snapshot_delete(dlv_name, tran, thin_id)
+        snapshot_delete(dlv_name, obt, thin_id)
 
     @patch('dlvm.thost_agent.Thread')
     @patch('dlvm.thost_agent.iscsi_login')
@@ -421,7 +426,8 @@ class RpcFunctionTest(unittest.TestCase):
             'dm_context': dm_context,
             'groups': groups,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
@@ -432,7 +438,7 @@ class RpcFunctionTest(unittest.TestCase):
             'leg_size': 16*1024*1024+4*1024*1024,
             'dpv_name': 'dpv4',
         }
-        remirror('dlv0', tran, dlv_info, src_id, dst_leg)
+        remirror('dlv0', obt, dlv_info, src_id, dst_leg)
 
     @patch('dlvm.thost_agent.iscsi_logout')
     @patch('dlvm.thost_agent.DmError')
@@ -480,8 +486,9 @@ class RpcFunctionTest(unittest.TestCase):
         dlv_info = {
             'groups': groups,
         }
-        tran = {
+        dlv_info_encode(dlv_info)
+        obt = {
             'major': 1,
             'minor': 0,
         }
-        leg_remove('dlv0', tran, dlv_info, '001')
+        leg_remove('dlv0', obt, dlv_info, '001')

@@ -11,6 +11,7 @@ from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, \
     ThostError, FjStatusError
+from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
     Leg, FailoverJob
@@ -120,6 +121,7 @@ def get_dlv_info(dlv):
             ileg['leg_size'] = leg.leg_size
             igroup['legs'].append(ileg)
         dlv_info['groups'].append(igroup)
+    return dlv_info
 
 
 def get_fj_legs(fj):
@@ -252,7 +254,7 @@ def do_fj_create(fj, dlv, obt):
     dst_client.leg_create(
         dst_leg.leg_id,
         obt_encode(obt),
-        dst_leg.leg_size,
+        str(dst_leg.leg_size),
         dm_context,
     )
     dst_client.fj_leg_export(
@@ -260,7 +262,7 @@ def do_fj_create(fj, dlv, obt):
         obt_encode(obt),
         fj.fj_name,
         src_leg.dpv_name,
-        dst_leg.leg_size,
+        str(dst_leg.leg_size),
     )
     src_client = DpvClient(src_leg.dpv_name)
     src_client.fj_login(
@@ -270,6 +272,7 @@ def do_fj_create(fj, dlv, obt):
         dst_leg.leg_id,
     )
     dlv_info = get_dlv_info(dlv)
+    dlv_info_encode(dlv_info)
     thost_client = ThostClient(dlv.thost_name)
     try:
         thost_client.dlv_suspend(
@@ -290,7 +293,7 @@ def do_fj_create(fj, dlv, obt):
             fj.fj_name,
             dst_leg.dpv_name,
             dst_leg.leg_id,
-            src_leg.leg_size,
+            str(src_leg.leg_size),
             dm_context,
             bm,
         )
@@ -535,7 +538,7 @@ def do_fj_cancel(fj, dlv, obt):
             obt_encode(obt),
             fj.fj_name,
             dst_leg.leg_id,
-            src_leg.leg_size,
+            str(src_leg.leg_size),
         )
     if dst_leg.dpv is not None and dst_leg.dpv.status == 'available':
         dst_client = DpvClient(dst_leg.dpv_name)
@@ -609,7 +612,7 @@ def do_fj_finish(fj, dlv, obt):
             obt_encode(obt),
             fj.fj_name,
             dst_leg.leg_id,
-            dst_leg.leg_size,
+            str(dst_leg.leg_size),
         )
     if dst_leg.dpv.status == 'available':
         dst_client.fj_leg_unexport(
@@ -633,6 +636,7 @@ def do_fj_finish(fj, dlv, obt):
             d_leg['idx'] = dst_leg.idx
             d_leg['leg_size'] = str(dst_leg.leg_size)
             d_leg['dpv_name'] = dst_leg.dpv_name
+            dlv_info_encode(dlv_info)
             thost_client.remirror(
                 dlv.dlv_name,
                 obt_encode(obt),

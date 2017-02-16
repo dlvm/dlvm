@@ -157,7 +157,7 @@ def do_leg_create(leg_id, leg_size, dm_context):
 def leg_create(leg_id, obt, leg_size, dm_context):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_create(leg_id, leg_size, dm_context)
+        do_leg_create(leg_id, int(leg_size), dm_context)
 
 
 def do_leg_delete(leg_id):
@@ -232,7 +232,7 @@ def fj_leg_export(
         leg_id, obt, fj_name, src_name, leg_size):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_fj_leg_export(leg_id, fj_name, src_name, leg_size)
+        do_fj_leg_export(leg_id, fj_name, src_name, int(leg_size))
 
 
 def do_fj_leg_unexport(leg_id, fj_name, src_name):
@@ -356,7 +356,7 @@ def fj_mirror_start(
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_mirror_start(
-            leg_id, fj_name, dst_name, dst_id, leg_size, dmc, bm)
+            leg_id, fj_name, dst_name, dst_id, int(leg_size), dmc, bm)
 
 
 def do_fj_mirror_stop(leg_id, fj_name, dst_id, leg_size):
@@ -386,7 +386,7 @@ def fj_mirror_stop(
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
         do_fj_mirror_stop(
-            leg_id, fj_name, dst_id, leg_size)
+            leg_id, fj_name, dst_id, int(leg_size))
 
 
 def do_fj_mirror_status(leg_id):

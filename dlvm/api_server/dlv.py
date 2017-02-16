@@ -15,6 +15,7 @@ from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     ObtConflictError, DlvStatusError, HasFjError, \
     ThostError, SnapNameError, SnapshotStatusError
+from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
@@ -233,7 +234,7 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
             client.leg_create(
                 leg.leg_id,
                 obt_encode(obt),
-                leg.leg_size,
+                str(leg.leg_size),
                 dm_context,
             )
         except socket.error, socket.timeout:
@@ -602,6 +603,7 @@ def do_attach(dlv, obt):
                     logger.error('dpv rpc failed: %s', e)
                     continue
         dlv_info['groups'].append(igroup)
+    dlv_info_encode(dlv_info)
 
     try:
         client = WrapperRpcClient(
@@ -693,6 +695,7 @@ def do_detach(dlv, obt):
             ileg['idx'] = leg.idx
             igroup['legs'].append(ileg)
         dlv_info['groups'].append(igroup)
+    dlv_info_encode(dlv_info)
 
     try:
         client = WrapperRpcClient(

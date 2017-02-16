@@ -79,7 +79,7 @@ class RpcFunctionTest(unittest.TestCase):
             'major': 1,
             'minor': 0,
         }
-        leg_create(leg_id, obt, leg_size, dm_context)
+        leg_create(leg_id, obt, str(leg_size), dm_context)
 
     @patch('dlvm.dpv_agent.iscsi_delete')
     @patch('dlvm.dpv_agent.lv_remove')
@@ -160,7 +160,7 @@ class RpcFunctionTest(unittest.TestCase):
             'major': 1,
             'minor': 0,
         }
-        fj_leg_export(leg_id, obt, fj_name, src_name, leg_size)
+        fj_leg_export(leg_id, obt, fj_name, src_name, str(leg_size))
 
     @patch('dlvm.dpv_agent.iscsi_unexport')
     @patch('dlvm.dpv_agent.iscsi_delete')
@@ -239,7 +239,7 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         fj_mirror_start(
-            leg_id, obt, fj_name, dst_name, dst_id, leg_size, dmc, bm)
+            leg_id, obt, fj_name, dst_name, dst_id, str(leg_size), dmc, bm)
 
     @patch('dlvm.dpv_agent.DmLinear')
     @patch('dlvm.dpv_agent.lv_remove')
@@ -262,7 +262,7 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         fj_mirror_stop(
-            leg_id, obt, fj_name, dst_id, leg_size)
+            leg_id, obt, fj_name, dst_id, str(leg_size))
 
     @patch('dlvm.dpv_agent.DmMirror')
     @patch('dlvm.dpv_agent.DmBasic')
