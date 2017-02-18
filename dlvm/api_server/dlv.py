@@ -846,8 +846,50 @@ def handle_dlv_put(params, args):
     else:
         assert(False)
 
+leg_fields = OrderedDict()
+leg_fields['leg_id'] = fields.String
+leg_fields['idx'] = fields.Integer
+leg_fields['leg_size'] = fields.Integer
+leg_fields['dpv_name'] = fields.String
+leg_fields['fj_role'] = fields.String
+leg_fields['fj_name'] = fields.String
+group_fields = OrderedDict()
+group_fields['group_id'] = fields.String
+group_fields['idx'] = fields.Integer
+group_fields['group_size'] = fields.Integer
+group_fields['legs'] = fields.List(fields.Nested(leg_fields))
+dlv_fields = OrderedDict()
+dlv_fields['dlv_name'] = fields.String
+dlv_fields['dlv_size'] = fields.Integer
+dlv_fields['data_size'] = fields.Integer
+dlv_fields['partition_count'] = fields.Integer
+dlv_fields['status'] = fields.String
+dlv_fields['timestamp'] = fields.String
+dlv_fields['dvg_name'] = fields.String
+dlv_fields['thost_name'] = fields.String
+dlv_fields['active_snap_name'] = fields.String
+dlv_fields['t_id'] = fields.String
+dlv_fields['groups'] = fields.List(fields.Nested(group_fields))
+
+
+def handle_dlv_get(params, args):
+    dlv_name = params[0]
+    dlv = DistributeLogicalVolume \
+        .query \
+        .filter_by(dlv_name=dlv_name) \
+        .one()
+    body = marshal(dlv, dlv_fields)
+    return body, 200
+
 
 class Dlv(Resource):
+
+    def get(self, dlv_name):
+        return handle_dlvm_request(
+            [dlv_name],
+            None,
+            handle_dlv_get,
+        )
 
     def put(self, dlv_name):
         return handle_dlvm_request(

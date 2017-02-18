@@ -7,9 +7,25 @@ from xmlrpclib import Transport, ServerProxy
 
 class WrapperRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
-    def __init__(self, listener, port):
+    def __init__(self, listener, port, logger):
+        self.logger = logger
         return SimpleXMLRPCServer.__init__(
             self, (listener, port), allow_none=True)
+
+    def register_function(self, func):
+        def wrapper_func(*args, **kwargs):
+            try:
+                ret = func(*args, **kwargs)
+            except:
+                self.logger.error(
+                    'rpc failed: %s', func.__name__,
+                    exc_info=True,
+                )
+                raise
+            return ret
+        wrapper_func.__name__ = func.__name__
+        return SimpleXMLRPCServer.register_function(
+            self, wrapper_func)
 
 
 class TimeoutTransport(Transport):

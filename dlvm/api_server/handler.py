@@ -33,7 +33,8 @@ class DpvClient(object):
             func = getattr(self.client, name)
             try:
                 logger.info(
-                    'dpv call: %s %s %s',
+                    'dpv call: %s %s %s %s',
+                    name,
                     self.dpv_name,
                     args,
                     kwargs,
@@ -73,7 +74,8 @@ class ThostClient(object):
             func = getattr(self.client, name)
             try:
                 logger.info(
-                    'thost call: %s %s %s',
+                    'thost call: %s %s %s %s',
+                    name,
                     self.thost_name,
                     args,
                     kwargs,

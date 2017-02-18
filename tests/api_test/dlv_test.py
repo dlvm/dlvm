@@ -344,3 +344,15 @@ class DlvTest(unittest.TestCase):
         data = json.dumps(data)
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.dlv.WrapperRpcClient')
+    def test_dlv_get(self, WrapperRpcClient):
+        client_mock = Mock()
+        WrapperRpcClient.return_value = client_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_dlv('detached')
+        resp = self.client.get('/dlvs/dlv0')
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        body = data['body']
+        self.assertEqual(body['dlv_name'], 'dlv0')

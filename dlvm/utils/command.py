@@ -143,10 +143,8 @@ def dm_reload(name, table):
         ctx.conf.dmsetup_path,
         'reload',
         name,
-        '--table',
-        table,
     ]
-    run_cmd(cmd)
+    run_cmd(cmd, inp=table)
 
 
 def dm_status(name):

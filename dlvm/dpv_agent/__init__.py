@@ -302,6 +302,7 @@ def do_fj_mirror_start(
     dm_type = dm.get_type()
     if dm_type == 'raid':
         return
+    logger.info('bm=[%s]', bm)
     bm = BitMap.fromhexstring(bm)
     file_name = 'dlvm-{fj_name}'.format(fj_name=fj_name)
     file_path = os.path.join(conf.tmp_dir, file_name)
@@ -355,6 +356,7 @@ def fj_mirror_start(
         leg_size, dmc, bm):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
+        logger.info('leg_size: [%s]', leg_size)
         do_fj_mirror_start(
             leg_id, fj_name, dst_name, dst_id, int(leg_size), dmc, bm)
 
@@ -416,7 +418,7 @@ def main():
     loginit()
     context_init(conf, logger)
     queue_init()
-    s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port)
+    s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port, logger)
     s.register_function(ping)
     s.register_function(get_dpv_info)
     s.register_function(leg_create)

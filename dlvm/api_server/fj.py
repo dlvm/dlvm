@@ -14,7 +14,7 @@ from dlvm.utils.error import NoEnoughDpvError, DpvError, \
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
-    Leg, FailoverJob
+    Leg, Snapshot, FailoverJob
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, ThostClient, \
@@ -103,6 +103,12 @@ def get_dlv_info(dlv):
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
     dlv_info['data_size'] = dlv.data_size
+    snapshot = Snapshot \
+        .query \
+        .filter_by(snap_name=dlv.active_snap_name) \
+        .with_entities(Snapshot.thin_id) \
+        .one()
+    dlv_info['thin_id'] = snapshot.thin_id
     dm_context = get_dm_context()
     dm_context['stripe_number'] = dlv.partition_count
     dlv_info['dm_context'] = dm_context
@@ -268,6 +274,7 @@ def do_fj_create(fj, dlv, obt):
     src_client.fj_login(
         src_leg.leg_id,
         obt_encode(obt),
+        fj.fj_name,
         dst_leg.dpv_name,
         dst_leg.leg_id,
     )
@@ -280,13 +287,22 @@ def do_fj_create(fj, dlv, obt):
             obt_encode(obt),
             dlv_info,
         )
-        bm = thost_client.bm_get(
+        bm_dict = thost_client.bm_get(
             dlv.dlv_name,
             obt_encode(obt),
             dlv_info,
             'all',
             ori_leg.leg_id,
         )
+        if ori_leg.idx < src_leg.idx:
+            leg0 = ori_leg
+            leg1 = src_leg
+        else:
+            leg0 = src_leg
+            leg1 = ori_leg
+        key = '{leg0_id}-{leg1_id}'.format(
+            leg0_id=leg0.leg_id, leg1_id=leg1.leg_id)
+        bm = bm_dict[key]
         src_client.fj_mirror_start(
             src_leg.leg_id,
             obt_encode(obt),
@@ -298,7 +314,7 @@ def do_fj_create(fj, dlv, obt):
             bm,
         )
     finally:
-        thost_client.resume_dlv(
+        thost_client.dlv_resume(
             dlv.dlv_name,
             obt_encode(obt),
             dlv_info,

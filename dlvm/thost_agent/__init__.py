@@ -889,7 +889,7 @@ def main():
     loginit()
     context_init(conf, logger)
     queue_init()
-    s = WrapperRpcServer(conf.thost_listener, conf.thost_port)
+    s = WrapperRpcServer(conf.thost_listener, conf.thost_port, logger)
     s.register_function(ping)
     s.register_function(bm_get)
     s.register_function(dlv_aggregate)
