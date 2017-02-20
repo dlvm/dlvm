@@ -240,9 +240,8 @@ def do_fj_leg_unexport(leg_id, fj_name, src_name):
     target_name = encode_initiator_name(layer2_name)
     initiator_name = encode_initiator_name(src_name)
     iscsi_unexport(target_name, initiator_name)
+    iscsi_delete(target_name, layer2_name)
     dm = DmLinear(layer2_name)
-    layer2_path = dm.get_path()
-    iscsi_delete(target_name, layer2_path)
     dm.remove()
 
 

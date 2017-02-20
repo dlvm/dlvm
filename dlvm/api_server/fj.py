@@ -461,10 +461,7 @@ def get_process_status(fj):
             break
     assert(src_leg is not None)
     src_client = DpvClient(src_leg.dpv_name)
-    ret = src_client.get_fj_process_status(
-        fj.fj_name,
-        fj.dlv_name,
-    )
+    ret = src_client.fj_mirror_status(src_leg.leg_id)
     return ret
 
 
@@ -475,7 +472,7 @@ def handle_fj_get(params, args):
         .with_lockmode('update') \
         .filter_by(fj_name=fj_name) \
         .one()
-    if args['with_process'] is 'True':
+    if args['with_process'] == 'True':
         process = get_process_status(fj)
     else:
         process = ''
@@ -546,6 +543,11 @@ FJ_CAN_CANCEL_STATUS = (
 def do_fj_cancel(fj, dlv, obt):
     if fj.status not in FJ_CAN_CANCEL_STATUS:
         raise FjStatusError(fj.status)
+    fj.status = 'canceling'
+    fj.timestamp = datetime.datetime.utcnow()
+    db.session.add(fj)
+    obt_refresh(obt)
+    db.session.commit()
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     if src_leg.dpv.status == 'available':
         src_client = DpvClient(src_leg.dpv_name)
@@ -596,7 +598,7 @@ def handle_fj_cancel(params, args):
         db.session.commit()
         return make_body('thost_failed', e.message), 500
     except DpvError as e:
-        fj.status = 'cancel_faield'
+        fj.status = 'cancel_failed'
         fj.timestamp = datetime.datetime.utcnow()
         obt_refresh(obt)
         db.session.commit()
@@ -753,6 +755,12 @@ fj_delete_parser.add_argument(
 )
 
 
+FJ_CAN_DELETE_STATUS = (
+    'canceled',
+    'finished',
+)
+
+
 def handle_fj_delete(params, args):
     fj_name = params[0]
     t_id = args['t_id']
@@ -765,7 +773,7 @@ def handle_fj_delete(params, args):
         .one()
     dlv_name = fj.dlv_name
     dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
-    if fj.status != 'finished':
+    if fj.status not in FJ_CAN_DELETE_STATUS:
         return make_body('invalid_fj_status', fj.status), 400
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     src_leg.role = None
