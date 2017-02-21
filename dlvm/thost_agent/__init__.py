@@ -802,7 +802,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
         table = [{
             'start': 0,
             'length': mirror_data_sectors,
-            'dpv_path': src_data_path,
+            'dev_path': src_data_path,
             'offset': 0,
         }]
         dm.reload(table)

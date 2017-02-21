@@ -708,13 +708,24 @@ def iscsi_unexport(target_name, initiator_name):
         run_cmd(cmd)
 
 
-def run_dd(in_path, out_path):
+def run_dd(in_path, out_path, bs=None, count=None, seek=None, skip=None):
     inp = 'if={in_path}'.format(in_path=in_path)
     outp = 'of={out_path}'.format(out_path=out_path)
     cmd = [
         ctx.conf.dd_path,
         inp,
         outp,
-        'bs=1M',
     ]
+    if bs is not None:
+        bs_param = 'bs={bs}'.format(bs=bs)
+        cmd.append(bs_param)
+    if count is not None:
+        count_param = 'count={count}'.format(count=count)
+        cmd.append(count_param)
+    if seek is not None:
+        seek_param = 'seek={seek}'.format(seek=seek)
+        cmd.append(seek_param)
+    if skip is not None:
+        skip_param = 'skip={skip}'.format(skip=skip)
+        cmd.append(skip_param)
     run_cmd(cmd)

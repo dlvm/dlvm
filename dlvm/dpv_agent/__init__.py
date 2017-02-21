@@ -148,6 +148,13 @@ def do_leg_create(leg_id, leg_size, dm_context):
         bm,
     )
     run_dd(file_path, layer2_path)
+    run_dd(
+        '/dev/zero',
+        layer2_path,
+        bs=thin_block_size,
+        seek=mirror_meta_blocks,
+        count=1,
+    )
     os.remove(file_path)
 
     target_name = encode_target_name(leg_id)

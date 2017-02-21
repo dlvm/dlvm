@@ -663,14 +663,14 @@ def do_fj_finish(fj, dlv, obt):
                 d_leg,
             )
         if ori_leg.dpv.status == 'available':
-            ori_client.unexport_leg(
+            ori_client.leg_unexport(
                 ori_leg.leg_id,
                 obt_encode(obt),
                 dlv.dlv_name,
             )
 
     if ori_leg.dpv.status == 'available':
-        ori_client.delete_leg(
+        ori_client.leg_delete(
             ori_leg.leg_id,
             obt_encode(obt),
         )
@@ -778,10 +778,16 @@ def handle_fj_delete(params, args):
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     src_leg.role = None
     db.session.add(src_leg)
-    dst_leg.role = None
-    db.session.add(dst_leg)
-    assert(ori_leg.dpv is None)
-    db.session.delete(ori_leg)
+    if fj.status == 'finished':
+        assert(ori_leg.dpv is None)
+        db.session.delete(ori_leg)
+        dst_leg.role = None
+        db.session.add(dst_leg)
+    else:
+        assert(dst_leg.dpv is None)
+        db.session.delete(dst_leg)
+        ori_leg.role = None
+        db.session.add(ori_leg)
     db.session.delete(fj)
     obt_refresh(obt)
     db.session.commit()
