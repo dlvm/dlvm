@@ -173,10 +173,73 @@ def handle_dpv_delete(params, args):
         return make_body('success'), 200
 
 
+dpv_put_parser = reqparse.RequestParser()
+dpv_put_parser.add_argument(
+    'action',
+    type=str,
+    choices=('set_available', 'set_unavailable'),
+    required=True,
+    location='json',
+)
+dpv_put_parser.add_argument(
+    't_id',
+    type=str,
+    location='json',
+)
+dpv_put_parser.add_argument(
+    't_owner',
+    type=str,
+    location='json',
+)
+dpv_put_parser.add_argument(
+    't_stage',
+    type=int,
+    location='json',
+)
+
+
+def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
+    pass
+
+
+def handle_dpv_unavailable(dpv_name):
+    dpv = DistributePhysicalVolume \
+        .query \
+        .filter_by(dpv_name=dpv_name) \
+        .one()
+    dpv.status = 'unavailable'
+    db.session.add(dpv)
+    db.session.commit()
+    return make_body('success'), 200
+
+
+def handle_dpv_put(params, args):
+    dpv_name = params[0]
+    if args['action'] == 'set_available':
+        t_id = args.get('t_id')
+        if t_id is None:
+            return make_body('no_t_id'), 400
+        t_owner = args.get('t_owner')
+        if t_owner is None:
+            return make_body('no_t_owner'), 400
+        t_stage = args.get('t_stage')
+        if t_stage is None:
+            return make_body('no_t_stage'), 400
+        return handle_dpv_availalbe(
+            dpv_name, t_id, t_owner, t_stage)
+    elif args['action'] == 'set_unavailable':
+        return handle_dpv_unavailable(dpv_name)
+    else:
+        assert(False)
+
+
 class Dpv(Resource):
 
     def get(self, dpv_name):
         return handle_dlvm_request([dpv_name], None, handle_dpv_get)
+
+    def put(self, dpv_name):
+        return handle_dlvm_request([dpv_name], dpv_put_parser, handle_dpv_put)
 
     def delete(self, dpv_name):
         return handle_dlvm_request([dpv_name], None, handle_dpv_delete)

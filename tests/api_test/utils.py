@@ -291,3 +291,11 @@ class FixtureManager(object):
             .filter_by(fj_name=fj_name) \
             .one()
         return fj
+
+    @app_context
+    def dpv_get(self, dpv_name):
+        dpv = DistributePhysicalVolume \
+            .query \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+        return dpv

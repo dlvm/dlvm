@@ -10,6 +10,32 @@ from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
     Snapshot, Group, Leg
+from utils import FixtureManager
+
+timestamp = datetime.datetime(2016, 7, 21, 23, 58, 59)
+fixture_dpvs = [
+    {
+        'dpv_name': 'dpv0',
+        'total_size': 512*1024*1024*1024,
+        'free_size': 512*1024*1024*1024,
+        'status': 'available',
+        'timestamp': timestamp,
+    },
+    {
+        'dpv_name': 'dpv1',
+        'total_size': 512*1024*1024*1024,
+        'free_size': 512*1024*1024*1024,
+        'status': 'available',
+        'timestamp': timestamp,
+    },
+    {
+        'dpv_name': 'dpv2',
+        'total_size': 512*1024*1024*1024,
+        'free_size': 512*1024*1024*1024,
+        'status': 'available',
+        'timestamp': timestamp,
+    },
+]
 
 
 class DpvTest(unittest.TestCase):
@@ -27,6 +53,7 @@ class DpvTest(unittest.TestCase):
             db.create_all()
         self.app = app
         self.client = app.test_client()
+        self.fm = FixtureManager(app)
 
     def tearDown(self):
         if os.path.isfile(self.db_path):
@@ -181,3 +208,18 @@ class DpvTest(unittest.TestCase):
         self._insert_dpvs()
         resp = self.client.delete('/dpvs/dpv0')
         self.assertEqual(resp.status_code, 200)
+
+    def test_dpv_unavailable(self):
+        for dpv in fixture_dpvs:
+            self.fm.dpv_create(**dpv)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'set_unavailable',
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/dpvs/dpv0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        dpv = self.fm.dpv_get('dpv0')
+        self.assertEqual(dpv.status, 'unavailable')
