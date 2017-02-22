@@ -146,7 +146,12 @@ def get_fj_legs(fj):
     assert(src_leg is not None)
     assert(dst_leg is not None)
     assert(ori_leg is not None)
-    assert(src_leg.group_id == ori_leg.group_id)
+    if ori_leg.group_id is not None:
+        assert(dst_leg.group_id is None)
+        assert(src_leg.group_id == ori_leg.group_id)
+    if dst_leg.group_id is not None:
+        assert(ori_leg.group_id is None)
+        assert(src_leg.group_id == dst_leg.group_id)
     return src_leg, dst_leg, ori_leg
 
 
@@ -616,10 +621,17 @@ CAN_FINISH_STATUS = (
     'finish_failed',
 )
 
+DLV_FINISH_STATUS = (
+    'attached',
+    'detached',
+)
+
 
 def do_fj_finish(fj, dlv, obt):
     if fj.status not in CAN_FINISH_STATUS:
         raise FjStatusError(fj.status)
+    if dlv.status not in DLV_FINISH_STATUS:
+        raise FjStatusError('dlv:%s' % dlv.status)
     src_leg, dst_leg, ori_leg = get_fj_legs(fj)
     src_client = DpvClient(src_leg.dpv_name)
     dst_client = DpvClient(dst_leg.dpv_name)
@@ -675,17 +687,12 @@ def do_fj_finish(fj, dlv, obt):
             obt_encode(obt),
         )
 
-    ori_dpv = ori_leg.dpv
-    ori_dpv.free_size += ori_leg.leg_size
-    db.session.add(ori_dpv)
-    dvg = DistributeVolumeGroup \
-        .query \
-        .with_lockmode('update') \
-        .filter_by(dvg_name=dlv.dvg_name) \
-        .one()
-    dvg.free_size += ori_leg.leg_size
-    db.session.add(dvg)
-    db.session.delete(ori_leg)
+    if ori_leg.dpv is not None:
+        free_dpv(ori_leg, fj.dlv_name, fj.dlv.dvg_name, obt)
+    dst_leg.group_id = ori_leg.group_id
+    db.session.add(dst_leg)
+    ori_leg.group_id = None
+    db.session.add(ori_leg)
     # do not commit currently, commit with the fj status change togetehr
 
 

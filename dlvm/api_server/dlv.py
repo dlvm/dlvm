@@ -782,6 +782,7 @@ def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
         return make_body('invalid_dlv_status', e.message), 400
     else:
         dlv.status = 'detached'
+        dlv.thost_name = None
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         obt_refresh(obt)
