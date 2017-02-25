@@ -7,8 +7,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
+from dlvm.utils.error import ObtConflictError, DpvError
 from modules import db, DistributePhysicalVolume
-from handler import handle_dlvm_request, make_body, check_limit
+from handler import handle_dlvm_request, make_body, check_limit, \
+    obt_get, obt_refresh, obt_encode, DpvClient
 
 dpvs_get_parser = reqparse.RequestParser()
 dpvs_get_parser.add_argument(
@@ -199,7 +201,38 @@ dpv_put_parser.add_argument(
 
 
 def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
-    pass
+    obt = obt_get(t_id, t_owner, t_stage)
+    dpv = DistributePhysicalVolume \
+        .query \
+        .with_lockmode('update') \
+        .filter_by(dpv_name=dpv_name) \
+        .one()
+    dpv_info = []
+    for leg in dpv.legs:
+        dlv = leg.group.dlv
+        if dlv.obt is not None:
+            raise ObtConflictError()
+        else:
+            dlv.obt = obt
+            db.session.add(dlv)
+        leg_info = {
+            'leg_id': leg.leg_id,
+            'thost_name': dlv.thost_name,
+        }
+        dpv_info.append(leg_info)
+    obt_refresh(obt)
+    db.session.commit()
+    dpv_client = DpvClient(dpv_name)
+    try:
+        dpv_client.dpv_available(dpv_info, obt_encode(obt))
+    except DpvError as e:
+        return make_body('dpv_failed', e.message), 500
+    else:
+        obt_refresh(obt)
+        dpv.status = 'available'
+        db.session.add(dpv)
+        db.session.commit()
+        return make_body('success'), 200
 
 
 def handle_dpv_unavailable(dpv_name):

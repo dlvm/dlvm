@@ -37,6 +37,13 @@ fixture_dpvs = [
     },
 ]
 
+fixture_obt = {
+    't_id': 't0',
+    't_owner': 't_owner0',
+    't_stage': 0,
+    'timestamp': timestamp,
+}
+
 
 class DpvTest(unittest.TestCase):
 
@@ -223,3 +230,24 @@ class DpvTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         dpv = self.fm.dpv_get('dpv0')
         self.assertEqual(dpv.status, 'unavailable')
+
+    @patch('dlvm.api_server.dpv.DpvClient')
+    def test_dpv_available(self, DpvClient):
+        for dpv in fixture_dpvs:
+            self.fm.dpv_create(**dpv)
+        self.fm.dpv_set_status('dpv0', 'unavailable')
+        self.fm.obt_create(**fixture_obt)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'set_available',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/dpvs/dpv0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        dpv = self.fm.dpv_get('dpv0')
+        self.assertEqual(dpv.status, 'available')

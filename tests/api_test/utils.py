@@ -299,3 +299,13 @@ class FixtureManager(object):
             .filter_by(dpv_name=dpv_name) \
             .one()
         return dpv
+
+    @app_context
+    def dpv_set_status(self, dpv_name, status):
+        dpv = DistributePhysicalVolume \
+            .query \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+        dpv.status = status
+        db.session.add(dpv)
+        db.session.commit()
