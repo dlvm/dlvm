@@ -191,28 +191,28 @@ def leg_delete(leg_id, obt):
         do_leg_delete(leg_id)
 
 
-def do_leg_export(leg_id, host_name):
+def do_leg_export(leg_id, thost_name):
     target_name = encode_target_name(leg_id)
-    initiator_name = encode_initiator_name(host_name)
+    initiator_name = encode_initiator_name(thost_name)
     iscsi_export(target_name, initiator_name)
 
 
-def leg_export(leg_id, obt, host_name):
+def leg_export(leg_id, obt, thost_name):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_export(leg_id, host_name)
+        do_leg_export(leg_id, thost_name)
 
 
-def do_leg_unexport(leg_id, host_name):
+def do_leg_unexport(leg_id, thost_name):
     target_name = encode_target_name(leg_id)
-    initiator_name = encode_initiator_name(host_name)
+    initiator_name = encode_initiator_name(thost_name)
     iscsi_unexport(target_name, initiator_name)
 
 
-def leg_unexport(leg_id, obt, host_name):
+def leg_unexport(leg_id, obt, thost_name):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_unexport(leg_id, host_name)
+        do_leg_unexport(leg_id, thost_name)
 
 
 def do_fj_leg_export(leg_id, fj_name, src_name, leg_size):
@@ -420,6 +420,27 @@ def fj_mirror_status(leg_id):
         return do_fj_mirror_status(leg_id)
 
 
+def release_unused(leg_id_set, target_name_set):
+    pass
+
+
+def dpv_available(dpv_info, obt):
+    leg_id_set = set()
+    target_name_set = set()
+    for leg_info in dpv_info:
+        leg_id = leg_info['leg_id']
+        leg_size = leg_info['leg_size']
+        dm_context = leg_info['dm_context']
+        thost_name = leg_info['thost_name']
+        with RpcLock(leg_id):
+            do_leg_create(leg_id, int(leg_size), dm_context)
+            if thost_name is not None:
+                do_leg_export(leg_id, thost_name)
+        leg_id_set.add(leg_id)
+        target_name_set.add(encode_target_name(leg_id))
+    release_unused(leg_id_set, target_name_set)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -427,6 +448,7 @@ def main():
     s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port, logger)
     s.register_function(ping)
     s.register_function(get_dpv_info)
+    s.register_function(dpv_available)
     s.register_function(leg_create)
     s.register_function(leg_delete)
     s.register_function(leg_export)
