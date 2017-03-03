@@ -25,6 +25,7 @@ setup(
         'Flask-SQLAlchemy>=2.1',
         'PyYAML>=3.12',
         'SQLAlchemy>=1.1.3',
+        'psycopg2>=2.7',
     ],
     classifiers=(
         'License :: OSI Approved :: MIT License',
