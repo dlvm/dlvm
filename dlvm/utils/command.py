@@ -31,19 +31,47 @@ class CmdResult(object):
         self.rcode = rcode
 
 
+class CmdPath(object):
+
+    default_paths = [
+        '/bin', '/usr/bin', '/usr/local/bin',
+        '/sbin', '/usr/sbin', '/usr/local/sbin',
+    ]
+
+    def __init__(self, paths):
+        self.paths = []
+        for path in paths:
+            self.paths.append(path)
+        for path in self.default_paths:
+            self.paths.append(path)
+        self.path_dict = {}
+
+    def get_path(self, name):
+        if name in self.path_dict:
+            return self.path_dict[name]
+        for path in self.paths:
+            full_path = os.path.join(path, name)
+            if os.path.exists(full_path):
+                self.path_dict[name] = full_path
+                return full_path
+        raise Exception('unknown cmd: %s %s' % (name, self.paths))
+
+
 class Context(object):
 
-    def __init__(self, conf, logger):
+    def __init__(self, conf, logger, cp):
         self.conf = conf
         self.logger = logger
+        self.cp = cp
 
 
-ctx = Context(None, None)
+ctx = Context(None, None, None)
 
 
 def context_init(conf, logger):
     ctx.conf = conf
     ctx.logger = logger
+    ctx.cp = CmdPath(conf.cmd_paths)
 
 
 def run_cmd(cmd, inp=None, accept_error=False):
@@ -66,14 +94,14 @@ def dm_get_path(name):
 
 def dm_create(name, table):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'status',
         name,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.conf.dmsetup_path,
+            ctx.cp.get_path('dmsetup'),
             'create',
             name,
         ]
@@ -85,14 +113,14 @@ def dm_create(name, table):
 
 def dm_remove(name):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'status',
         name,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode == 0:
         cmd = [
-            ctx.conf.dmsetup_path,
+            ctx.cp.get_path('dmsetup'),
             'remove',
             name,
         ]
@@ -101,7 +129,7 @@ def dm_remove(name):
 
 def dm_message(name, message):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'message',
         name,
         '0',
@@ -112,7 +140,7 @@ def dm_message(name, message):
 
 def dm_wait(name, event_number):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'wait',
         name,
         event_number,
@@ -122,7 +150,7 @@ def dm_wait(name, event_number):
 
 def dm_suspend(name):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'suspend',
         name,
     ]
@@ -131,7 +159,7 @@ def dm_suspend(name):
 
 def dm_resume(name):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'resume',
         name,
     ]
@@ -140,7 +168,7 @@ def dm_resume(name):
 
 def dm_reload(name, table):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'reload',
         name,
     ]
@@ -149,7 +177,7 @@ def dm_reload(name, table):
 
 def dm_status(name):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'status',
         name,
     ]
@@ -159,7 +187,7 @@ def dm_status(name):
 
 def dm_info(name):
     cmd = [
-        ctx.conf.dmsetup_path,
+        ctx.cp.get_path('dmsetup'),
         'info',
         name,
     ]
@@ -387,14 +415,14 @@ def lv_get_path(lv_name, vg_name):
 def lv_create(lv_name, lv_size, vg_name):
     lv_path = lv_get_path(lv_name, vg_name)
     cmd = [
-        ctx.conf.lvm_path,
+        ctx.cp.get_path('lvm'),
         'lvs',
         lv_path,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.conf.lvm_path,
+            ctx.cp.get_path('lvm'),
             'lvcreate',
             '-n', lv_name,
             '-L', str(lv_size)+'B',
@@ -407,14 +435,14 @@ def lv_create(lv_name, lv_size, vg_name):
 def lv_remove(lv_name, vg_name):
     lv_path = lv_get_path(lv_name, vg_name)
     cmd = [
-        ctx.conf.lvm_path,
+        ctx.cp.get_path('lvm'),
         'lvs',
         lv_path,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode == 0:
         cmd = [
-            ctx.conf.lvm_path,
+            ctx.cp.get_path('lvm'),
             'lvremove',
             '-f',
             lv_path,
@@ -424,7 +452,8 @@ def lv_remove(lv_name, vg_name):
 
 def vg_get_size(vg_name):
     cmd = [
-        ctx.conf.lvm_path, 'vgs',
+        ctx.cp.get_path('lvm'),
+        'vgs',
         '-o', 'vg_size,vg_free',
         '--units', 'b',
         '--nosuffix', '--noheadings',
@@ -439,7 +468,7 @@ def vg_get_size(vg_name):
 
 def iscsi_get_context(target_name, iscsi_ip_port):
     cmd = [
-        ctx.conf.iscsiadm_path,
+        ctx.cp.get_path('iscsiadm'),
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
@@ -447,14 +476,14 @@ def iscsi_get_context(target_name, iscsi_ip_port):
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.conf.iscsiadm_path,
+            ctx.cp.get_path('iscsiadm'),
             '-m', 'discovery',
             '-t', 'sendtargets',
             '-p', iscsi_ip_port,
         ]
         run_cmd(cmd)
         cmd = [
-            ctx.conf.iscsiadm_path,
+            ctx.cp.get_path('iscsiadm'),
             '-m', 'node',
             '-o', 'show',
             '-T', target_name,
@@ -500,7 +529,7 @@ def iscsi_login(target_name, dpv_name):
     if os.path.exists(iscsi_path):
         return iscsi_path
     cmd = [
-        ctx.conf.iscsiadm_path,
+        ctx.cp.get_path('iscsiadm'),
         '-m', 'node',
         '--login',
         '-T', target_name,
@@ -514,7 +543,7 @@ def iscsi_login(target_name, dpv_name):
 def iscsi_logout(target_name):
     # iscsiadm -m node -o show -T target_name
     cmd = [
-        ctx.conf.iscsiadm_path,
+        ctx.cp.get_path('iscsiadm'),
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
@@ -526,7 +555,7 @@ def iscsi_logout(target_name):
     iscsi_path = iscsi_get_path(target_name, context)
     if os.path.exists(iscsi_path):
         cmd = [
-            ctx.conf.iscsiadm_path,
+            ctx.cp.get_path('iscsiadm'),
             '-m', 'node',
             '--logout',
             '-T', target_name,
@@ -534,7 +563,7 @@ def iscsi_logout(target_name):
         run_cmd(cmd)
     # iscsiadm -m node -T target_name -o delete
     cmd = [
-        ctx.conf.iscsiadm_path,
+        ctx.cp.get_path('iscsiadm'),
         '-m', 'node',
         '-T', target_name,
         '-o', 'delete',
@@ -546,7 +575,7 @@ def iscsi_create(target_name, dev_name, dev_path):
     backstore_path = '/backstores/block/{dev_name}'.format(
         dev_name=dev_name)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         backstore_path,
         'ls',
     ]
@@ -557,7 +586,7 @@ def iscsi_create(target_name, dev_name, dev_path):
         name = 'name={dev_name}'.format(
             dev_name=dev_name)
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             '/backstores/block',
             'create',
             dev,
@@ -568,14 +597,14 @@ def iscsi_create(target_name, dev_name, dev_path):
     target_path = '/iscsi/{target_name}'.format(
         target_name=target_name)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         target_path,
         'ls',
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             '/iscsi',
             'create',
             target_name,
@@ -585,7 +614,7 @@ def iscsi_create(target_name, dev_name, dev_path):
     lun0 = '{target_path}/tpg1/luns/lun0'.format(
         target_path=target_path)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         lun0,
         'ls',
     ]
@@ -594,7 +623,7 @@ def iscsi_create(target_name, dev_name, dev_path):
         lun_path = '{target_path}/tpg1/luns'.format(
             target_path=target_path)
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             lun_path,
             'create',
             backstore_path,
@@ -606,14 +635,14 @@ def iscsi_delete(target_name, dev_name):
     target_path = '/iscsi/{target_name}'.format(
         target_name=target_name)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         target_path,
         'ls',
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode == 0:
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             '/iscsi',
             'delete',
             target_name,
@@ -623,14 +652,14 @@ def iscsi_delete(target_name, dev_name):
     backstore_path = '/backstores/block/{dev_name}'.format(
         dev_name=dev_name)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         backstore_path,
         'ls',
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode == 0:
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             '/backstores/block',
             'delete',
             dev_name,
@@ -647,14 +676,14 @@ def iscsi_export(target_name, initiator_name):
         initiator_name=initiator_name,
     )
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         initiator_path,
         'ls',
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             acl_path,
             'create',
             initiator_name,
@@ -664,7 +693,7 @@ def iscsi_export(target_name, initiator_name):
     assign_userid = 'userid={iscsi_userid}'.format(
         iscsi_userid=ctx.conf.iscsi_userid)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         initiator_path,
         'set',
         'auth',
@@ -675,7 +704,7 @@ def iscsi_export(target_name, initiator_name):
     assign_password = 'password={iscsi_password}'.format(
         iscsi_password=ctx.conf.iscsi_password)
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         initiator_path,
         'set',
         'auth',
@@ -693,14 +722,14 @@ def iscsi_unexport(target_name, initiator_name):
         initiator_name=initiator_name,
     )
     cmd = [
-        ctx.conf.targetcli_path,
+        ctx.cp.get_path('targetcli'),
         initiator_path,
         'ls',
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode == 0:
         cmd = [
-            ctx.conf.targetcli_path,
+            ctx.cp.get_path('targetcli'),
             acl_path,
             'delete',
             initiator_name,
@@ -712,7 +741,7 @@ def run_dd(in_path, out_path, bs=None, count=None, seek=None, skip=None):
     inp = 'if={in_path}'.format(in_path=in_path)
     outp = 'of={out_path}'.format(out_path=out_path)
     cmd = [
-        ctx.conf.dd_path,
+        ctx.cp.get_path('dd'),
         inp,
         outp,
     ]

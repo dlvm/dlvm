@@ -847,6 +847,7 @@ def handle_dlv_put(params, args):
     else:
         assert(False)
 
+
 leg_fields = OrderedDict()
 leg_fields['leg_id'] = fields.String
 leg_fields['idx'] = fields.Integer
