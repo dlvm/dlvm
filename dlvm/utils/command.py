@@ -572,7 +572,7 @@ def iscsi_logout(target_name):
 
 
 def iscsi_create(target_name, dev_name, dev_path):
-    backstore_path = '/backstores/block/{dev_name}'.format(
+    backstore_path = '/backstores/iblock/{dev_name}'.format(
         dev_name=dev_name)
     cmd = [
         ctx.cp.get_path('targetcli'),
@@ -587,7 +587,7 @@ def iscsi_create(target_name, dev_name, dev_path):
             dev_name=dev_name)
         cmd = [
             ctx.cp.get_path('targetcli'),
-            '/backstores/block',
+            '/backstores/iblock',
             'create',
             dev,
             name,
@@ -630,6 +630,30 @@ def iscsi_create(target_name, dev_name, dev_path):
         ]
         run_cmd(cmd)
 
+    portal_path = '/iscsi/{target_name}/tpg1/portals'.format(
+        target_name=target_name,
+    )
+    export_portal_path = '{portal_path}/0.0.0.0:{iscsi_port}'.format(
+        portal_path=portal_path,
+        iscsi_port=ctx.conf.iscsi_port)
+    cmd = [
+        ctx.cp.get_path('targetcli'),
+        export_portal_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        ip_port = 'ip_port={iscsi_port}'.format(
+            iscsi_port=ctx.conf.iscsi_port)
+        cmd = [
+            ctx.cp.get_path('targetcli'),
+            portal_path,
+            'create',
+            'ip_address=0.0.0.0',
+            ip_port,
+        ]
+        run_cmd(cmd)
+
 
 def iscsi_delete(target_name, dev_name):
     target_path = '/iscsi/{target_name}'.format(
@@ -649,7 +673,7 @@ def iscsi_delete(target_name, dev_name):
         ]
         run_cmd(cmd)
 
-    backstore_path = '/backstores/block/{dev_name}'.format(
+    backstore_path = '/backstores/iblock/{dev_name}'.format(
         dev_name=dev_name)
     cmd = [
         ctx.cp.get_path('targetcli'),
@@ -660,7 +684,7 @@ def iscsi_delete(target_name, dev_name):
     if r.rcode == 0:
         cmd = [
             ctx.cp.get_path('targetcli'),
-            '/backstores/block',
+            '/backstores/iblock',
             'delete',
             dev_name,
         ]
