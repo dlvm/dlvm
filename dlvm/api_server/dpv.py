@@ -224,7 +224,7 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
     db.session.commit()
     dpv_client = DpvClient(dpv_name)
     try:
-        dpv_client.dpv_available(dpv_info, obt_encode(obt))
+        dpv_client.dpv_sync(dpv_info, obt_encode(obt))
     except DpvError as e:
         return make_body('dpv_failed', e.message), 500
     else:

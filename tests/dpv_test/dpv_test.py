@@ -8,7 +8,8 @@ from mock import Mock, patch
 from dlvm.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     fj_leg_export, fj_leg_unexport, fj_login, \
-    fj_mirror_start, fj_mirror_stop, fj_mirror_status
+    fj_mirror_start, fj_mirror_stop, fj_mirror_status, \
+    dpv_sync
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -287,3 +288,47 @@ class RpcFunctionTest(unittest.TestCase):
         leg_id = '001'
         ret = fj_mirror_status(leg_id)
         self.assertEqual(ret, status)
+
+    @patch('dlvm.dpv_agent.iscsi_backstore_delete')
+    @patch('dlvm.dpv_agent.iscsi_backstore_get_all')
+    @patch('dlvm.dpv_agent.iscsi_target_delete')
+    @patch('dlvm.dpv_agent.iscsi_target_get_all')
+    @patch('dlvm.dpv_agent.run_dd')
+    @patch('dlvm.dpv_agent.iscsi_create')
+    @patch('dlvm.dpv_agent.lv_create')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_dpv_sync(
+            self, conf, dpv_verify,
+            encode_target_name,
+            DmLinear,
+            iscsi_create, lv_create, run_dd,
+            iscsi_target_get_all,
+            iscsi_target_delete,
+            iscsi_backstore_get_all,
+            iscsi_backstore_delete,
+    ):
+        conf.tmp_dir = self.tmp_dir
+        dpv_info = []
+        dm_context = {
+            'thin_block_size': 4*1024*1024,
+            'mirror_meta_blocks': 1,
+            'mirror_region_size': 4*1024*1024,
+            'stripe_number': 1,
+            'stripe_chunk_blocks': 1,
+            'low_water_mark': 100,
+        }
+        leg_info = {
+            'leg_id': '001',
+            'leg_size': str(1024*1024*1024),
+            'dm_context': dm_context,
+            'thost_name': None,
+        }
+        dpv_info.append(leg_info)
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        dpv_sync(dpv_info, obt)

@@ -14,7 +14,9 @@ from dlvm.utils.command import context_init, \
     run_dd, \
     iscsi_create, iscsi_delete, \
     iscsi_export, iscsi_unexport, \
-    iscsi_login, iscsi_logout
+    iscsi_login, iscsi_logout, \
+    iscsi_target_get_all, iscsi_target_delete, \
+    iscsi_backstore_get_all, iscsi_backstore_delete
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, \
@@ -420,13 +422,24 @@ def fj_mirror_status(leg_id):
         return do_fj_mirror_status(leg_id)
 
 
-def release_unused(leg_id_set, target_name_set):
-    pass
-
-
-def dpv_available(dpv_info, obt):
-    leg_id_set = set()
+def release_unused(leg_id_set):
     target_name_set = set()
+    layer2_name_set = set()
+    for leg_id in leg_id_set:
+        target_name_set.add(encode_target_name(leg_id))
+        layer2_name_set.add(get_layer2_name(leg_id))
+    iscsi_target_list = iscsi_target_get_all(conf.target_prefix)
+    for iscsi_target in iscsi_target_list:
+        if iscsi_target not in target_name_set:
+            iscsi_target_delete(iscsi_target)
+    iscsi_backstore_list = iscsi_backstore_get_all(conf.dlvm_prefix)
+    for iscsi_backstore in iscsi_backstore_list:
+        if iscsi_backstore not in layer2_name_set:
+            iscsi_backstore_delete(iscsi_backstore)
+
+
+def dpv_sync(dpv_info, obt):
+    leg_id_set = set()
     for leg_info in dpv_info:
         leg_id = leg_info['leg_id']
         leg_size = leg_info['leg_size']
@@ -437,8 +450,7 @@ def dpv_available(dpv_info, obt):
             if thost_name is not None:
                 do_leg_export(leg_id, thost_name)
         leg_id_set.add(leg_id)
-        target_name_set.add(encode_target_name(leg_id))
-    release_unused(leg_id_set, target_name_set)
+    release_unused(leg_id_set)
 
 
 def main():
@@ -448,7 +460,7 @@ def main():
     s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port, logger)
     s.register_function(ping)
     s.register_function(dpv_get_info)
-    s.register_function(dpv_available)
+    s.register_function(dpv_sync)
     s.register_function(leg_create)
     s.register_function(leg_delete)
     s.register_function(leg_export)

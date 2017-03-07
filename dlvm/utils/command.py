@@ -761,6 +761,66 @@ def iscsi_unexport(target_name, initiator_name):
         run_cmd(cmd)
 
 
+def iscsi_target_get_all(prefix):
+    cmd = [
+        ctx.cp.get_path('targetcli'),
+        '/iscsi/',
+        'ls',
+        'depth=1',
+    ]
+    r = run_cmd(cmd)
+    raw_list = r.out.split('\n')[1:-1]
+    target_list = []
+    for item in raw_list:
+        start = item.find(prefix)
+        if start == -1:
+            continue
+        stop = item.find(' ...')
+        target_name = item[start:stop]
+        target_list.append(target_name)
+    return target_list
+
+
+def iscsi_target_delete(target_name):
+    cmd = [
+        ctx.cp.get_path('targetcli'),
+        '/iscsi',
+        'delete',
+        target_name,
+    ]
+    run_cmd(cmd)
+
+
+def iscsi_backstore_get_all(prefix):
+    cmd = [
+        ctx.cp.get_path('targetcli'),
+        '/backstores/iblock',
+        'ls',
+        'depth=1',
+    ]
+    r = run_cmd(cmd)
+    raw_list = r.out.split('\n')[1:-1]
+    dev_list = []
+    for item in raw_list:
+        start = item.find(prefix)
+        if start == -1:
+            continue
+        stop = item.find(' ...')
+        dev_name = item[start:stop]
+        dev_list.append(dev_name)
+    return dev_list
+
+
+def iscsi_backstore_delete(dev_name):
+    cmd = [
+        ctx.cp.get_path('targetcli'),
+        '/backstores/iblock',
+        'delete',
+        dev_name,
+    ]
+    run_cmd(cmd)
+
+
 def run_dd(in_path, out_path, bs=None, count=None, seek=None, skip=None):
     inp = 'if={in_path}'.format(in_path=in_path)
     outp = 'of={out_path}'.format(out_path=out_path)
