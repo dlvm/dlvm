@@ -97,7 +97,7 @@ dpvs_post_parser.add_argument(
 def handle_dpvs_post(params, args):
     client = WrapperRpcClient(
         args['dpv_name'], conf.dpv_port, conf.dpv_timeout)
-    dpv_info = client.get_dpv_info()
+    dpv_info = client.dpv_get_info()
     dpv = DistributePhysicalVolume(
         dpv_name=args['dpv_name'],
         total_size=int(dpv_info['total_size']),

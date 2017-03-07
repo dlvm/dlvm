@@ -101,9 +101,9 @@ class DpvTest(unittest.TestCase):
     def test_dpvs_post(self, WrapperRpcClient):
         client_mock = Mock()
         WrapperRpcClient.return_value = client_mock
-        get_dpv_info_mock = Mock()
-        client_mock.get_dpv_info = get_dpv_info_mock
-        get_dpv_info_mock.return_value = {
+        dpv_get_info_mock = Mock()
+        client_mock.dpv_get_info = dpv_get_info_mock
+        dpv_get_info_mock.return_value = {
             'total_size': 512*1024*1024*1024,
             'free_size': 512*1024*1024*1024,
         }
@@ -123,7 +123,7 @@ class DpvTest(unittest.TestCase):
                 .one()
         self.assertEqual(dpv.status, 'available')
         self.assertEqual(dpv.total_size, 512*1024*1024*1024)
-        self.assertEqual(get_dpv_info_mock.call_count, 1)
+        self.assertEqual(dpv_get_info_mock.call_count, 1)
 
     def _insert_dpv(self):
         with self.app.app_context():

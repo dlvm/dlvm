@@ -73,7 +73,7 @@ def ping(message):
     return message
 
 
-def get_dpv_info():
+def dpv_get_info():
     total_size, free_size = vg_get_size(conf.local_vg)
     return {
         'total_size': str(total_size),
@@ -447,7 +447,7 @@ def main():
     queue_init()
     s = WrapperRpcServer(conf.dpv_listener, conf.dpv_port, logger)
     s.register_function(ping)
-    s.register_function(get_dpv_info)
+    s.register_function(dpv_get_info)
     s.register_function(dpv_available)
     s.register_function(leg_create)
     s.register_function(leg_delete)
