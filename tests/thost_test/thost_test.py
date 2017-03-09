@@ -8,7 +8,7 @@ from dlvm.thost_agent import main, bm_get, \
     dlv_aggregate, dlv_degregate, \
     dlv_suspend, dlv_resume, \
     snapshot_create, snapshot_delete, \
-    remirror, leg_remove
+    remirror, leg_remove, thost_sync
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks, dlv_info_encode
 from dlvm.utils.bitmap import BitMap
@@ -492,3 +492,42 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         leg_remove('dlv0', obt, dlv_info, '001')
+
+    @patch('dlvm.thost_agent.Thread')
+    @patch('dlvm.thost_agent.iscsi_login_get_all')
+    @patch('dlvm.thost_agent.dm_get_all')
+    @patch('dlvm.thost_agent.iscsi_login')
+    @patch('dlvm.thost_agent.DmError')
+    @patch('dlvm.thost_agent.DmThin')
+    @patch('dlvm.thost_agent.DmPool')
+    @patch('dlvm.thost_agent.DmMirror')
+    @patch('dlvm.thost_agent.DmStripe')
+    @patch('dlvm.thost_agent.DmLinear')
+    @patch('dlvm.thost_agent.DmBasic')
+    @patch('dlvm.thost_agent.encode_target_name')
+    @patch('dlvm.thost_agent.thost_verify')
+    @patch('dlvm.thost_agent.conf')
+    @patch('dlvm.thost_agent.report_pool')
+    @patch('dlvm.thost_agent.report_multi_legs')
+    @patch('dlvm.thost_agent.report_single_leg')
+    @patch('dlvm.thost_agent.queue_init')
+    @patch('dlvm.thost_agent.loginit')
+    def test_thost_sync(
+            self, loginit,
+            queue_init, report_single_leg,
+            report_multi_legs, report_pool,
+            conf, thost_verify, encode_target_name,
+            DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            iscsi_login,
+            dm_get_all, iscsi_login_get_all,
+            Thread,
+    ):
+        dm_get_all.return_value = []
+        iscsi_login_get_all.return_value = []
+        thost_info = []
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        thost_sync(thost_info, obt)
