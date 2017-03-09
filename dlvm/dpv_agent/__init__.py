@@ -84,18 +84,18 @@ def dpv_get_info():
 
 
 def get_layer1_name(leg_id):
-    return '{dlvm_prefix}-{leg_id}-1'.format(
-        dlvm_prefix=conf.dlvm_prefix, leg_id=leg_id)
+    return '{dpv_prefix}-{leg_id}-1'.format(
+        dpv_prefix=conf.dpv_prefix, leg_id=leg_id)
 
 
 def get_layer2_name(leg_id):
-    return '{dlvm_prefix}-{leg_id}-2'.format(
-        dlvm_prefix=conf.dlvm_prefix, leg_id=leg_id)
+    return '{dpv_prefix}-{leg_id}-2'.format(
+        dpv_prefix=conf.dpv_prefix, leg_id=leg_id)
 
 
 def get_layer2_name_fj(leg_id, fj_name):
-    return '{dlvm_prefix}-{leg_id}-fj-{fj_name}'.format(
-        dlvm_prefix=conf.dlvm_prefix,
+    return '{dpv_prefix}-{leg_id}-fj-{fj_name}'.format(
+        dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
     )
@@ -422,7 +422,7 @@ def fj_mirror_status(leg_id):
         return do_fj_mirror_status(leg_id)
 
 
-def release_unused(leg_id_set):
+def dpv_release_unused(leg_id_set):
     target_name_set = set()
     layer2_name_set = set()
     for leg_id in leg_id_set:
@@ -432,7 +432,7 @@ def release_unused(leg_id_set):
     for iscsi_target in iscsi_target_list:
         if iscsi_target not in target_name_set:
             iscsi_target_delete(iscsi_target)
-    iscsi_backstore_list = iscsi_backstore_get_all(conf.dlvm_prefix)
+    iscsi_backstore_list = iscsi_backstore_get_all(conf.dpv_prefix)
     for iscsi_backstore in iscsi_backstore_list:
         if iscsi_backstore not in layer2_name_set:
             iscsi_backstore_delete(iscsi_backstore)
@@ -450,7 +450,7 @@ def dpv_sync(dpv_info, obt):
             if thost_name is not None:
                 do_leg_export(leg_id, thost_name)
         leg_id_set.add(leg_id)
-    release_unused(leg_id_set)
+    dpv_release_unused(leg_id_set)
 
 
 def main():

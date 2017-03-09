@@ -407,6 +407,22 @@ class DmError(DmBasic):
         return table
 
 
+def dm_get_all(prefix):
+    cmd = [
+        ctx.cp.get_path('dmsetup'),
+        'status',
+    ]
+    r = run_cmd(cmd)
+    dm_devices = r.out.split('\n')
+    dm_name_list = []
+    for dm_device in dm_devices:
+        if dm_device.startswith(prefix) is True:
+            end = dm_device.find(':')
+            dm_name = dm_device[:end]
+            dm_name_list.append(dm_name)
+    return dm_name_list
+
+
 def lv_get_path(lv_name, vg_name):
     return '/dev/{vg_name}/{lv_name}'.format(
         vg_name=vg_name, lv_name=lv_name)
@@ -759,6 +775,22 @@ def iscsi_unexport(target_name, initiator_name):
             initiator_name,
         ]
         run_cmd(cmd)
+
+
+def iscsi_login_get_all(prefix):
+    cmd = [
+        ctx.cp.get_path('iscsiadm'),
+        '-m',
+        'node',
+    ]
+    r = run_cmd(cmd)
+    lines = r.out.split('\n')
+    target_name_list = []
+    for line in lines[:-1]:
+        target_name = line.split(' ')[1]
+        if target_name.startswith(prefix):
+            target_name_list.append(target_name)
+    return target_name_list
 
 
 def iscsi_target_get_all(prefix):

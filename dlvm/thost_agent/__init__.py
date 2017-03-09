@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from threading import Thread, Lock
+import re
 import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
@@ -9,7 +10,8 @@ from dlvm.utils.obt import thost_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmStripe, DmMirror, \
     DmPool, DmThin, DmError, \
-    iscsi_login, iscsi_logout
+    iscsi_login, iscsi_logout, \
+    dm_get_all, iscsi_login_get_all
 from dlvm.utils.helper import chunks, encode_target_name, dlv_info_decode
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, report_single_leg, \
@@ -43,35 +45,54 @@ def ping(message):
 
 
 def get_final_name(dlv_name):
-    final_name = '{dlv_name}'.format(dlv_name=dlv_name)
+    final_name = '{thost_prefix}-{dlv_name}'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
     return final_name
 
 
 def get_middle_name(dlv_name):
-    middle_name = '{dlv_name}-middle'.format(dlv_name=dlv_name)
+    middle_name = '{thost_prefix}-{dlv_name}-middle'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
     return middle_name
 
 
 def get_thin_name(dlv_name):
-    thin_name = '{dlv_name}-thin'.format(dlv_name=dlv_name)
+    thin_name = '{thost_prefix}-{dlv_name}-thin'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
     return thin_name
 
 
 def get_pool_name(dlv_name):
-    pool_name = '{dlv_name}-pool'.format(dlv_name=dlv_name)
+    pool_name = '{thost_prefix}-{dlv_name}-pool'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
     return pool_name
 
 
 def get_thin_meta_name(dlv_name):
-    return '{dlv_name}-meta'.format(dlv_name=dlv_name)
+    return '{thost_prefix}-{dlv_name}-meta'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
 
 
 def get_thin_data_name(dlv_name):
-    return '{dlv_name}-data'.format(dlv_name=dlv_name)
+    return '{thost_prefix}-{dlv_name}-data'.format(
+        thost_prefix=conf.thost_prefix,
+        dlv_name=dlv_name,
+    )
 
 
 def get_mirror_meta_name(dlv_name, g_idx, l_idx):
-    return '{dlv_name}-{g_idx}-{l_idx}-meta'.format(
+    return '{thost_prefix}-{dlv_name}-{g_idx}-{l_idx}-meta'.format(
+        thost_prefix=conf.thost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         l_idx=l_idx,
@@ -79,7 +100,8 @@ def get_mirror_meta_name(dlv_name, g_idx, l_idx):
 
 
 def get_mirror_data_name(dlv_name, g_idx, l_idx):
-    return '{dlv_name}-{g_idx}-{l_idx}-data'.format(
+    return '{thost_prefix}-{dlv_name}-{g_idx}-{l_idx}-data'.format(
+        thost_prefix=conf.thost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         l_idx=l_idx,
@@ -87,7 +109,8 @@ def get_mirror_data_name(dlv_name, g_idx, l_idx):
 
 
 def get_mirror_name(dlv_name, g_idx, m_idx):
-    return '{dlv_name}-{g_idx}-{m_idx}'.format(
+    return '{thost_prefix}-{dlv_name}-{g_idx}-{m_idx}'.format(
+        thost_prefix=conf.thost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         m_idx=m_idx,
@@ -95,7 +118,8 @@ def get_mirror_name(dlv_name, g_idx, m_idx):
 
 
 def get_stripe_name(dlv_name, g_idx):
-    return '{dlv_name}-{g_idx}'.format(
+    return '{thost_prefix}-{dlv_name}-{g_idx}'.format(
+        thost_prefix=conf.thost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
     )
@@ -885,6 +909,87 @@ def leg_remove(dlv_name, obt, dlv_info, leg_id):
         do_leg_remove(dlv_name, dlv_info, leg_id)
 
 
+default_pattern_list = [
+    '{prefix}-{name}$',
+    '{prefix}-{name}-middle$',
+    '{prefix}-{name}-thin$',
+    '{prefix}-{name}-pool$',
+    '{prefix}-{name}-meta$',
+    '{prefix}-{name}-data$',
+    '{prefix}-{name}-{number}$',
+    '{prefix}-{name}-{number}-{number}$',
+    '{prefix}-{name}-{number}-{number}-meta$',
+    '{prefix}-{name}-{number}-{number}-data$',
+]
+
+
+def generate_pattern_list(prefix):
+    name = '[a-z,A-Z,_][a-z,A-Z,0-9,_]*'
+    number = '[0-9]+'
+    pattern_list = []
+    for p1 in default_pattern_list:
+        pattern = p1.format(
+            prefix=prefix, name=name, number=number)
+        pattern_list.append(pattern)
+    return pattern_list
+
+
+def thost_release_dm(dlv_name_list):
+    dm_name_list = dm_get_all(conf.thost_prefix)
+    dm_name_set = set(dm_name_list)
+    ignore_list = []
+    for dm_name in dm_name_set:
+        for dlv_name in dlv_name_list:
+            pattern1 = '{thost_prefix}-{dlv_name}'.format(
+                thost_prefix=conf.thost_prefix,
+                dlv_name=dlv_name,
+            )
+            if dm_name == pattern1:
+                ignore_list.append(dm_name)
+                break
+            pattern2 = '{pattern1}-'.format(pattern1=pattern1)
+            if dm_name.startswith(pattern2) is True:
+                ignore_list.append(dm_name)
+                break
+    for dm_name in ignore_list:
+        dm_name_set.remove(dm_name)
+    pattern_list = generate_pattern_list(conf.thost_prefix)
+    for pattern in pattern_list:
+        removable_list = []
+        for dm_name in dm_name_set:
+            if re.match(pattern, dm_name) is True:
+                removable_list.append(dm_name)
+        for dm_name in removable_list:
+            dm = DmBasic(dm_name)
+            dm.remove()
+            dm_name_set.remove(dm_name)
+    assert(len(dm_name_set) == 0)
+
+
+def thost_release_iscsi(target_name_set):
+    iscsi_target_list = iscsi_login_get_all(conf.target_prefix)
+    for target_name in iscsi_target_list:
+        if target_name not in target_name_set:
+            iscsi_logout(target_name)
+
+
+def thost_sync(thost_info, obt):
+    dlv_name_list = []
+    target_name_set = set()
+    for dlv_name, dlv_info in thost_info:
+        with RpcLock(dlv_name):
+            thost_verify(dlv_name, obt['major'], obt['minor'])
+            dlv_info_decode(dlv_info)
+            do_dlv_aggregate(dlv_name, dlv_info)
+            for group in dlv_info['groups']:
+                for leg in group['legs']:
+                    target_name = encode_target_name(leg['leg_id'])
+                    target_name_set.add(target_name)
+            dlv_name_list.append(dlv_name)
+    thost_release_dm(dlv_name_list)
+    thost_release_iscsi(target_name_set)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -900,5 +1005,6 @@ def main():
     s.register_function(snapshot_delete)
     s.register_function(remirror)
     s.register_function(leg_remove)
+    s.register_function(thost_sync)
     logger.info('thost_agent start')
     s.serve_forever()
