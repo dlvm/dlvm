@@ -12,6 +12,7 @@ from dlvm.utils.error import ObtConflictError, ObtMissError, \
     DpvError, ThostError
 from dlvm.utils.configure import conf
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
+from dlvm.utils.helper import dlv_info_encode
 from modules import db, DistributePhysicalVolume, DistributeVolumeGroup, \
     DistributeLogicalVolume, Snapshot, OwnerBasedTransaction, Counter
 
@@ -276,3 +277,35 @@ def get_dm_context():
         'stripe_chunk_blocks': conf.stripe_chunk_blocks,
         'low_water_mark': conf.low_water_mark,
     }
+
+
+def get_dlv_info(dlv):
+    dlv_info = []
+    dlv_info['dlv_name'] = dlv.dlv_name
+    dlv_info['dlv_size'] = dlv.dlv_size
+    dm_context = get_dm_context()
+    dm_context['stripe_number'] = dlv.partition_count
+    dlv_info['dm_context'] = dm_context
+    dlv_info['data_size'] = dlv.data_size
+    snapshot = Snapshot \
+        .query \
+        .filter_by(snap_name=dlv.active_snap_name) \
+        .with_entities(Snapshot.thin_id) \
+        .one()
+    dlv_info['thin_id'] = snapshot.thin_id
+    dlv_info['groups'] = []
+    for group in dlv.groups:
+        igroup = {}
+        igroup['group_id'] = group.group_id
+        igroup['idx'] = group.idx
+        igroup['group_size'] = group.group_size
+        igroup['legs'] = []
+        for leg in group.legs:
+            ileg = {}
+            ileg['dpv_name'] = leg.dpv_name
+            ileg['leg_id'] = leg.leg_id
+            ileg['idx'] = leg.idx
+            ileg['leg_size'] = leg.leg_size
+            igroup['legs'].append(ileg)
+        dlv_info['groups'].append(igroup)
+    return dlv_info_encode(dlv_info)

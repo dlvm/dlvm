@@ -207,6 +207,8 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
         .with_lockmode('update') \
         .filter_by(dpv_name=dpv_name) \
         .one()
+    if dpv.status != 'unavailable':
+        return make_body('invalid_dpv_status', dpv.status), 400
     dpv_info = []
     for leg in dpv.legs:
         dlv = leg.group.dlv
@@ -238,6 +240,7 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
 def handle_dpv_unavailable(dpv_name):
     dpv = DistributePhysicalVolume \
         .query \
+        .with_lockmode('update') \
         .filter_by(dpv_name=dpv_name) \
         .one()
     dpv.status = 'unavailable'

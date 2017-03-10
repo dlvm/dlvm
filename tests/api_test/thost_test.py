@@ -17,6 +17,13 @@ fixture_thost = {
     'timestamp': timestamp,
 }
 
+fixture_obt = {
+    't_id': 't0',
+    't_owner': 't_owner0',
+    't_stage': 0,
+    'timestamp': timestamp,
+}
+
 
 class DpvTest(unittest.TestCase):
 
@@ -66,3 +73,37 @@ class DpvTest(unittest.TestCase):
         data = json.dumps(data)
         resp = self.client.delete('/thosts/thost0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+
+    def test_thost_unavailable(self):
+        self.fm.thost_create(**fixture_thost)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'set_unavailable',
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/thosts/thost0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        thost = self.fm.thost_get('thost0')
+        self.assertEqual(thost.status, 'unavailable')
+
+    @patch('dlvm.api_server.thost.ThostClient')
+    def test_thost_available(self, ThostClient):
+        self.fm.thost_create(**fixture_thost)
+        self.fm.thost_set_status('thost0', 'unavailable')
+        self.fm.obt_create(**fixture_obt)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'set_available',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/thosts/thost0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        thost = self.fm.thost_get('thost0')
+        self.assertEqual(thost.status, 'available')

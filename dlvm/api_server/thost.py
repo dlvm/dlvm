@@ -6,8 +6,10 @@ from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
+from dlvm.utils.error import ObtConflictError, ThostError
 from modules import db, TargetHost
-from handler import handle_dlvm_request, make_body, check_limit
+from handler import handle_dlvm_request, make_body, check_limit, \
+    get_dlv_info, ThostClient, obt_get, obt_refresh, obt_encode
 
 
 thost_summary_fields = OrderedDict()
@@ -130,7 +132,104 @@ def handle_thost_delete(params, args):
     return make_body('success'), 200
 
 
+thost_put_parser = reqparse.RequestParser()
+thost_put_parser.add_argument(
+    'action',
+    type=str,
+    choices=('set_available', 'set_unavailable'),
+    required=True,
+    location='json',
+)
+thost_put_parser.add_argument(
+    't_id',
+    type=str,
+    location='json',
+)
+thost_put_parser.add_argument(
+    't_owner',
+    type=str,
+    location='json',
+)
+thost_put_parser.add_argument(
+    't_stage',
+    type=int,
+    location='json',
+)
+
+
+def handle_thost_available(thost_name, t_id, t_owner, t_stage):
+    obt = obt_get(t_id, t_owner, t_stage)
+    thost = TargetHost \
+        .query \
+        .with_lockmode('update') \
+        .filter_by(thost_name=thost_name) \
+        .one()
+    if thost.status != 'unavailable':
+        return make_body('invalid_thost_status', thost.status), 400
+    thost_info = []
+    for dlv in thost.dlvs:
+        if dlv.obt is not None:
+            raise ObtConflictError()
+        else:
+            dlv.obt = obt
+            db.session.add(dlv)
+        dlv_info = get_dlv_info(dlv)
+        thost_info.append((dlv.dlv_name, dlv_info))
+    obt_refresh(obt)
+    db.session.commit()
+    thost_client = ThostClient(thost_name)
+    try:
+        thost_client.thost_sync(thost_info, obt_encode(obt))
+    except ThostError as e:
+        return make_body('thost_failed', e.message), 500
+    else:
+        obt_refresh(obt)
+        thost.status = 'available'
+        db.session.add(thost)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+def handle_thost_unavailable(thost_name):
+    thost = TargetHost \
+        .query \
+        .with_lockmode('update') \
+        .filter_by(thost_name=thost_name) \
+        .one()
+    thost.status = 'unavailable'
+    db.session.add(thost)
+    db.session.commit()
+    return make_body('success'), 200
+
+
+def handle_thost_put(params, args):
+    thost_name = params[0]
+    if args['action'] == 'set_available':
+        t_id = args.get('t_id')
+        if t_id is None:
+            return make_body('no_t_id'), 400
+        t_owner = args.get('t_owner')
+        if t_owner is None:
+            return make_body('no_t_owner'), 400
+        t_stage = args.get('t_stage')
+        if t_stage is None:
+            return make_body('no_t_stage'), 400
+        return handle_thost_available(
+            thost_name, t_id, t_owner, t_stage)
+    elif args['action'] == 'set_unavailable':
+        return handle_thost_unavailable(thost_name)
+    else:
+        assert(False)
+
+
 class Thost(Resource):
+
+    def put(self, thost_name):
+        return handle_dlvm_request(
+            [thost_name],
+            thost_put_parser,
+            handle_thost_put,
+        )
 
     def delete(self, thost_name):
         return handle_dlvm_request(

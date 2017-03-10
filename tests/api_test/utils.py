@@ -176,6 +176,24 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
+    def thost_set_status(self, thost_name, status):
+        thost = TargetHost \
+            .query \
+            .filter_by(thost_name=thost_name) \
+            .one()
+        thost.status = status
+        db.session.add(thost)
+        db.session.commit()
+
+    @app_context
+    def thost_get(self, thost_name):
+        thost = TargetHost \
+            .query \
+            .filter_by(thost_name=thost_name) \
+            .one()
+        return thost
+
+    @app_context
     def dlv_attach(self, dlv_name, thost_name):
         dlv = DistributeLogicalVolume \
             .query \
