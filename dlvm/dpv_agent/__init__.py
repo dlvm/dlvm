@@ -16,7 +16,8 @@ from dlvm.utils.command import context_init, \
     iscsi_export, iscsi_unexport, \
     iscsi_login, iscsi_logout, \
     iscsi_target_get_all, iscsi_target_delete, \
-    iscsi_backstore_get_all, iscsi_backstore_delete
+    iscsi_backstore_get_all, iscsi_backstore_delete, \
+    dm_get_all, lv_get_all
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, \
@@ -102,13 +103,19 @@ def get_layer2_name_fj(leg_id, fj_name):
 
 
 def get_fj_meta0_name(leg_id, fj_name):
-    return '{leg_id}-{fj_name}-0'.format(
-        leg_id=leg_id, fj_name=fj_name)
+    return '{dpv_prefix}-{leg_id}-{fj_name}-0'.format(
+        dpv_prefix=conf.dpv_prefix,
+        leg_id=leg_id,
+        fj_name=fj_name,
+    )
 
 
 def get_fj_meta1_name(leg_id, fj_name):
-    return '{leg_id}-{fj_name}-1'.format(
-        leg_id=leg_id, fj_name=fj_name)
+    return '{dpv_prefix}-{leg_id}-{fj_name}-1'.format(
+        dpv_prefix=conf.dpv_prefix,
+        leg_id=leg_id,
+        fj_name=fj_name,
+    )
 
 
 def do_leg_create(leg_id, leg_size, dm_context):
@@ -422,12 +429,16 @@ def fj_mirror_status(leg_id):
         return do_fj_mirror_status(leg_id)
 
 
-def dpv_release_unused(leg_id_set):
+def dpv_release_unused(leg_id_list):
     target_name_set = set()
     layer2_name_set = set()
-    for leg_id in leg_id_set:
+    dm_name_set = set()
+    lv_name_set = set(leg_id_list)
+    for leg_id in leg_id_list:
         target_name_set.add(encode_target_name(leg_id))
         layer2_name_set.add(get_layer2_name(leg_id))
+        dm_name_set.add(get_layer1_name(leg_id))
+        dm_name_set.add(get_layer2_name(leg_id))
     iscsi_target_list = iscsi_target_get_all(conf.target_prefix)
     for iscsi_target in iscsi_target_list:
         if iscsi_target not in target_name_set:
@@ -436,10 +447,19 @@ def dpv_release_unused(leg_id_set):
     for iscsi_backstore in iscsi_backstore_list:
         if iscsi_backstore not in layer2_name_set:
             iscsi_backstore_delete(iscsi_backstore)
+    dm_name_list = dm_get_all(conf.dpv_prefix)
+    for dm_name in dm_name_list:
+        if dm_name not in dm_name_set:
+            dm = DmBasic(dm_name)
+            dm.remove()
+    lv_name_list = lv_get_all(conf.local_vg)
+    for lv_name in lv_name_list:
+        if lv_name not in lv_name_set:
+            lv_remove(lv_name, conf.local_vg)
 
 
 def dpv_sync(dpv_info, obt):
-    leg_id_set = set()
+    leg_id_list = []
     for leg_info in dpv_info:
         leg_id = leg_info['leg_id']
         leg_size = leg_info['leg_size']
@@ -449,8 +469,8 @@ def dpv_sync(dpv_info, obt):
             do_leg_create(leg_id, int(leg_size), dm_context)
             if thost_name is not None:
                 do_leg_export(leg_id, thost_name)
-        leg_id_set.add(leg_id)
-    dpv_release_unused(leg_id_set)
+        leg_id_list.append(leg_id)
+    dpv_release_unused(leg_id_list)
 
 
 def main():

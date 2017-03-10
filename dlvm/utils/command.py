@@ -466,6 +466,23 @@ def lv_remove(lv_name, vg_name):
         run_cmd(cmd)
 
 
+def lv_get_all(vg_name):
+    vg_selector = 'vg_name={vg_name}'.format(vg_name=vg_name)
+    cmd = [
+        ctx.cp.get_path('lvm'),
+        'lvs',
+        '-S', vg_selector,
+        '--noheadings',
+        '-o', 'lv_name',
+    ]
+    r = run_cmd(cmd)
+    lv_name_list = []
+    items = r.out.split('\n')
+    for item in items[:-1]:
+        lv_name_list.append(item.strip())
+    return lv_name_list
+
+
 def vg_get_size(vg_name):
     cmd = [
         ctx.cp.get_path('lvm'),

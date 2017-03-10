@@ -289,6 +289,8 @@ class RpcFunctionTest(unittest.TestCase):
         ret = fj_mirror_status(leg_id)
         self.assertEqual(ret, status)
 
+    @patch('dlvm.dpv_agent.lv_get_all')
+    @patch('dlvm.dpv_agent.dm_get_all')
     @patch('dlvm.dpv_agent.iscsi_backstore_delete')
     @patch('dlvm.dpv_agent.iscsi_backstore_get_all')
     @patch('dlvm.dpv_agent.iscsi_target_delete')
@@ -309,6 +311,8 @@ class RpcFunctionTest(unittest.TestCase):
             iscsi_target_delete,
             iscsi_backstore_get_all,
             iscsi_backstore_delete,
+            dm_get_all,
+            lv_get_all,
     ):
         conf.tmp_dir = self.tmp_dir
         dpv_info = []
