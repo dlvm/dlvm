@@ -26,6 +26,7 @@ setup(
         'PyYAML>=3.12',
         'SQLAlchemy>=1.1.3',
         'psycopg2>=2.7',
+        'requests>=2.13.0',
     ],
     classifiers=(
         'License :: OSI Approved :: MIT License',
@@ -39,6 +40,7 @@ setup(
         'dlvm': [
             'data/conf.yml',
             'data/logger.yml',
+            'client/api_format.json'
         ],
     },
     entry_points={

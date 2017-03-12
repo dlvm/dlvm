@@ -1,0 +1,68 @@
+{
+    "version": "1.0",
+    "endpoints": {
+		"dpvs": {
+			"path": "/dpvs",
+			"get": {
+				"prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["dpv_name", "total_size", "free_size"],
+					"required": false
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				},
+				"status": {
+					"type": "choice",
+					"choices": ["available", "unavailable"],
+					"required": false
+				},
+				"dvg_name": {
+					"type": "str",
+					"required": false
+				}
+			},
+			"post": {
+				"dpv_name": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+		"dpv": {
+			"path": "/dpvs/{dpv_name}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["set_available", "set_unavailable"],
+					"required": true
+				},
+				"t_id": {
+					"type": "str",
+					"required": false
+				},
+				"t_owner": {
+					"type": "str",
+					"required": false
+				},
+				"t_stage": {
+					"type": "int",
+					"required": false
+				}
+			},
+			"delete": {
+			}
+		}
+	}
+}
