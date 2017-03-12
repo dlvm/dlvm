@@ -35,12 +35,14 @@ class Layer1(object):
             return 'http://{api_server}'.format(api_server=api_server)
 
     def __getattr__(self, func_name):
-        print(func_name)
+        logger.debug('generate_function: [%s]', func_name)
         name, method = func_name.split('_')
-        path = self.api[name]['path']
+        path = self.api['endpoints'][name]['path']
         items = path.split('/')
         path_args = {}
         for item in items:
+            if len(item) <= 0:
+                continue
             if item[0] == '{' and item[-1] == '}':
                 path_arg = item[1:-1]
                 path_args[path_arg] = None
@@ -83,4 +85,10 @@ class Layer1(object):
             return ret
         api_func.__name__ = func_name
         setattr(self, func_name, MethodType(api_func, self, self.__class__))
-        return getattr(self, name)
+        return getattr(self, func_name)
+
+    def update_api_server_list(self, api_server_list):
+        with self.lock:
+            assert(len(api_server_list) > 0)
+            self.api_server_list = api_server_list
+            self.pos = -1
