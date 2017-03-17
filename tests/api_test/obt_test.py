@@ -84,3 +84,10 @@ class ObtTest(unittest.TestCase):
         resp = self.client.delete(
             '/obts/t0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+
+    def test_obt_get(self):
+        self.fm.obt_create(**fixture_obt)
+        resp = self.client.get('/obts/t0')
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertEqual(data['body']['t_id'], 't0')

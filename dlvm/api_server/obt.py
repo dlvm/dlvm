@@ -203,7 +203,36 @@ def handle_obt_delete(params, args):
     return make_body('success'), 200
 
 
+obt_fields = OrderedDict()
+obt_fields['t_id'] = fields.String
+obt_fields['t_owner'] = fields.String
+obt_fields['t_stage'] = fields.Integer
+obt_fields['timestamp'] = fields.DateTime
+obt_fields['count'] = fields.Integer
+obt_fields['annotation'] = fields.String
+
+
+def handle_obt_get(params, args):
+    t_id = params[0]
+    try:
+        obt = OwnerBasedTransaction \
+            .query \
+            .filter_by(t_id=t_id) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist', 404)
+    body = marshal(obt, obt_fields)
+    return body, 200
+
+
 class Obt(Resource):
+
+    def get(self, t_id):
+        return handle_dlvm_request(
+            [t_id],
+            None,
+            handle_obt_get,
+        )
 
     def put(self, t_id):
         return handle_dlvm_request(

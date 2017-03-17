@@ -47,3 +47,11 @@ class DeleteActiveSnapshotError(Exception):
 
 class SnapNameError(Exception):
     pass
+
+
+class ApiError(Exception):
+    pass
+
+
+class FsmFailed(Exception):
+    pass

@@ -7,6 +7,7 @@ from threading import Lock
 import requests
 import urllib
 import logging
+from dlvm.utils.error import ApiError
 
 
 logger = logging.getLogger('dlvm_client')
@@ -76,13 +77,26 @@ class Layer1(object):
                 headers = {'content-type': 'application/json'}
                 data = json.dumps(kwargs)
             api_call = getattr(requests, method)
+            logger.debug('api url: [%s]', url)
+            logger.debug('api method: [%s]', method)
+            logger.debug('api data: [%s]', data)
+            logger.debug('api headers: [%s]', headers)
             rep = api_call(url, data=data, headers=headers, verify=False)
             rep.close()
-            ret = {}
-            ret['url'] = url
-            ret['status_code'] = rep.status
-            ret['json'] = rep.json()
-            return ret
+            msg = {}
+            msg['url'] = url
+            msg['status_code'] = rep.status
+            try:
+                data = rep.json()
+            except ValueError:
+                msg['data'] = rep.text
+            else:
+                msg['data'] = data
+            if msg['status_code'] != 200:
+                raise ApiError(msg)
+            logger.debug('return msg: [%s]', msg)
+            return msg
+
         api_func.__name__ = func_name
         setattr(self, func_name, MethodType(api_func, self, self.__class__))
         return getattr(self, func_name)
