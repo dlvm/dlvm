@@ -91,17 +91,25 @@ obts_post_parser.add_argument(
     required=True,
     location='json',
 )
+obts_post_parser.add_argument(
+    'annotation',
+    type=str,
+    default='',
+    location='json',
+)
 
 
 def handle_obts_post(params, args):
     t_id = args['t_id']
     t_owner = args['t_owner']
     t_stage = args['t_stage']
+    annotation = args['annotation']
     counter = Counter()
     obt = OwnerBasedTransaction(
         t_id=t_id,
         t_owner=t_owner,
         t_stage=t_stage,
+        annotation=annotation,
         timestamp=datetime.datetime.utcnow(),
         counter=counter,
     )
