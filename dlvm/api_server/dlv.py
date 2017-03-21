@@ -111,6 +111,12 @@ dlvs_post_parser.add_argument(
     location='json',
 )
 dlvs_post_parser.add_argument(
+    'init_size',
+    type=int,
+    required=True,
+    location='json',
+)
+dlvs_post_parser.add_argument(
     'partition_count',
     type=int,
     required=True,
@@ -286,7 +292,7 @@ def handle_dlvs_create_new(params, args):
     t_id = args['t_id']
     t_owner = args['t_owner']
     t_stage = args['t_stage']
-    init_size = dlv_size / conf.init_factor
+    init_size = args['init_size']
     if init_size > conf.init_max:
         init_size = conf.init_max
     elif init_size < conf.init_min:

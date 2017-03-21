@@ -260,8 +260,8 @@ def dlv_get(dlv_name, t_id, t_owner, t_stage):
 def obt_encode(obt):
     obt.minor_count += 1
     return {
-        'major': obt.count,
-        'minor': obt.minor_count,
+        'major': str(obt.count),
+        'minor': str(obt.minor_count),
     }
 
 

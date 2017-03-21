@@ -2,9 +2,8 @@
 
 import uuid
 import json
-import logging
 from dlvm.utils.error import FsmFailed
-from dlvm.utils.configure import conf
+import logging
 
 
 logger = logging.getLogger('dlvm_client')
@@ -17,8 +16,11 @@ def fsm_register(name, stage_info):
     logger.debug('fsm_register: [%s] [%s]', name, stage_info)
 
 
+max_retry = 3
+
+
 def fsm_run(
-        client, obt, stages, init_num, max_retry,
+        client, obt, stages, init_num,
         history, obt_args):
     stage_dict = {}
     stage_num = init_num
@@ -74,9 +76,8 @@ def fsm_start(name, client, obt_args):
         't_owner': t_owner,
     }
     history = []
-    max_retry = conf.fsm_max_retry
     return fsm_run(
-        client, obt, stages, init_num, max_retry, history, obt_args)
+        client, obt, stages, init_num, history, obt_args)
 
 
 def fsm_resume(client, t_id):
@@ -95,7 +96,6 @@ def fsm_resume(client, t_id):
     info = []
     stages = stage_info['stages']
     stage_num = ret['t_stage']
-    max_retry = conf.fsm_max_retry
     obt = {
         't_id': t_id,
         't_owner': new_owner,
@@ -103,7 +103,7 @@ def fsm_resume(client, t_id):
     if stage_num == 0:
         stage_num = stage_info['init_stage_num']
         return fsm_run(
-            obt, stages, stage_num, max_retry, history, obt_args)
+            obt, stages, stage_num, history, obt_args)
     info['stage_num'] = stage_num
     stage = stages[stage_num]
     check = stage['check']
@@ -114,4 +114,4 @@ def fsm_resume(client, t_id):
     history.append(info)
     init_num = stage[status]
     return fsm_run(
-        obt, stages, init_num, max_retry, history, obt_args)
+        obt, stages, init_num, history, obt_args)

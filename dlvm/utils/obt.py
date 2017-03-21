@@ -109,8 +109,8 @@ def do_verify(name, major, minor, c):
     try:
         _do_verify(
             name,
-            major,
-            minor,
+            int(major),
+            int(minor),
             c['default_major'],
             session,
             c['logger'],

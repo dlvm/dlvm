@@ -90,10 +90,9 @@ class Layer1(object):
                 data = rep.json()
             except ValueError:
                 msg['data'] = rep.text
+                raise ApiError(msg)
             else:
                 msg['data'] = data
-            if msg['status_code'] != 200:
-                raise ApiError(msg)
             logger.debug('return msg: [%s]', msg)
             return msg
 
