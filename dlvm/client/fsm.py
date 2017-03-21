@@ -19,7 +19,7 @@ def fsm_register(name, stage_info):
 
 def fsm_run(
         client, obt, stages, init_num, max_retry,
-        history, obt_args, run_args):
+        history, obt_args):
     stage_dict = {}
     stage_num = init_num
     while stage_num > 0:
@@ -37,10 +37,10 @@ def fsm_run(
         stage = stages[stage_num]
         action = stage['action']
         obt['t_stage'] = stage_num
-        ret = action(client, obt, obt_args, run_args)
+        ret = action(client, obt, obt_args)
         info['action_ret'] = ret
         check = stage['check']
-        status, msg = check(client, obt_args, run_args)
+        status, msg = check(client, obt_args)
         assert(status in ('ok', 'err'))
         info['check_status'] = status
         info['check_msg'] = msg
@@ -55,7 +55,7 @@ def fsm_run(
     return success, history
 
 
-def fsm_start(name, client, obt_args, run_args):
+def fsm_start(name, client, obt_args):
     t_id = uuid.uuid4()
     t_owner = uuid.uuid4()
     t_stage = 0
@@ -76,10 +76,10 @@ def fsm_start(name, client, obt_args, run_args):
     history = []
     max_retry = conf.fsm_max_retry
     return fsm_run(
-        client, obt, stages, init_num, max_retry, history, obt_args, run_args)
+        client, obt, stages, init_num, max_retry, history, obt_args)
 
 
-def fsm_resume(client, t_id, run_args):
+def fsm_resume(client, t_id):
     ret = client.obt_get(t_id=t_id)
     t_owner = ret['data']['body']['t_owner']
     new_owner = uuid.uuid4()
@@ -93,21 +93,25 @@ def fsm_resume(client, t_id, run_args):
     history = []
     stage_info = fsm[name]
     info = []
-    stage_num = ret['t_stage']
-    info['stage_num'] = stage_num
     stages = stage_info['stages']
+    stage_num = ret['t_stage']
+    max_retry = conf.fsm_max_retry
+    obt = {
+        't_id': t_id,
+        't_owner': new_owner,
+    }
+    if stage_num == 0:
+        stage_num = stage_info['init_stage_num']
+        return fsm_run(
+            obt, stages, stage_num, max_retry, history, obt_args)
+    info['stage_num'] = stage_num
     stage = stages[stage_num]
     check = stage['check']
-    status, msg = check(client, obt_args, run_args)
+    status, msg = check(client, obt_args)
     assert(status in ('ok', 'err'))
     info['check_status'] = status
     info['check_msg'] = msg
     history.append(info)
     init_num = stage[status]
-    obt = {
-        't_id': t_id,
-        't_owner': new_owner,
-    }
-    max_retry = conf.fsm_max_retry
     return fsm_run(
-        obt, stages, init_num, max_retry, history, obt_args, run_args)
+        obt, stages, init_num, max_retry, history, obt_args)
