@@ -50,6 +50,7 @@ setup(
             'dlvm_init_db=dlvm.api_server:init_db',
             'dlvm_init_obt=dlvm.utils.obt:init_obt',
             'dlvm_monitor=dlvm.monitor:start',
+            'dlvm=dlvm.client.cli:main',
         ],
     },
 )
