@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import os
 import argparse
 import logging
 import json
@@ -32,19 +31,27 @@ def convert_to_byte(inp):
 
 
 def dpv_list(args):
-    print('dpv_list')
+    client = Layer2(args.conf['api_server_list'])
+    ret = client.dpv_list()
+    print(json.dumps(ret, indent=4))
 
 
 def dpv_display(args):
-    print('dpv_display')
+    client = Layer2(args.conf['api_server_list'])
+    ret = client.dpv_display(args.dpv_name)
+    print(json.dumps(ret, indent=4))
 
 
 def dpv_create(args):
-    print('dpv_create')
+    client = Layer2(args.conf['api_server_list'])
+    ret = client.dpv_create(args.dpv_name)
+    print(json.dumps(ret, indent=4))
 
 
 def dpv_delete(args):
-    print('dpv_delete')
+    client = Layer2(args.conf['api_server_list'])
+    ret = client.dpv_delete(args.dpv_name)
+    print(json.dumps(ret, indent=4))
 
 
 def dpv_available(args):
@@ -66,86 +73,117 @@ def get_conf(inp):
         return conf
 
 
-parser = argparse.ArgumentParser(
-    prog='dlvm',
-    add_help=True,
-)
-parser.add_argument(
-    '-v', '--version',
-    action='version',
-    version='0.0.1',
-)
-parser.add_argument(
-    '--log_level',
-    choices=['debug', 'info', 'warning', 'error'],
-    default='info',
-)
-parser.add_argument(
-    '--conf',
-    type=get_conf,
-    default=default_conf,
-    help='dlvm client configuration file path'
-)
+CLI_CMDS = {
+    'dpv': {
+        'help': 'manage dpv',
+        'cmds': {
+            'list': {
+                'help': 'list_dpvs',
+            },
+            'create': {
+                'help': 'create dpv',
+                'arguments': {
+                    'dpv_name': {
+                        'help': 'dpv hostname',
+                    },
+                },
+            },
+            'delete': {
+                'help': 'delete dpv',
+                'arguments': {
+                    'dpv_name': {
+                        'help': 'dpv hostname',
+                    },
+                },
+            },
+            'show': {
+                'help': 'show dpv',
+                'arguments': {
+                    'dpv_name': {
+                        'help': 'dpv hostname',
+                    },
+                },
+            },
+            'available': {
+                'help': 'set dpv to available status',
+                'arguments': {
+                    'dpv_name': {
+                        'help': 'dpv hostname',
+                    },
+                },
+            },
+            'unavailable': {
+                'help': 'set dpv to unavailable status',
+                'arguments': {
+                    'dpv_name': {
+                        'help': 'dpv hostname',
+                    }
+                },
+            },
+        },
+    },
+}
 
-main_subparsers = parser.add_subparsers(help='main commands')
 
-dpv_parser = main_subparsers.add_parser(
-    'dpv',
-    help='manage dpv',
-)
+def generate_func(cmd_name, sub_name, kwarg_list):
+    def func(args):
+        kwargs = {}
+        for kwarg in kwarg_list:
+            kwargs[kwarg] = getattr(args, kwarg)
+        print('[%s] [%s] [%s]' % (cmd_name, sub_name, kwargs))
+    return func
 
-dpv_subparsers = dpv_parser.add_subparsers(
-    help='dpv subcommands',
-)
 
-dpv_list_parser = dpv_subparsers.add_parser(
-    'list',
-    help='list dpvs',
-)
-dpv_list_parser.set_defaults(func=dpv_list)
+def generate_parser(cli_cmds):
+    parser = argparse.ArgumentParser(
+        prog='dlvm',
+        add_help=True,
+    )
+    parser.add_argument(
+        '-v', '--version',
+        action='version',
+        version='0.0.1',
+    )
+    parser.add_argument(
+        '--log_level',
+        choices=['debug', 'info', 'warning', 'error'],
+        default='info',
+    )
+    parser.add_argument(
+        '--conf',
+        type=get_conf,
+        default=default_conf,
+        help='dlvm client configuration file path'
+    )
 
-dpv_create_parser = dpv_subparsers.add_parser(
-    'create',
-    help='create dpv',
-)
-dpv_create_parser.add_argument(
-    'dpv_name',
-    help='dpv hostname',
-)
-dpv_create_parser.set_defaults(func=dpv_create)
+    main_subparsers = parser.add_subparsers(help='dlvm commands')
 
-dpv_delete_parser = dpv_subparsers.add_parser(
-    'delete',
-    help='delete dpv',
-)
-dpv_delete_parser.add_argument(
-    'dpv_name',
-    help='dpv hostname',
-)
-dpv_delete_parser.set_defaults(func=dpv_delete)
-
-dpv_available_parser = dpv_subparsers.add_parser(
-    'available',
-    help='set dpv to available status',
-)
-dpv_available_parser.add_argument(
-    'dpv_name',
-    help='dpv hostname',
-)
-dpv_available_parser.set_defaults(func=dpv_available)
-
-dpv_unavailable_parser = dpv_subparsers.add_parser(
-    'unavailable',
-    help='set dpv to unavailable status',
-)
-dpv_unavailable_parser.add_argument(
-    'dpv_name',
-    help='dpv hostname',
-)
-dpv_unavailable_parser.set_defaults(func=dpv_unavailable)
+    for cmd_name in cli_cmds:
+        parser1 = main_subparsers.add_parser(
+            cmd_name,
+            help=cli_cmds[cmd_name]['help'],
+        )
+        parser2 = parser1.add_subparsers(
+            help=cli_cmds[cmd_name]['help'],
+        )
+        for sub_name in cli_cmds[cmd_name]['cmds']:
+            parser3 = parser2.add_parser(
+                sub_name,
+                help=cli_cmds[cmd_name]['cmds'][sub_name]['help'],
+            )
+            arguments = cli_cmds[cmd_name]['cmds'][sub_name].get(
+                'arguments', {})
+            if arguments:
+                for name in arguments:
+                    arg_name = '--{name}'.format(name=name)
+                    parser3.add_argument(arg_name, **arguments[name])
+            func = generate_func(cmd_name, sub_name, arguments.keys())
+            parser3.set_defaults(func=func)
+    return parser
 
 
 def main():
+    parser = generate_parser(CLI_CMDS)
     args = parser.parse_args()
     console = logging.StreamHandler()
     logger.setLevel(LOG_MAPPING[args.log_level])
