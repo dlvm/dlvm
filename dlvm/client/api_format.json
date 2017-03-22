@@ -63,6 +63,209 @@
 			},
 			"delete": {
 			}
+		},
+        "dvgs": {
+            "path": "/dvgs",
+            "get": {
+                "prev": {
+                    "type": "str",
+                    "required": false
+                },
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["dvg_name", "total_size", "free_size"],
+					"required": false
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				}
+			},
+			"post": {
+				"dvg_name": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+		"dvg": {
+			"path": "/dvgs/{dvg_name}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["extend", "reduce"],
+					"required": true
+				},
+				"dpv_name": {
+					"type": "str",
+					"required": true
+				},
+			},
+			"delete": {
+			}
+		},
+		"dlvs": {
+			"path": "/dlvs",
+			"get": {
+				"prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["dlv_name", "dlv_size"]
+				},
+				"reverse": {
+					"type": "bool",
+					"required" false
+				},
+				"dvg_name": {
+					"type": "str",
+					"required": false
+				},
+			},
+			"post": {
+				"dlv_name": {
+					"type": "str",
+					"required": true
+				},
+				"dlv_size": {
+					"type": "int",
+					"required": true
+				},
+				"init_size": {
+					"type": "int",
+					"required": true
+				},
+				"partition_count": {
+					"type": "int",
+					"required": true
+				},
+				"src_dlv_name": {
+					"type": "str",
+					"required": false
+				},
+				"dvg_name": {
+					"type": "str",
+					"required": true
+				},
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+		"dlv": {
+			"path": "/dlvs/{dlv_name}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["attach", "detach"]
+				},
+				"t_id": {
+					"type": "str",
+					"required": false
+				},
+				"t_owner": {
+					"type": "str",
+					"required": false
+				},
+				"t_stage": {
+					"type": "int",
+					"required": false
+				}
+			},
+			"delete": {
+			}
+		},
+		"obts": {
+			"path": "/obts",
+			"get": {
+				"prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["t_id", "t_owner", "timestamp"]
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				}
+			},
+			"post": {
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "int",
+					"required":true
+				},
+				"annotation": {
+					"type": "str",
+					"required": false
+				}
+			}
+		},
+		"obt": {
+			"path": "/obts/{t_id}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["preempt", "annotation"]
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"new_owner": {
+					"type": "str",
+					"required": false
+				},
+				"annotation": {
+					"type": "str",
+					"required": false
+				},
+			},
+			"delete": {
+				"t_owner": {
+					"type": "str",
+					"required": true
+				}
+			}
 		}
 	}
 }

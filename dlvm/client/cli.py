@@ -78,7 +78,7 @@ CLI_CMDS = {
         'help': 'manage dpv',
         'cmds': {
             'list': {
-                'help': 'list_dpvs',
+                'help': 'list dpvs',
             },
             'create': {
                 'help': 'create dpv',
@@ -118,6 +118,190 @@ CLI_CMDS = {
                     'dpv_name': {
                         'help': 'dpv hostname',
                     }
+                },
+            },
+        },
+    },
+    'dvg': {
+        'help': 'manage dvg',
+        'cmds': {
+            'list': {
+                'help': 'list dvgs',
+            },
+            'create': {
+                'help': 'create dvg',
+                'arguments': {
+                    'dvg_name': {
+                        'help': 'dvg name',
+                    },
+                },
+            },
+            'delete': {
+                'help': 'delete dvg',
+                'arguments': {
+                    'dvg_name': {
+                        'help': 'dvg name',
+                    },
+                },
+            },
+            'extend': {
+                'help': 'extend dvg',
+                'arguments': {
+                    'dvg_name': {
+                        'help': 'dvg_name',
+                    },
+                    'dpv_name': {
+                        'help': 'dpv_hostname',
+                    },
+                },
+            },
+            'reduce': {
+                'help': 'reduce dvg',
+                'arguments': {
+                    'dvg_name': {
+                        'help': 'dvg_name',
+                    },
+                    'dpv_name': {
+                        'help': 'dpv_hostname',
+                    },
+                },
+            },
+        },
+    },
+    'dlv': {
+        'help': 'manage dlv',
+        'cmds': {
+            'list': {
+                'help': 'list dlvs',
+            },
+            'create': {
+                'help': 'create dlv',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                    'dlv_size': {
+                        'type': int,
+                        'help': 'dlv size',
+                    },
+                    'init_size': {
+                        'type': int,
+                        'help': 'dlv init size',
+                    },
+                    'partition_count': {
+                        'type': int,
+                        'help': 'partition count',
+                    },
+                    'dvg_name': {
+                        'help': 'dvg name',
+                    },
+                },
+            },
+            'delete': {
+                'help': 'delete dlv',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                },
+            },
+            'attach': {
+                'help': 'attach dlv to a thost',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                    'thost_name': {
+                        'help': 'thost_name',
+                    },
+                },
+            },
+            'detach': {
+                'help': 'detach dlv from a thost',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                },
+            },
+            'display': {
+                'help': 'display dlv',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                },
+            },
+        },
+    },
+    'thost': {
+        'help': 'manage thost',
+        'cmds': {
+            'list': {
+                'help': 'list thosts',
+            },
+            'create': {
+                'help': 'create thost',
+                'arguments': {
+                    'thost_name': {
+                        'help': 'thost hostname',
+                    },
+                },
+            },
+            'delete': {
+                'help': 'delete thost',
+                'arguments': {
+                    'thost_name': {
+                        'help': 'thost hostname',
+                    },
+                },
+            },
+            'show': {
+                'help': 'show thost',
+                'arguments': {
+                    'thost_name': {
+                        'help': 'thost hostname',
+                    },
+                },
+            },
+            'available': {
+                'help': 'set thost to available status',
+                'arguments': {
+                    'thost_name': {
+                        'help': 'thost hostname',
+                    },
+                },
+            },
+            'unavailable': {
+                'help': 'set thost to unavailable status',
+                'arguments': {
+                    'thost_name': {
+                        'help': 'thost hostname',
+                    },
+                },
+            },
+        },
+    },
+    'obt': {
+        'help': 'manage obt',
+        'cmds': {
+            'list': {
+                'help': 'list obts',
+            },
+            'show': {
+                'help': 'show obt',
+                'arguments': {
+                    't_id': {
+                        'help': 'obt id',
+                    },
+                },
+            },
+            'resume': {
+                'help': 'resume obt',
+                'arguments': {
+                    't_id': {
+                        'help': 'obt id',
+                    },
                 },
             },
         },
