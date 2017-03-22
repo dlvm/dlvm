@@ -105,7 +105,7 @@
 				"dpv_name": {
 					"type": "str",
 					"required": true
-				},
+				}
 			},
 			"delete": {
 			}
@@ -127,12 +127,12 @@
 				},
 				"reverse": {
 					"type": "bool",
-					"required" false
+					"required": false
 				},
 				"dvg_name": {
 					"type": "str",
 					"required": false
-				},
+				}
 			},
 			"post": {
 				"dlv_name": {
@@ -244,7 +244,7 @@
 			"put": {
 				"action": {
 					"type": "choice",
-					"choices": ["preempt", "annotation"]
+					"choices": ["preempt", "annotation"],
 					"required": true
 				},
 				"t_owner": {
@@ -258,7 +258,7 @@
 				"annotation": {
 					"type": "str",
 					"required": false
-				},
+				}
 			},
 			"delete": {
 				"t_owner": {

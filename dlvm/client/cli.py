@@ -314,7 +314,13 @@ def generate_func(cmd_name, sub_name, kwarg_list):
         kwargs = {}
         for kwarg in kwarg_list:
             kwargs[kwarg] = getattr(args, kwarg)
-        print('[%s] [%s] [%s]' % (cmd_name, sub_name, kwargs))
+        layer2_method_name = '{cmd_name}_{sub_name}'.format(
+            cmd_name=cmd_name, sub_name=sub_name)
+        client = Layer2(args.conf['api_server_list'])
+        layer2_method = getattr(client, layer2_method_name)
+        print(layer2_method.__name__)
+        return None
+        return layer2_method(**kwargs)
     return func
 
 
