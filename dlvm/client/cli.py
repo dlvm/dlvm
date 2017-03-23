@@ -30,38 +30,6 @@ def convert_to_byte(inp):
     return val
 
 
-def dpv_list(args):
-    client = Layer2(args.conf['api_server_list'])
-    ret = client.dpv_list()
-    print(json.dumps(ret, indent=4))
-
-
-def dpv_display(args):
-    client = Layer2(args.conf['api_server_list'])
-    ret = client.dpv_display(args.dpv_name)
-    print(json.dumps(ret, indent=4))
-
-
-def dpv_create(args):
-    client = Layer2(args.conf['api_server_list'])
-    ret = client.dpv_create(args.dpv_name)
-    print(json.dumps(ret, indent=4))
-
-
-def dpv_delete(args):
-    client = Layer2(args.conf['api_server_list'])
-    ret = client.dpv_delete(args.dpv_name)
-    print(json.dumps(ret, indent=4))
-
-
-def dpv_available(args):
-    print('dpv_available')
-
-
-def dpv_unavailable(args):
-    print('dpv_unavailable')
-
-
 default_conf = {
     'api_server_list': ['localhost:9521'],
 }
@@ -181,11 +149,11 @@ CLI_CMDS = {
                         'help': 'dlv name',
                     },
                     'dlv_size': {
-                        'type': int,
+                        'type': convert_to_byte,
                         'help': 'dlv size',
                     },
                     'init_size': {
-                        'type': int,
+                        'type': convert_to_byte,
                         'help': 'dlv init size',
                     },
                     'partition_count': {
@@ -318,9 +286,8 @@ def generate_func(cmd_name, sub_name, kwarg_list):
             cmd_name=cmd_name, sub_name=sub_name)
         client = Layer2(args.conf['api_server_list'])
         layer2_method = getattr(client, layer2_method_name)
-        print(layer2_method.__name__)
-        return None
-        return layer2_method(**kwargs)
+        ret = layer2_method(**kwargs)
+        print(json.dumps(ret, indent=4))
     return func
 
 
