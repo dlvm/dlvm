@@ -20,7 +20,7 @@ def dpv_available_action(client, obt, obt_args):
     return ret
 
 
-def dpv_available_check(client, obt, obt_args):
+def dpv_available_check(client, obt_args):
     retry = 0
     while retry < obt_args['max_retry']:
         dpv_name = obt_args['dpv_name']
@@ -58,16 +58,16 @@ def dlv_create_action(client, obt, obt_args):
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
     }
-    ret = client.dlvs_create(**kwargs)
+    ret = client.dlvs_post(**kwargs)
     return ret
 
 
-def dlv_create_check(client, obt, obt_args):
+def dlv_create_check(client, obt_args):
     retry = 0
     while retry < obt_args['max_retry']:
         dlv_name = obt_args['dlv_name']
         ret = client.dlv_get(dlv_name=dlv_name)
-        status = ret['body']['status']
+        status = ret['data']['body']['status']
         if status == 'detached':
             return 'ok', ret
         elif status != 'creating':
@@ -88,7 +88,7 @@ def dlv_delete_action(client, obt, obt_args):
     return ret
 
 
-def dlv_delete_check(client, obt, obt_args):
+def dlv_delete_check(client, obt_args):
     retry = 0
     while retry < obt_args['max_retry']:
         dlv_name = obt_args['dlv_name']
@@ -152,7 +152,7 @@ def thost_available_action(client, obt, obt_args):
     return ret
 
 
-def thost_available_check(client, obt, obt_args):
+def thost_available_check(client, obt_args):
     retry = 0
     while retry < obt_args['max_retry']:
         thost_name = obt_args['thost_name']
@@ -218,7 +218,7 @@ class Layer2(object):
         ret = self.client.obts_get()
         return ret
 
-    def obt_get(self, t_id):
+    def obt_display(self, t_id):
         ret = self.client.obt_get(t_id=t_id)
         return ret
 
@@ -229,7 +229,7 @@ class Layer2(object):
         ret = self.client.thosts_get()
         return ret
 
-    def thost_get(self, thost_name):
+    def thost_display(self, thost_name):
         ret = self.client.thost_get(thost_name=thost_name)
         return ret
 
@@ -268,11 +268,13 @@ class Layer2(object):
         return ret
 
     def dvg_extend(self, dvg_name, dpv_name):
-        ret = self.client.dvg_put(action='extend', dpv_name=dpv_name)
+        ret = self.client.dvg_put(
+            dvg_name=dvg_name, action='extend', dpv_name=dpv_name)
         return ret
 
     def dvg_reduce(self, dvg_name, dpv_name):
-        ret = self.client.dvg_put(action='extend', dpv_name=dpv_name)
+        ret = self.client.dvg_put(
+            dvg_name=dvg_name, action='extend', dpv_name=dpv_name)
         return ret
 
     def dlv_create(
@@ -297,3 +299,11 @@ class Layer2(object):
         }
         return fsm_start(
             'dlv_delete', self.client, obt_args)
+
+    def dlv_display(self, dlv_name):
+        ret = self.client.dlv_get(dlv_name=dlv_name)
+        return ret
+
+    def dlv_list(self):
+        ret = self.client.dlvs_get()
+        return ret

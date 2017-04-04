@@ -64,7 +64,7 @@ CLI_CMDS = {
                     },
                 },
             },
-            'show': {
+            'display': {
                 'help': 'show dpv',
                 'arguments': {
                     'dpv_name': {
@@ -134,6 +134,14 @@ CLI_CMDS = {
                     },
                 },
             },
+            'display': {
+                'help': 'display dvg',
+                'arguments': {
+                    'dvg_name': {
+                        'help': 'dvg_name',
+                    },
+                },
+            }
         },
     },
     'dlv': {

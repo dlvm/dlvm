@@ -57,20 +57,20 @@ class Layer1(object):
             if method == 'get':
                 if kwargs:
                     params = urllib.urlencode(kwargs)
-                    url = '{api_server}/{api_path}?{params}'.format(
+                    url = '{api_server}{api_path}?{params}'.format(
                         api_server=api_server,
                         api_path=api_path,
                         params=params,
                     )
                 else:
-                    url = '{api_server}/{api_path}'.format(
+                    url = '{api_server}{api_path}'.format(
                         api_server=api_server,
                         api_path=api_path,
                     )
                 headers = None
                 data = None
             else:
-                url = '{api_server}/{api_path}'.format(
+                url = '{api_server}{api_path}'.format(
                     api_server=api_server,
                     api_path=api_path,
                 )
@@ -85,7 +85,7 @@ class Layer1(object):
             rep.close()
             msg = {}
             msg['url'] = url
-            msg['status_code'] = rep.status
+            msg['status_code'] = rep.status_code
             try:
                 data = rep.json()
             except ValueError:
