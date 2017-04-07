@@ -222,7 +222,33 @@ def handle_thost_put(params, args):
         assert(False)
 
 
+dlv_fields = OrderedDict()
+dlv_fields['dlv_name'] = fields.String
+
+thost_fields = OrderedDict()
+thost_fields['thost_name'] = fields.String
+thost_fields['status'] = fields.String
+thost_fields['timestamp'] = fields.DateTime
+thost_fields['dlvs'] = fields.List(fields.Nested(dlv_fields))
+
+
+def handle_thost_get(params, args):
+    thost_name = params[0]
+    try:
+        thost = TargetHost \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(thost_name=thost_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
+    return marshal(thost, thost_fields), 200
+
+
 class Thost(Resource):
+
+    def get(self, thost_name):
+        return handle_dlvm_request([thost_name], None, handle_thost_get)
 
     def put(self, thost_name):
         return handle_dlvm_request(

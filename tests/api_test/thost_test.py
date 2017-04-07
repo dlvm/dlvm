@@ -107,3 +107,8 @@ class DpvTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         thost = self.fm.thost_get('thost0')
         self.assertEqual(thost.status, 'available')
+
+    def test_thost_get(self):
+        self.fm.thost_create(**fixture_thost)
+        resp = self.client.get('/thosts/thost0')
+        self.assertEqual(resp.status_code, 200)

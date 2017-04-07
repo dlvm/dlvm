@@ -127,7 +127,7 @@ group_fields = OrderedDict()
 group_fields['group_id'] = fields.String
 group_fields['idx'] = fields.Integer
 group_fields['group_size'] = fields.Integer
-group_fields['snap_name'] = fields.String
+group_fields['dlv_name'] = fields.String
 
 leg_fields = OrderedDict()
 leg_fields['leg_id'] = fields.String

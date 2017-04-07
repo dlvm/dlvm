@@ -198,6 +198,59 @@
 			"delete": {
 			}
 		},
+		"thosts": {
+			"path": "/thosts",
+			"get": {
+				"prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["thost_name", "timestamp"]
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				}
+			},
+			"post": {
+				"thost_name": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+		"thost": {
+			"path": "/thosts/{thost_name}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["set_available", "set_unavailable"],
+					"required": true
+				},
+				"t_id": {
+					"type": "str",
+					"required": false
+				},
+				"t_owner": {
+					"type": "str",
+					"required": false
+				},
+				"t_stage": {
+					"type": "int",
+					"required": false
+				}
+			},
+			"delete": {
+			}
+		},
 		"obts": {
 			"path": "/obts",
 			"get": {
