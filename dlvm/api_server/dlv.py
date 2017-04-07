@@ -882,10 +882,13 @@ dlv_fields['groups'] = fields.List(fields.Nested(group_fields))
 
 def handle_dlv_get(params, args):
     dlv_name = params[0]
-    dlv = DistributeLogicalVolume \
-        .query \
-        .filter_by(dlv_name=dlv_name) \
-        .one()
+    try:
+        dlv = DistributeLogicalVolume \
+              .query \
+              .filter_by(dlv_name=dlv_name) \
+              .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
     body = marshal(dlv, dlv_fields)
     return body, 200
 

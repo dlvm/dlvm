@@ -10,7 +10,7 @@ class ClientLayer1Test(unittest.TestCase):
     @patch('dlvm.client.layer1.requests')
     def test_api_get(self, requests):
         rep_mock = Mock()
-        rep_mock.status = 200
+        rep_mock.status_code = 200
         rep_mock.json.return_value = 'success'
         get_mock = Mock()
         get_mock.return_value = rep_mock
@@ -22,7 +22,7 @@ class ClientLayer1Test(unittest.TestCase):
     @patch('dlvm.client.layer1.requests')
     def test_api_post(self, requests):
         rep_mock = Mock()
-        rep_mock.status = 200
+        rep_mock.status_code = 200
         rep_mock.json.return_value = 'success'
         post_mock = Mock()
         post_mock.return_value = rep_mock

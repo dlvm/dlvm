@@ -232,7 +232,7 @@ CLI_CMDS = {
                     },
                 },
             },
-            'show': {
+            'display': {
                 'help': 'show thost',
                 'arguments': {
                     'thost_name': {
@@ -264,7 +264,7 @@ CLI_CMDS = {
             'list': {
                 'help': 'list obts',
             },
-            'show': {
+            'display': {
                 'help': 'show obt',
                 'arguments': {
                     't_id': {

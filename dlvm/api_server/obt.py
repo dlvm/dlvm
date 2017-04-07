@@ -206,6 +206,9 @@ def handle_obt_delete(params, args):
         return make_body('not_exist'), 404
     if obt.t_owner != t_owner:
         return make_body('wrong_owner', obt.t_owner), 400
+    for dlv in obt.dlvs:
+        dlv.obt = None
+        db.session.add(dlv)
     db.session.delete(obt)
     db.session.commit()
     return make_body('success'), 200

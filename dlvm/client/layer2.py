@@ -25,6 +25,8 @@ def dpv_available_check(client, obt_args):
     while retry < obt_args['max_retry']:
         dpv_name = obt_args['dpv_name']
         ret = client.dpv_get(dpv_name=dpv_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
         if ret['body']['status'] == 'available':
             return 'ok', ret
         time.sleep(obt_args['interval'])
@@ -67,6 +69,8 @@ def dlv_create_check(client, obt_args):
     while retry < obt_args['max_retry']:
         dlv_name = obt_args['dlv_name']
         ret = client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
         status = ret['data']['body']['status']
         if status == 'detached':
             return 'ok', ret
@@ -95,6 +99,8 @@ def dlv_delete_check(client, obt_args):
         ret = client.dlv_get(dlv_name=dlv_name)
         if ret['status_code'] == 404:
             return 'ok', ret
+        elif ret['status_code'] != 200:
+            return 'err', ret
         else:
             status = ret['body']['status']
             if status != 'deleting':
@@ -157,7 +163,9 @@ def thost_available_check(client, obt_args):
     while retry < obt_args['max_retry']:
         thost_name = obt_args['thost_name']
         ret = client.thost_get(thost_name=thost_name)
-        if ret['body']['status'] == 'available':
+        if ret['status_code'] != 200:
+            return 'err', ret
+        elif ret['body']['status'] == 'available':
             return 'ok', ret
         time.sleep(obt_args['interval'])
         retry += 1

@@ -58,8 +58,8 @@ def fsm_run(
 
 
 def fsm_start(name, client, obt_args):
-    t_id = str(uuid.uuid4())
-    t_owner = str(uuid.uuid4())
+    t_id = uuid.uuid4().hex
+    t_owner = uuid.uuid4().hex
     t_stage = 0
     annotation = {
         'name': name,
@@ -83,7 +83,7 @@ def fsm_start(name, client, obt_args):
 def fsm_resume(client, t_id):
     ret = client.obt_get(t_id=t_id)
     t_owner = ret['data']['body']['t_owner']
-    new_owner = str(uuid.uuid4())
+    new_owner = uuid.uuid4().hex
     annotation = ret['data']['body']['annotation']
     client.obt_put(
         t_id=t_id, t_owner=t_owner, action='preempt', new_owner=new_owner)

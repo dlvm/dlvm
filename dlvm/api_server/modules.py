@@ -139,6 +139,7 @@ class DistributeLogicalVolume(db.Model):
     )
     obt = db.relationship(
         'OwnerBasedTransaction',
+        back_populates='dlvs',
     )
 
 
@@ -334,6 +335,10 @@ class OwnerBasedTransaction(db.Model):
     counter = db.relationship(
         'Counter',
         back_populates='transaction'
+    )
+    dlvs = db.relationship(
+        'DistributeLogicalVolume',
+        back_populates='obt',
     )
 
 
