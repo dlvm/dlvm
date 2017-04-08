@@ -149,7 +149,7 @@ def dvg_extend(dvg_name, dpv_name):
         return make_body('not_exist'), 404
 
     if dpv.dvg_name:
-        return make_body('dvg_conflict', dpv.dvg_name), 404
+        return make_body('dvg_conflict', dpv.dvg_name), 403
 
     if dpv.status != 'available':
         return make_body('not_available', dpv.status)
@@ -189,7 +189,11 @@ def dvg_reduce(dvg_name, dpv_name):
         return make_body('not_exist'), 200
 
     if dpv.dvg_name != dvg_name:
-        return make_body('dvg_conflict', dpv.dvg_name), 403
+        ctx = {
+            'dpv.dvg_name': dpv.dvg_name,
+            'dvg_name': dvg_name
+        }
+        return make_body('dvg_conflict', ctx), 403
 
     if dpv.status == 'available':
         if (dpv.total_size != dpv.free_size):

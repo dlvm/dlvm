@@ -102,7 +102,7 @@ def dlv_delete_check(client, obt_args):
         elif ret['status_code'] != 200:
             return 'err', ret
         else:
-            status = ret['body']['status']
+            status = ret['data']['body']['status']
             if status != 'deleting':
                 return 'err', ret
         time.sleep(obt_args['interval'])
@@ -144,6 +144,101 @@ dlv_delete_stage_info = {
 }
 
 fsm_register('dlv_delete', dlv_delete_stage_info)
+
+
+def dlv_attach_action(client, obt, obt_args):
+    kwargs = {
+        'dlv_name': obt_args['dlv_name'],
+        'action': 'attach',
+        'thost_name': obt_args['thost_name'],
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.dlv_put(**kwargs)
+    return ret
+
+
+def dlv_attach_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        dlv_name = obt_args['dlv_name']
+        ret = client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'attached':
+            return 'ok', ret
+        elif status != 'attaching':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def dlv_detach_action(client, obt, obt_args):
+    kwargs = {
+        'dlv_name': obt_args['dlv_name'],
+        'action': 'detach',
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.dlv_put(**kwargs)
+    return ret
+
+
+def dlv_detach_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        dlv_name = obt_args['dlv_name']
+        ret = client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'detached':
+            return 'ok', ret
+        elif status != 'detaching':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+dlv_attach_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': dlv_attach_action,
+            'check': dlv_attach_check,
+            'ok': -1,
+            'err': 2,
+        },
+        2: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -2,
+            'err': 2,
+        },
+    },
+}
+
+fsm_register('dlv_attach', dlv_attach_stage_info)
+
+
+dlv_detach_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -1,
+            'err': 1,
+        },
+    },
+}
+
+fsm_register('dlv_detach', dlv_detach_stage_info)
 
 
 def thost_available_action(client, obt, obt_args):
@@ -241,6 +336,10 @@ class Layer2(object):
         ret = self.client.thost_get(thost_name=thost_name)
         return ret
 
+    def thost_create(self, thost_name):
+        ret = self.client.thosts_post(thost_name=thost_name)
+        return ret
+
     def thost_delete(self, thost_name):
         ret = self.client.thost_delete(thost_name=thost_name)
         return ret
@@ -282,7 +381,7 @@ class Layer2(object):
 
     def dvg_reduce(self, dvg_name, dpv_name):
         ret = self.client.dvg_put(
-            dvg_name=dvg_name, action='extend', dpv_name=dpv_name)
+            dvg_name=dvg_name, action='reduce', dpv_name=dpv_name)
         return ret
 
     def dlv_create(
@@ -315,3 +414,22 @@ class Layer2(object):
     def dlv_list(self):
         ret = self.client.dlvs_get()
         return ret
+
+    def dlv_attach(self, dlv_name, thost_name):
+        obt_args = {
+            'dlv_name': dlv_name,
+            'thost_name': thost_name,
+            'max_retry': 10,
+            'interval': 1,
+        }
+        return fsm_start(
+            'dlv_attach', self.client, obt_args)
+
+    def dlv_detach(self, dlv_name):
+        obt_args = {
+            'dlv_name': dlv_name,
+            'max_retry': 10,
+            'interval': 1,
+        }
+        return fsm_start(
+            'dlv_detach', self.client, obt_args)
