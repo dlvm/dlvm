@@ -299,7 +299,7 @@ class Layer2(object):
         ret = self.client.dpvs_post(dpv_name=dpv_name)
         return ret
 
-    def dpv_remove(self, dpv_name):
+    def dpv_delete(self, dpv_name):
         ret = self.client.dpv_delete(dpv_name=dpv_name)
         return ret
 
