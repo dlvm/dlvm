@@ -357,7 +357,35 @@ def handle_snapshot_delete(params, args):
         return make_body('succes'), 200
 
 
+snapshot_fields = OrderedDict()
+snapshot_fields['snap_name'] = SnapName(attribute='snap_name')
+snapshot_fields['timestamp'] = fields.DateTime
+snapshot_fields['thin_id'] = fields.Integer
+snapshot_fields['ori_thin_id'] = fields.Integer
+snapshot_fields['status'] = fields.String
+
+
+def handle_snapshot_get(params, args):
+    dlv_name = params[0]
+    snap_name = '%s/%s' % (dlv_name, params[1])
+    try:
+        snapshot = Snapshot \
+            .query \
+            .filter_by(snap_name=snap_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
+    return marshal(snapshot, snapshot_fields), 200
+
+
 class Snap(Resource):
+
+    def get(self, dlv_name, snap_name):
+        return handle_dlvm_request(
+            [dlv_name, snap_name],
+            None,
+            handle_snapshot_get,
+        )
 
     def delete(self, dlv_name, snap_name):
         return handle_dlvm_request(

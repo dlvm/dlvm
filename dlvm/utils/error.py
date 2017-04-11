@@ -55,3 +55,7 @@ class ApiError(Exception):
 
 class FsmFailed(Exception):
     pass
+
+
+class DlvThostMisMatchError(Exception):
+    pass

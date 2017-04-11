@@ -8,6 +8,10 @@ from fsm import fsm_register, fsm_start, fsm_resume
 logger = logging.getLogger('dlvm_client')
 
 
+class Layer2Error(Exception):
+    pass
+
+
 def dpv_available_action(client, obt, obt_args):
     kwargs = {
         'dpv_name': obt_args['dpv_name'],
@@ -282,6 +286,188 @@ thost_available_stage_info = {
 fsm_register('thost_available', thost_available_stage_info)
 
 
+def snap_create_action(client, obt, obt_args):
+    ori_snap_name = obt_args['ori_snap_name']
+    snap_name = obt_args['snap_name']
+    snap_pairs = '%s:%s' % (ori_snap_name, snap_name)
+    kwargs = {
+        'dlv_name': obt_args['dlv_name'],
+        'snap_pairs': snap_pairs,
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.snaps_post(**kwargs)
+    return ret
+
+
+def snap_create_check(client, obt_args):
+    retry = 0
+    dlv_name = obt_args['dlv_name']
+    snap_name = obt_args['snpa_name']
+    kwargs = {
+        'dlv_name': dlv_name,
+        'snap_name': snap_name,
+    }
+    while retry < obt_args['max_retry']:
+        ret = client.snap_get(**kwargs)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'available':
+            return 'ok', ret
+        elif status != 'creating':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def snap_delete_action(client, obt, obt_args):
+    dlv_name = obt_args['dlv_name']
+    snap_name = obt_args['snap_name']
+    kwargs = {
+        'dlv_name': dlv_name,
+        'snap_name': snap_name,
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.snap_delete(**kwargs)
+    return ret
+
+
+def snap_delete_check(client, obt_args):
+    retry = 0
+    dlv_name = obt_args['dlv_name']
+    snap_name = obt_args['snpa_name']
+    kwargs = {
+        'dlv_name': dlv_name,
+        'snap_name': snap_name,
+    }
+    while retry < obt_args['max_retry']:
+        ret = client.snap_get(**kwargs)
+        if ret['status_code'] == 404:
+            return 'ok', ret
+        elif ret['status_code'] != 200:
+            return 'err', ret
+        else:
+            status = ret['data']['body']['status']
+            if status != 'deleting':
+                return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+snap_create_simple_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': snap_create_action,
+            'check': snap_create_check,
+            'ok': -1,
+            'err': 2,
+        },
+        2: {
+            'action': snap_delete_action,
+            'check': dlv_delete_check,
+            'ok': -2,
+            'err': 2,
+        },
+    },
+}
+
+fsm_register('snap_create_simple', snap_create_simple_stage_info)
+
+
+snap_create_complex_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': dlv_attach_action,
+            'check': dlv_attach_check,
+            'ok': 2,
+            'err': 10,
+        },
+        2: {
+            'action': snap_create_action,
+            'check': snap_create_check,
+            'ok': 3,
+            'err': 11,
+        },
+        3: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -1,
+            'err': 3,
+        },
+        10: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -2,
+            'err': 10,
+        },
+        11: {
+            'action': snap_delete_action,
+            'check': snap_delete_check,
+            'ok': 10,
+            'err': 11,
+        },
+    },
+}
+
+fsm_register('snap_create_complex', snap_create_complex_stage_info)
+
+
+snap_delete_simple_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': snap_delete_action,
+            'check': snap_delete_check,
+            'ok': -1,
+            'err': 1,
+        },
+    },
+}
+
+fsm_register('snap_delete_simple', snap_delete_simple_stage_info)
+
+
+snap_delete_complex_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': dlv_attach_action,
+            'check': dlv_attach_check,
+            'ok': 2,
+            'err': 10,
+        },
+        2: {
+            'action': snap_delete_action,
+            'check': snap_delete_check,
+            'ok': 3,
+            'err': 2,
+        },
+        3: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -1,
+            'err': 3,
+        },
+        10: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -2,
+            'er': 10,
+        },
+    },
+}
+
+fsm_register('snap_delete_complex', snap_delete_complex_stage_info)
+
+
 class Layer2(object):
 
     def __init__(self, api_server_list):
@@ -425,11 +611,82 @@ class Layer2(object):
         return fsm_start(
             'dlv_attach', self.client, obt_args)
 
-    def dlv_detach(self, dlv_name):
+    def dlv_detach(self, dlv_name, thost_name):
         obt_args = {
             'dlv_name': dlv_name,
+            'thost_name': thost_name,
             'max_retry': 10,
             'interval': 1,
         }
         return fsm_start(
             'dlv_detach', self.client, obt_args)
+
+    def snap_list(self, dlv_name):
+        ret = self.client.snaps_get(dlv_name=dlv_name)
+        return ret
+
+    def snap_display(self, dlv_name, snap_name):
+        ret = self.client.snap_get(
+            dlv_name=dlv_name, snap_name=snap_name)
+        return ret
+
+    def snap_create(self, dlv_name, snap_name, ori_snap_name):
+        ret = self.client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            raise Layer2Error(ret)
+        status = ret['data']['body']['status']
+        if status == 'attached':
+            obt_args = {
+                'dlv_name': dlv_name,
+                'snap_name': snap_name,
+                'ori_snap_name': ori_snap_name,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'snap_create_simple', self.client, obt_args)
+        elif status == 'detached':
+            groups = ret['data']['body']['groups']
+            thost_name = groups[0]['legs'][0]['dpv_name']
+            obt_args = {
+                'dlv_name': dlv_name,
+                'snap_name': snap_name,
+                'ori_snap_name': ori_snap_name,
+                'thost_name': thost_name,
+                'ori_snap_name': ori_snap_name,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'snap_create_complex', self.client. obt_args)
+        else:
+            raise Layer2Error('invalid status %s' % status)
+
+    def snap_delete(self, dlv_name, snap_name):
+        ret = self.client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            raise Layer2Error(ret)
+        status = ret['data']['body']['status']
+        if status == 'attached':
+            obt_args = {
+                'dlv_name': dlv_name,
+                'snap_name': snap_name,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'snap_delete_simple', self.client, obt_args)
+        elif status == 'detached':
+            groups = ret['data']['body']['groups']
+            thost_name = groups[0]['legs'][0]['dpv_name']
+            obt_args = {
+                'dlv_name': dlv_name,
+                'snap_name': snap_name,
+                'thost_name': thost_name,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'snap_delete_complex', self.client. obt_args)
+        else:
+            raise Layer2Error('invalid status %s' % status)

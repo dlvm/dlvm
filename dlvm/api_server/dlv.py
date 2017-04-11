@@ -14,7 +14,8 @@ from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     ObtConflictError, DlvStatusError, HasFjError, \
-    ThostError, SnapNameError, SnapshotStatusError
+    ThostError, SnapNameError, SnapshotStatusError, \
+    DlvThostMisMatchError
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
@@ -755,9 +756,11 @@ def do_detach(dlv, obt):
                     raise DpvError(dlv.thost_name)
 
 
-def dlv_detach(dlv, obt):
+def dlv_detach(dlv, thost_name, obt):
     if dlv.status not in CAN_DETACH_STATUS:
         raise DlvStatusError(dlv.status)
+    if dlv.thost_name != thost_name:
+        raise DlvThostMisMatchError(dlv.thost_name)
     dlv.status = 'detaching'
     dlv.timestamp = datetime.datetime.utcnow()
     db.session.add(dlv)
@@ -766,10 +769,12 @@ def dlv_detach(dlv, obt):
     return do_detach(dlv, obt)
 
 
-def handle_dlv_detach(dlv_name, t_id, t_owner, t_stage):
+def handle_dlv_detach(dlv_name, thost_name, t_id, t_owner, t_stage):
     try:
         dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_detach(dlv, obt)
+        dlv_detach(dlv, thost_name, obt)
+    except DlvThostMisMatchError as e:
+        return make_body('thost_mismatch', e.message), 500
     except DpvError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
@@ -842,8 +847,11 @@ def handle_dlv_put(params, args):
             return handle_dlv_attach(
                 dlv_name, args['thost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'detach':
-        return handle_dlv_detach(
-            dlv_name, t_id, t_owner, t_stage)
+        if 'thost_name' not in args:
+            return make_body('no_thost_name'), 400
+        else:
+            return handle_dlv_detach(
+                dlv_name, args['thost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'set_active':
         if 'snap_name' not in args:
             return make_body('no_snap_name'), 400

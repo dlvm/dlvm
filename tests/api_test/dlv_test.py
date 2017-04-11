@@ -312,6 +312,7 @@ class DlvTest(unittest.TestCase):
         }
         data = {
             'action': 'detach',
+            'thost_name': 'thost0',
             't_id': t_id,
             't_owner': t_owner,
             't_stage': t_stage,

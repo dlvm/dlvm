@@ -196,6 +196,81 @@
 				}
 			},
 			"delete": {
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+        "snaps": {
+			"path": "/dlvs/{dlv_name}/snaps",
+			"get": {
+				"prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["snap_name", "timestamp", "thin_id", "ori_thin_id"]
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				},
+				"status": {
+					"type": "choice",
+					"choices": ["creating", "create_failed", "available", "deleting", "delete_failed"],
+					"required": false
+				}
+			},
+			"post": {
+				"snap_pairs": {
+					"type": "str",
+					"required": true
+				},
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			}
+        },
+		"snap": {
+			"path": "/dlvs/{dlv_name}/snaps/{snap_name}",
+			"get": {
+			},
+			"delete": {
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
 			}
 		},
 		"thosts": {

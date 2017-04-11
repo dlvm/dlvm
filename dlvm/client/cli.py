@@ -198,6 +198,9 @@ CLI_CMDS = {
                     'dlv_name': {
                         'help': 'dlv name',
                     },
+                    'thost_name': {
+                        'help': 'thost_name',
+                    },
                 },
             },
             'display': {
@@ -205,6 +208,52 @@ CLI_CMDS = {
                 'arguments': {
                     'dlv_name': {
                         'help': 'dlv name',
+                    },
+                },
+            },
+        },
+    },
+    'snap': {
+        'help': 'manage snapshot',
+        'cmds': {
+            'list': {
+                'help': 'list snapshots',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                },
+            },
+            'display': {
+                'help': 'display snapshot',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                },
+            },
+            'create': {
+                'help': 'create snapshot',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                    'snap_name': {
+                        'help': 'snapshot name',
+                    },
+                    'ori_snap_name': {
+                        'help': 'original snapshot name',
+                    },
+                },
+            },
+            'delete': {
+                'help': 'delete snapshot',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                    'snap_name': {
+                        'help': 'snapshot name',
                     },
                 },
             },

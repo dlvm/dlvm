@@ -153,6 +153,12 @@ class SnapshotTest(unittest.TestCase):
         resp = self.client.post('/dlvs/dlv0/snaps', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
+    def test_snapshot_get(self):
+        self._prepare_dlv()
+        self._prepare_snapshots()
+        resp = self.client.get('/dlvs/dlv0/snaps/snap1')
+        self.assertEqual(resp.status_code, 200)
+
     @patch('dlvm.api_server.snapshot.WrapperRpcClient')
     def test_snapshot_delete(self, WrapperRpcClient):
         self._prepare_dlv()
