@@ -760,7 +760,11 @@ def dlv_detach(dlv, thost_name, obt):
     if dlv.status not in CAN_DETACH_STATUS:
         raise DlvStatusError(dlv.status)
     if dlv.thost_name != thost_name:
-        raise DlvThostMisMatchError(dlv.thost_name)
+        context = {
+            'dlv.thost_name': dlv.thost_name,
+            'thost_name': thost_name,
+        }
+        raise DlvThostMisMatchError(context)
     dlv.status = 'detaching'
     dlv.timestamp = datetime.datetime.utcnow()
     db.session.add(dlv)

@@ -180,8 +180,13 @@
 			"put": {
 				"action": {
 					"type": "choice",
-					"choices": ["attach", "detach"]
+					"choices": ["attach", "detach"],
+                    "required": false
 				},
+                "thost_name": {
+                    "type": "str",
+                    "required": false
+                },
 				"t_id": {
 					"type": "str",
 					"required": false

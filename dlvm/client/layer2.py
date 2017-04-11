@@ -184,6 +184,7 @@ def dlv_detach_action(client, obt, obt_args):
     kwargs = {
         'dlv_name': obt_args['dlv_name'],
         'action': 'detach',
+        'thost_name': obt_args['thost_name'],
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
