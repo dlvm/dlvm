@@ -46,10 +46,12 @@ class RpcLock(object):
             if self.name in global_rpc_set:
                 raise DpvError('rpc_conflict: %s' % self.name)
             global_rpc_set.add(self.name)
+            logger.info('lock resource: %s', self.name)
 
     def __exit__(self, exc_type, exc_value, traceback):
         with global_rpc_lock:
             global_rpc_set.remove(self.name)
+            logger.info('unlock resource: %s', self.name)
 
 
 fj_thread_set = set()

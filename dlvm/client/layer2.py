@@ -290,7 +290,7 @@ fsm_register('thost_available', thost_available_stage_info)
 def snap_create_action(client, obt, obt_args):
     ori_snap_name = obt_args['ori_snap_name']
     snap_name = obt_args['snap_name']
-    snap_pairs = '%s:%s' % (ori_snap_name, snap_name)
+    snap_pairs = '%s:%s' % (snap_name, ori_snap_name)
     kwargs = {
         'dlv_name': obt_args['dlv_name'],
         'snap_pairs': snap_pairs,
@@ -305,7 +305,7 @@ def snap_create_action(client, obt, obt_args):
 def snap_create_check(client, obt_args):
     retry = 0
     dlv_name = obt_args['dlv_name']
-    snap_name = obt_args['snpa_name']
+    snap_name = obt_args['snap_name']
     kwargs = {
         'dlv_name': dlv_name,
         'snap_name': snap_name,
@@ -341,7 +341,7 @@ def snap_delete_action(client, obt, obt_args):
 def snap_delete_check(client, obt_args):
     retry = 0
     dlv_name = obt_args['dlv_name']
-    snap_name = obt_args['snpa_name']
+    snap_name = obt_args['snap_name']
     kwargs = {
         'dlv_name': dlv_name,
         'snap_name': snap_name,
@@ -467,6 +467,228 @@ snap_delete_complex_stage_info = {
 }
 
 fsm_register('snap_delete_complex', snap_delete_complex_stage_info)
+
+
+def fj_create_action(client, obt, obt_args):
+    kwargs = {
+        'fj_name': obt_args['fj_name'],
+        'dlv_name': obt_args['dlv_name'],
+        'ori_id': obt_args['ori_id'],
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.fjs_post(**kwargs)
+    return ret
+
+
+def fj_create_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        fj_name = obt_args['fj_name']
+        ret = client.fj_get(fj_name=fj_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'processing':
+            return 'ok', ret
+        elif status != 'creating':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def fj_cancel_action(client, obt, obt_args):
+    kwargs = {
+        'fj_name': obt_args['fj_name'],
+        'action': 'cancel',
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.fj_put(**kwargs)
+    return ret
+
+
+def fj_cancel_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        fj_name = obt_args['fj_name']
+        ret = client.fj_get(fj_name=fj_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'canceled':
+            return 'ok', ret
+        elif status != 'canceling':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def fj_finish_action(client, obt, obt_args):
+    kwargs = {
+        'fj_name': obt_args['fj_name'],
+        'action': 'finish',
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.fj_put(**kwargs)
+    return ret
+
+
+def fj_finish_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        fj_name = obt_args['fj_name']
+        ret = client.fj_get(fj_name=fj_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status != 'finished':
+            return 'ok', ret
+        elif status != 'finishing':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def fj_delete_action(client, obt, obt_args):
+    kwargs = {
+        'fj_name': obt_args['fj_name'],
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.fj_delete(**kwargs)
+    return ret
+
+
+def fj_delete_check(client, obt_args):
+    fj_name = obt_args['fj_name']
+    ret = client.fj_get(fj_name=fj_name)
+    if ret['status_code'] == 404:
+        return 'ok', ret
+    else:
+        return 'err', ret
+
+
+fj_create_simple_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': fj_create_action,
+            'check': fj_create_check,
+            'ok': -1,
+            'err': 2,
+        },
+        2: {
+            'action': fj_cancel_action,
+            'check': fj_cancel_check,
+            'ok': 3,
+            'err': 2,
+        },
+        3: {
+            'action': fj_delete_action,
+            'check': fj_delete_check,
+            'ok': -2,
+            'err': 3,
+        },
+    },
+}
+
+fsm_register('fj_create_simple', fj_create_simple_stage_info)
+
+
+fj_create_complex_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': dlv_attach_action,
+            'check': dlv_attach_check,
+            'ok': 2,
+            'err': 10,
+        },
+        2: {
+            'action': fj_create_action,
+            'check': fj_create_check,
+            'ok': 3,
+            'err': 11,
+        },
+        3: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -1,
+            'err': 3,
+        },
+        10: {
+            'action': dlv_detach_action,
+            'check': dlv_detach_check,
+            'ok': -2,
+            'err': 10,
+        },
+        11: {
+            'action': fj_cancel_action,
+            'check': fj_cancel_check,
+            'ok': 12,
+            'err': 11,
+        },
+        12: {
+            'action': fj_delete_action,
+            'check': fj_delete_check,
+            'ok': -2,
+            'err': 12,
+        },
+    },
+}
+
+fsm_register('fj_create_complex', fj_create_complex_stage_info)
+
+
+fj_cancel_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': fj_cancel_action,
+            'check': fj_cancel_check,
+            'ok': 2,
+            'err': 1,
+        },
+        2: {
+            'action': fj_delete_action,
+            'check': fj_delete_check,
+            'ok': -1,
+            'err': 2,
+        },
+    },
+}
+
+fsm_register('fj_cancel', fj_cancel_stage_info)
+
+
+fj_finish_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': fj_finish_action,
+            'check': fj_finish_check,
+            'ok': 2,
+            'err': 1,
+        },
+        2: {
+            'action': fj_delete_action,
+            'check': fj_delete_check,
+            'ok': -1,
+            'err': 2,
+        },
+    },
+}
+
+fsm_register('fj_finish', fj_finish_stage_info)
 
 
 class Layer2(object):
@@ -659,7 +881,7 @@ class Layer2(object):
                 'interval': 1,
             }
             return fsm_start(
-                'snap_create_complex', self.client. obt_args)
+                'snap_create_complex', self.client, obt_args)
         else:
             raise Layer2Error('invalid status %s' % status)
 
@@ -688,6 +910,63 @@ class Layer2(object):
                 'interval': 1,
             }
             return fsm_start(
-                'snap_delete_complex', self.client. obt_args)
+                'snap_delete_complex', self.client, obt_args)
         else:
             raise Layer2Error('invalid status %s' % status)
+
+    def fj_list(self):
+        ret = self.client.fjs_get()
+        return ret
+
+    def fj_display(self, fj_name):
+        ret = self.client.fj_get(fj_name=fj_name)
+        return ret
+
+    def fj_create(self, fj_name, dlv_name, ori_id):
+        ret = self.client.dlv_get(dlv_name=dlv_name)
+        if ret['status_code'] != 200:
+            raise Layer2Error(ret)
+        status = ret['data']['body']['status']
+        if status == 'attached':
+            obt_args = {
+                'fj_name': fj_name,
+                'dlv_name': dlv_name,
+                'ori_id': ori_id,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'fj_create_simple', self.client, obt_args)
+        elif status == 'detached':
+            groups = ret['data']['body']['groups']
+            thost_name = groups[0]['legs'][0]['dpv_name']
+            obt_args = {
+                'fj_name': fj_name,
+                'dlv_name': dlv_name,
+                'thost_name': thost_name,
+                'ori_id': ori_id,
+                'max_retry': 10,
+                'interval': 1,
+            }
+            return fsm_start(
+                'fj_create_complex', self.client, obt_args)
+        else:
+            raise Layer2Error('invalid status %s' % status)
+
+    def fj_cancel(self, fj_name):
+        obt_args = {
+            'fj_name': fj_name,
+            'max_retry': 10,
+            'interval': 1,
+        }
+        return fsm_start(
+            'fj_cancel', self.client, obt_args)
+
+    def fj_finish(self, fj_name):
+        obt_args = {
+            'fj_name': fj_name,
+            'max_retry': 10,
+            'interval': 1,
+        }
+        return fsm_start(
+            'fj_finish', self.client, obt_args)

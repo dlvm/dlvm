@@ -230,6 +230,9 @@ CLI_CMDS = {
                     'dlv_name': {
                         'help': 'dlv name',
                     },
+                    'snap_name': {
+                        'help': 'snapshot name',
+                    },
                 },
             },
             'create': {
@@ -302,6 +305,59 @@ CLI_CMDS = {
                 'arguments': {
                     'thost_name': {
                         'help': 'thost hostname',
+                    },
+                },
+            },
+        },
+    },
+    'fj': {
+        'help': 'majage failover job',
+        'cmds': {
+            'list': {
+                'help': 'list fjs',
+            },
+            'display': {
+                'help': 'show fj',
+                'arguments': {
+                    'with_process': {
+                        'help': 'show fj process',
+                        'choices': ['true', 'false'],
+                        'default': 'false',
+                    },
+                },
+            },
+            'create': {
+                'help': 'create fj',
+                'arguments': {
+                    'fj_name': {
+                        'help': 'fj_name',
+                        'required': True,
+                    },
+                    'dlv_name': {
+                        'help': 'dlv_name',
+                        'required': True,
+                    },
+                    'ori_id': {
+                        'help': 'ori leg id',
+                        'required': True,
+                    },
+                },
+            },
+            'cancel': {
+                'help': 'cancel fj',
+                'arguments': {
+                    'fj_name': {
+                        'help': 'fj_name',
+                        'required': True,
+                    },
+                },
+            },
+            'finish': {
+                'help': 'finish fj',
+                'arguments': {
+                    'fj_name': {
+                        'help': 'fj_name',
+                        'required': True,
                     },
                 },
             },

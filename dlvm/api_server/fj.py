@@ -6,6 +6,7 @@ import logging
 import random
 import datetime
 from flask_restful import reqparse, Resource, fields, marshal
+from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
@@ -472,11 +473,14 @@ def get_process_status(fj):
 
 def handle_fj_get(params, args):
     fj_name = params[0]
-    fj = FailoverJob \
-        .query \
-        .with_lockmode('update') \
-        .filter_by(fj_name=fj_name) \
-        .one()
+    try:
+        fj = FailoverJob \
+             .query \
+             .with_lockmode('update') \
+             .filter_by(fj_name=fj_name) \
+             .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
     if args['with_process'] == 'True':
         process = get_process_status(fj)
     else:
@@ -773,11 +777,14 @@ def handle_fj_delete(params, args):
     t_id = args['t_id']
     t_owner = args['t_owner']
     t_stage = args['t_stage']
-    fj = FailoverJob \
-        .query \
-        .with_lockmode('update') \
-        .filter_by(fj_name=fj_name) \
-        .one()
+    try:
+        fj = FailoverJob \
+             .query \
+             .with_lockmode('update') \
+             .filter_by(fj_name=fj_name) \
+             .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
     dlv_name = fj.dlv_name
     dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
     if fj.status not in FJ_CAN_DELETE_STATUS:
