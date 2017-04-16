@@ -435,7 +435,7 @@ fj_get_parser = reqparse.RequestParser()
 fj_get_parser.add_argument(
     'with_process',
     type=str,
-    choices=('True', 'False'),
+    choices=('true', 'false'),
     default='False',
     location='args',
 )
@@ -481,7 +481,7 @@ def handle_fj_get(params, args):
              .one()
     except NoResultFound:
         return make_body('not_exist'), 404
-    if args['with_process'] == 'True':
+    if args['with_process'] == 'true':
         process = get_process_status(fj)
     else:
         process = ''

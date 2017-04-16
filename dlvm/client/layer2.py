@@ -548,7 +548,7 @@ def fj_finish_check(client, obt_args):
         if ret['status_code'] != 200:
             return 'err', ret
         status = ret['data']['body']['status']
-        if status != 'finished':
+        if status == 'finished':
             return 'ok', ret
         elif status != 'finishing':
             return 'err', ret
@@ -918,8 +918,8 @@ class Layer2(object):
         ret = self.client.fjs_get()
         return ret
 
-    def fj_display(self, fj_name):
-        ret = self.client.fj_get(fj_name=fj_name)
+    def fj_display(self, fj_name, with_process):
+        ret = self.client.fj_get(fj_name=fj_name, with_process=with_process)
         return ret
 
     def fj_create(self, fj_name, dlv_name, ori_id):

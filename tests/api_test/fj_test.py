@@ -154,7 +154,7 @@ class FjTest(unittest.TestCase):
     def test_fj_get(self, DpvClient):
         self._prepare_dlv()
         self._prepare_fj()
-        resp = self.client.get('/fjs/fj0?with_process=True')
+        resp = self.client.get('/fjs/fj0?with_process=true')
         self.assertEqual(resp.status_code, 200)
 
     @patch('dlvm.api_server.fj.DpvClient')

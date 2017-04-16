@@ -213,10 +213,10 @@ class DlvTest(unittest.TestCase):
             db.session.add(snapshot)
             db.session.commit()
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlvs_create_new(self, WrapperRpcClient):
+    @patch('dlvm.api_server.dlv.DpvClient')
+    def test_dlvs_create_new(self, DpvClient):
         client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+        DpvClient.return_value = client_mock
         leg_create_mock = Mock()
         client_mock.leg_create = leg_create_mock
         self._prepare_dpvs_and_dvg()
@@ -248,10 +248,10 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(dlv.status, 'detached')
         self.assertEqual(leg_create_mock.call_count, 6)
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlv_delete(self, WrapperRpcClient):
+    @patch('dlvm.api_server.dlv.DpvClient')
+    def test_dlv_delete(self, DpvClient):
         client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+        DpvClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
         self._prepare_dlv('detached')
         t_id = 't0'
@@ -271,10 +271,12 @@ class DlvTest(unittest.TestCase):
         print(resp.data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlv_attach(self, WrapperRpcClient):
+    @patch('dlvm.api_server.dlv.DpvClient')
+    @patch('dlvm.api_server.dlv.ThostClient')
+    def test_dlv_attach(self, ThostClient, DpvClient):
         client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+        ThostClient.return_value = client_mock
+        DpvClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
         self._prepare_thost('thost0')
         self._prepare_dlv('detached')
@@ -296,10 +298,12 @@ class DlvTest(unittest.TestCase):
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlv_detach(self, WrapperRpcClient):
+    @patch('dlvm.api_server.dlv.DpvClient')
+    @patch('dlvm.api_server.dlv.ThostClient')
+    def test_dlv_detach(self, ThostClient, DpvClient):
         client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+        DpvClient.return_value = client_mock
+        ThostClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
         self._prepare_thost('thost0')
         self._prepare_dlv('attached', 'thost0')
@@ -321,10 +325,10 @@ class DlvTest(unittest.TestCase):
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlv_set_active(self, WrapperRpcClient):
+    @patch('dlvm.api_server.dlv.ThostClient')
+    def test_dlv_set_active(self, ThostClient):
         client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+        ThostClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
         self._prepare_dlv('detached')
         t_id = 't0'
@@ -346,10 +350,7 @@ class DlvTest(unittest.TestCase):
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.WrapperRpcClient')
-    def test_dlv_get(self, WrapperRpcClient):
-        client_mock = Mock()
-        WrapperRpcClient.return_value = client_mock
+    def test_dlv_get(self):
         self._prepare_dpvs_and_dvg()
         self._prepare_dlv('detached')
         resp = self.client.get('/dlvs/dlv0')

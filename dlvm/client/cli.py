@@ -319,6 +319,10 @@ CLI_CMDS = {
             'display': {
                 'help': 'show fj',
                 'arguments': {
+                    'fj_name': {
+                        'help': 'fj name',
+                        'required': True,
+                    },
                     'with_process': {
                         'help': 'show fj process',
                         'choices': ['true', 'false'],

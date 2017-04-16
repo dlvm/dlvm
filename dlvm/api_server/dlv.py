@@ -4,16 +4,13 @@ from collections import OrderedDict
 import uuid
 import logging
 import random
-import socket
 import datetime
-from xmlrpclib import Fault
 from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.orm.exc import NoResultFound
-from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    ObtConflictError, DlvStatusError, HasFjError, \
+    DlvStatusError, HasFjError, \
     ThostError, SnapNameError, SnapshotStatusError, \
     DlvThostMisMatchError
 from dlvm.utils.helper import dlv_info_encode
@@ -22,7 +19,8 @@ from modules import db, \
     Snapshot, Group, Leg
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, div_round_up, dlv_get, \
-    obt_get, obt_refresh, obt_encode
+    obt_get, obt_refresh, obt_encode, \
+    DpvClient, ThostClient
 
 
 logger = logging.getLogger('dlvm_api')
@@ -232,27 +230,13 @@ def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
     dm_context = get_dm_context()
     for leg in group.legs:
         dpv_name = leg.dpv_name
-        try:
-            client = WrapperRpcClient(
-                str(dpv_name),
-                conf.dpv_port,
-                conf.dpv_timeout,
-            )
-            client.leg_create(
-                leg.leg_id,
-                obt_encode(obt),
-                str(leg.leg_size),
-                dm_context,
-            )
-        except socket.error, socket.timeout:
-            logger.error('connect to dpv failed: %s', dpv_name)
-            raise DpvError(dpv_name)
-        except Fault as e:
-            if 'ObtConflict' in str(e):
-                raise ObtConflictError()
-            else:
-                logger.error('dpv rpc failed: %s', e)
-                raise DpvError(dpv_name)
+        client = DpvClient(dpv_name)
+        client.leg_create(
+            leg.leg_id,
+            obt_encode(obt),
+            str(leg.leg_size),
+            dm_context,
+        )
 
 
 def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
@@ -431,25 +415,11 @@ def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
         dpv_dict[dpv_name] = dpv
         if dpv.status != 'available':
             continue
-        try:
-            client = WrapperRpcClient(
-                str(dpv_name),
-                conf.dpv_port,
-                conf.dpv_timeout,
-            )
-            client.leg_delete(
-                leg.leg_id,
-                obt_encode(obt),
-            )
-        except socket.error, socket.timeout:
-            logger.error('connect to dpv failed: %s', dpv_name)
-            raise DpvError(dpv_name)
-        except Fault as e:
-            if 'ObtConflict' in str(e):
-                raise ObtConflictError()
-            else:
-                logger.error('dpv rpc failed: %s', e)
-                raise DpvError(dpv_name)
+        client = DpvClient(dpv_name)
+        client.leg_delete(
+            leg.leg_id,
+            obt_encode(obt),
+        )
 
     total_free_size = 0
     for leg in group.legs:
@@ -589,49 +559,21 @@ def do_attach(dlv, obt):
                 .one()
             if dpv.status != 'available':
                 continue
-            try:
-                client = WrapperRpcClient(
-                    str(dpv_name),
-                    conf.dpv_port,
-                    conf.dpv_timeout,
-                )
-                client.leg_export(
-                    leg.leg_id,
-                    obt_encode(obt),
-                    dlv.thost_name,
-                )
-            except socket.error, socket.timeout:
-                logger.error('connect to dpv failed: %s', dpv_name)
-                continue
-            except Fault as e:
-                if 'ObtConflict' in str(e):
-                    raise ObtConflictError()
-                else:
-                    logger.error('dpv rpc failed: %s', e)
-                    continue
+            client = DpvClient(dpv_name)
+            client.leg_export(
+                leg.leg_id,
+                obt_encode(obt),
+                dlv.thost_name,
+            )
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
-    try:
-        client = WrapperRpcClient(
-            str(dlv.thost_name),
-            conf.thost_port,
-            conf.thost_timeout,
-        )
-        client.dlv_aggregate(
-            dlv.dlv_name,
-            obt_encode(obt),
-            dlv_info,
-        )
-    except socket.error, socket.timeout:
-        logger.error('connect to thost failed: %s', dlv.thost_name)
-        raise ThostError(dlv.thost_name)
-    except Fault as e:
-        if 'ObtConflict' in str(e):
-            raise ObtConflictError()
-        else:
-            logger.error('thost rpc failed: %s', e)
-            raise ThostError(dlv.thost_name)
+    client = ThostClient(dlv.thost_name)
+    client.dlv_aggregate(
+        dlv.dlv_name,
+        obt_encode(obt),
+        dlv_info,
+    )
 
 
 def dlv_attach(dlv, thost_name, obt):
@@ -704,26 +646,12 @@ def do_detach(dlv, obt):
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
-    try:
-        client = WrapperRpcClient(
-            str(dlv.thost_name),
-            conf.thost_port,
-            conf.thost_timeout,
-        )
-        client.dlv_degregate(
-            dlv.dlv_name,
-            obt_encode(obt),
-            dlv_info,
-        )
-    except socket.error, socket.timeout:
-        logger.error('connect to thost failed: %s', dlv.thost_name)
-        raise ThostError(dlv.thost_name)
-    except Fault as e:
-        if 'ObtConflict' in str(e):
-            raise ObtConflictError()
-        else:
-            logger.error('thost rpc failed: %s', e)
-            raise ThostError(dlv.thost_name)
+    client = ThostClient(dlv.thost_name)
+    client.dlv_degregate(
+        dlv.dlv_name,
+        obt_encode(obt),
+        dlv_info,
+    )
 
     for group in dlv.groups:
         for leg in group.legs:
@@ -735,25 +663,12 @@ def do_detach(dlv, obt):
                 .one()
             if dpv.status != 'available':
                 continue
-            try:
-                client = WrapperRpcClient(
-                    str(dpv_name),
-                    conf.dpv_port,
-                    conf.dpv_timeout,
-                )
-                client.leg_unexport(
-                    leg.leg_id,
-                    obt_encode(obt),
-                    dlv.thost_name,
-                )
-            except socket.error, socket.timeout:
-                logger.error('connect to dpv failed: %s', dpv_name)
-                raise DpvError(dlv.thost_name)
-            except Fault as e:
-                if 'ObtConflict' in str(e):
-                    raise ObtConflictError()
-                else:
-                    raise DpvError(dlv.thost_name)
+            client = DpvClient(dpv_name)
+            client.leg_unexport(
+                leg.leg_id,
+                obt_encode(obt),
+                dlv.thost_name,
+            )
 
 
 def dlv_detach(dlv, thost_name, obt):
