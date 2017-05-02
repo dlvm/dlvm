@@ -83,6 +83,7 @@ def fsm_start(name, client, obt_args):
 def fsm_resume(client, t_id):
     ret = client.obt_get(t_id=t_id)
     t_owner = ret['data']['body']['t_owner']
+    t_stage = ret['data']['body']['t_stage']
     new_owner = uuid.uuid4().hex
     annotation = ret['data']['body']['annotation']
     client.obt_put(
@@ -95,7 +96,7 @@ def fsm_resume(client, t_id):
     stage_info = fsm[name]
     info = []
     stages = stage_info['stages']
-    stage_num = ret['t_stage']
+    stage_num = t_stage
     obt = {
         't_id': t_id,
         't_owner': new_owner,

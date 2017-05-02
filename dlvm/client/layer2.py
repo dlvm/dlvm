@@ -249,7 +249,7 @@ fsm_register('dlv_detach', dlv_detach_stage_info)
 def thost_available_action(client, obt, obt_args):
     kwargs = {
         'thost_name': obt_args['thost_name'],
-        'action': 'available',
+        'action': 'set_available',
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
@@ -755,7 +755,7 @@ class Layer2(object):
 
     def thost_unavailable(self, thost_name):
         ret = self.client.thost_put(
-            thost_name=thost_name, action='unavailable')
+            thost_name=thost_name, action='set_unavailable')
         return ret
 
     def thost_available(self, thost_name):
