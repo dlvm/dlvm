@@ -183,7 +183,7 @@
 					"choices": ["attach", "detach"],
                     "required": false
 				},
-                "thost_name": {
+                "ihost_name": {
                     "type": "str",
                     "required": false
                 },
@@ -278,8 +278,8 @@
 				}
 			}
 		},
-		"thosts": {
-			"path": "/thosts",
+		"ihosts": {
+			"path": "/ihosts",
 			"get": {
 				"prev": {
 					"type": "str",
@@ -291,7 +291,7 @@
 				},
 				"order_by": {
 					"type": "choice",
-					"choices": ["thost_name", "timestamp"]
+					"choices": ["ihost_name", "timestamp"]
 				},
 				"reverse": {
 					"type": "bool",
@@ -299,14 +299,14 @@
 				}
 			},
 			"post": {
-				"thost_name": {
+				"ihost_name": {
 					"type": "str",
 					"required": true
 				}
 			}
 		},
-		"thost": {
-			"path": "/thosts/{thost_name}",
+		"ihost": {
+			"path": "/ihosts/{ihost_name}",
 			"get": {
 			},
 			"put": {
