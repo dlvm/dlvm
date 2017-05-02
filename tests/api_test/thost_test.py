@@ -11,8 +11,8 @@ from utils import FixtureManager
 
 timestamp = datetime.datetime(2016, 7, 21, 23, 58, 59)
 
-fixture_thost = {
-    'thost_name': 'thost0',
+fixture_ihost = {
+    'ihost_name': 'ihost0',
     'status': 'available',
     'timestamp': timestamp,
 }
@@ -46,36 +46,36 @@ class DpvTest(unittest.TestCase):
         if os.path.isfile(self.db_path):
             os.remove(self.db_path)
 
-    def test_thosts_get(self):
-        self.fm.thost_create(**fixture_thost)
-        resp = self.client.get('/thosts')
+    def test_ihosts_get(self):
+        self.fm.ihost_create(**fixture_ihost)
+        resp = self.client.get('/ihosts')
         self.assertEqual(resp.status_code, 200)
 
-    def test_thosts_post(self):
+    def test_ihosts_post(self):
         headers = {
             'Content-Type': 'application/json',
         }
         data = {
-            'thost_name': 'thost0',
+            'ihost_name': 'ihost0',
         }
         data = json.dumps(data)
-        resp = self.client.post('/thosts', headers=headers, data=data)
+        resp = self.client.post('/ihosts', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    def test_thost_delete(self):
-        self.fm.thost_create(**fixture_thost)
+    def test_ihost_delete(self):
+        self.fm.ihost_create(**fixture_ihost)
         headers = {
             'Content-Type': 'application/json',
         }
         data = {
-            'thost_name': 'thost0',
+            'ihost_name': 'ihost0',
         }
         data = json.dumps(data)
-        resp = self.client.delete('/thosts/thost0', headers=headers, data=data)
+        resp = self.client.delete('/ihosts/ihost0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    def test_thost_unavailable(self):
-        self.fm.thost_create(**fixture_thost)
+    def test_ihost_unavailable(self):
+        self.fm.ihost_create(**fixture_ihost)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -83,15 +83,15 @@ class DpvTest(unittest.TestCase):
             'action': 'set_unavailable',
         }
         data = json.dumps(data)
-        resp = self.client.put('/thosts/thost0', headers=headers, data=data)
+        resp = self.client.put('/ihosts/ihost0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
-        thost = self.fm.thost_get('thost0')
-        self.assertEqual(thost.status, 'unavailable')
+        ihost = self.fm.ihost_get('ihost0')
+        self.assertEqual(ihost.status, 'unavailable')
 
-    @patch('dlvm.api_server.thost.ThostClient')
-    def test_thost_available(self, ThostClient):
-        self.fm.thost_create(**fixture_thost)
-        self.fm.thost_set_status('thost0', 'unavailable')
+    @patch('dlvm.api_server.ihost.IhostClient')
+    def test_ihost_available(self, IhostClient):
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.ihost_set_status('ihost0', 'unavailable')
         self.fm.obt_create(**fixture_obt)
         headers = {
             'Content-Type': 'application/json',
@@ -103,12 +103,12 @@ class DpvTest(unittest.TestCase):
             't_stage': 0,
         }
         data = json.dumps(data)
-        resp = self.client.put('/thosts/thost0', headers=headers, data=data)
+        resp = self.client.put('/ihosts/ihost0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
-        thost = self.fm.thost_get('thost0')
-        self.assertEqual(thost.status, 'available')
+        ihost = self.fm.ihost_get('ihost0')
+        self.assertEqual(ihost.status, 'available')
 
-    def test_thost_get(self):
-        self.fm.thost_create(**fixture_thost)
-        resp = self.client.get('/thosts/thost0')
+    def test_ihost_get(self):
+        self.fm.ihost_create(**fixture_ihost)
+        resp = self.client.get('/ihosts/ihost0')
         self.assertEqual(resp.status_code, 200)

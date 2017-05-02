@@ -202,28 +202,28 @@ def leg_delete(leg_id, obt):
         do_leg_delete(leg_id)
 
 
-def do_leg_export(leg_id, thost_name):
+def do_leg_export(leg_id, ihost_name):
     target_name = encode_target_name(leg_id)
-    initiator_name = encode_initiator_name(thost_name)
+    initiator_name = encode_initiator_name(ihost_name)
     iscsi_export(target_name, initiator_name)
 
 
-def leg_export(leg_id, obt, thost_name):
+def leg_export(leg_id, obt, ihost_name):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_export(leg_id, thost_name)
+        do_leg_export(leg_id, ihost_name)
 
 
-def do_leg_unexport(leg_id, thost_name):
+def do_leg_unexport(leg_id, ihost_name):
     target_name = encode_target_name(leg_id)
-    initiator_name = encode_initiator_name(thost_name)
+    initiator_name = encode_initiator_name(ihost_name)
     iscsi_unexport(target_name, initiator_name)
 
 
-def leg_unexport(leg_id, obt, thost_name):
+def leg_unexport(leg_id, obt, ihost_name):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_unexport(leg_id, thost_name)
+        do_leg_unexport(leg_id, ihost_name)
 
 
 def do_fj_leg_export(leg_id, fj_name, src_name, leg_size):
@@ -466,11 +466,11 @@ def dpv_sync(dpv_info, obt):
         leg_id = leg_info['leg_id']
         leg_size = leg_info['leg_size']
         dm_context = leg_info['dm_context']
-        thost_name = leg_info['thost_name']
+        ihost_name = leg_info['ihost_name']
         with RpcLock(leg_id):
             do_leg_create(leg_id, int(leg_size), dm_context)
-            if thost_name is not None:
-                do_leg_export(leg_id, thost_name)
+            if ihost_name is not None:
+                do_leg_export(leg_id, ihost_name)
         leg_id_list.append(leg_id)
     dpv_release_unused(leg_id_list)
 

@@ -9,7 +9,7 @@ from xmlrpclib import Fault
 from types import MethodType
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.error import ObtConflictError, ObtMissError, \
-    DpvError, ThostError
+    DpvError, IhostError
 from dlvm.utils.configure import conf
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import dlv_info_encode
@@ -60,43 +60,43 @@ class DpvClient(object):
         return getattr(self, name)
 
 
-class ThostClient(object):
+class IhostClient(object):
 
-    def __init__(self, thost_name):
+    def __init__(self, ihost_name):
         self.client = WrapperRpcClient(
-            str(thost_name),
-            conf.thost_port,
-            conf.thost_timeout,
+            str(ihost_name),
+            conf.ihost_port,
+            conf.ihost_timeout,
         )
-        self.thost_name = thost_name
+        self.ihost_name = ihost_name
 
     def __getattr__(self, name):
         def wrapper_func(self, *args, **kwargs):
             func = getattr(self.client, name)
             try:
                 logger.info(
-                    'thost call: %s %s %s %s',
+                    'ihost call: %s %s %s %s',
                     name,
-                    self.thost_name,
+                    self.ihost_name,
                     args,
                     kwargs,
                 )
                 ret = func(*args, **kwargs)
                 logger.info(
-                    'thost ret: %s %s',
-                    self.thost_name,
+                    'ihost ret: %s %s',
+                    self.ihost_name,
                     ret,
                 )
                 return ret
             except socket.error, socket.timeout:
-                logger.error('connect to thost failed: %s', self.thost_name)
-                raise ThostError(self.thost_name)
+                logger.error('connect to ihost failed: %s', self.ihost_name)
+                raise IhostError(self.ihost_name)
             except Fault as e:
                 if 'ObtConflict' in str(e):
                     raise ObtConflictError()
                 else:
-                    logger.error('thost rpc failed: %s', e)
-                    raise ThostError(self.thost_name)
+                    logger.error('ihost rpc failed: %s', e)
+                    raise IhostError(self.ihost_name)
         setattr(self, name, MethodType(wrapper_func, self, self.__class__))
         return getattr(self, name)
 

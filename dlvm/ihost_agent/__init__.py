@@ -6,7 +6,7 @@ import logging
 from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
-from dlvm.utils.obt import thost_verify
+from dlvm.utils.obt import ihost_verify
 from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmStripe, DmMirror, \
     DmPool, DmThin, DmError, \
@@ -18,7 +18,7 @@ from dlvm.utils.queue import queue_init, report_single_leg, \
     report_multi_legs, report_pool
 
 
-logger = logging.getLogger('dlvm_thost')
+logger = logging.getLogger('dlvm_ihost')
 
 global_rpc_lock = Lock()
 global_rpc_set = set()
@@ -47,54 +47,54 @@ def ping(message):
 
 
 def get_final_name(dlv_name):
-    final_name = '{thost_prefix}-{dlv_name}'.format(
-        thost_prefix=conf.thost_prefix,
+    final_name = '{ihost_prefix}-{dlv_name}'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
     return final_name
 
 
 def get_middle_name(dlv_name):
-    middle_name = '{thost_prefix}-{dlv_name}-middle'.format(
-        thost_prefix=conf.thost_prefix,
+    middle_name = '{ihost_prefix}-{dlv_name}-middle'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
     return middle_name
 
 
 def get_thin_name(dlv_name):
-    thin_name = '{thost_prefix}-{dlv_name}-thin'.format(
-        thost_prefix=conf.thost_prefix,
+    thin_name = '{ihost_prefix}-{dlv_name}-thin'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
     return thin_name
 
 
 def get_pool_name(dlv_name):
-    pool_name = '{thost_prefix}-{dlv_name}-pool'.format(
-        thost_prefix=conf.thost_prefix,
+    pool_name = '{ihost_prefix}-{dlv_name}-pool'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
     return pool_name
 
 
 def get_thin_meta_name(dlv_name):
-    return '{thost_prefix}-{dlv_name}-meta'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-meta'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
 
 
 def get_thin_data_name(dlv_name):
-    return '{thost_prefix}-{dlv_name}-data'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-data'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
     )
 
 
 def get_mirror_meta_name(dlv_name, g_idx, l_idx):
-    return '{thost_prefix}-{dlv_name}-{g_idx}-{l_idx}-meta'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-{g_idx}-{l_idx}-meta'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         l_idx=l_idx,
@@ -102,8 +102,8 @@ def get_mirror_meta_name(dlv_name, g_idx, l_idx):
 
 
 def get_mirror_data_name(dlv_name, g_idx, l_idx):
-    return '{thost_prefix}-{dlv_name}-{g_idx}-{l_idx}-data'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-{g_idx}-{l_idx}-data'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         l_idx=l_idx,
@@ -111,8 +111,8 @@ def get_mirror_data_name(dlv_name, g_idx, l_idx):
 
 
 def get_mirror_name(dlv_name, g_idx, m_idx):
-    return '{thost_prefix}-{dlv_name}-{g_idx}-{m_idx}'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-{g_idx}-{m_idx}'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
         m_idx=m_idx,
@@ -120,8 +120,8 @@ def get_mirror_name(dlv_name, g_idx, m_idx):
 
 
 def get_stripe_name(dlv_name, g_idx):
-    return '{thost_prefix}-{dlv_name}-{g_idx}'.format(
-        thost_prefix=conf.thost_prefix,
+    return '{ihost_prefix}-{dlv_name}-{g_idx}'.format(
+        ihost_prefix=conf.ihost_prefix,
         dlv_name=dlv_name,
         g_idx=g_idx,
     )
@@ -169,7 +169,7 @@ def do_bm_get(dlv_name, dlv_info, thin_id_list, leg_id):
 
 def bm_get(dlv_name, obt, dlv_info, thin_id_list, leg_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         return do_bm_get(
             dlv_name, dlv_info, thin_id_list, leg_id)
@@ -559,7 +559,7 @@ def do_dlv_aggregate(dlv_name, dlv_info):
 
 def dlv_aggregate(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         return do_dlv_aggregate(dlv_name, dlv_info)
 
@@ -645,7 +645,7 @@ def do_dlv_degregate(dlv_name, dlv_info):
 
 def dlv_degregate(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         do_dlv_degregate(dlv_name, dlv_info)
 
@@ -676,7 +676,7 @@ def do_dlv_suspend(dlv_name, dlv_info):
 
 def dlv_suspend(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         do_dlv_suspend(dlv_name, dlv_info)
 
@@ -741,7 +741,7 @@ def do_dlv_resume(dlv_name, dlv_info):
 
 def dlv_resume(dlv_name, obt, dlv_info):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         do_dlv_resume(dlv_name, dlv_info)
 
@@ -759,7 +759,7 @@ def do_snapshot_create(dlv_name, thin_id, ori_thin_id):
 
 def snapshot_create(dlv_name, obt, thin_id, ori_thin_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         do_snapshot_create(
             dlv_name, thin_id, ori_thin_id)
 
@@ -776,7 +776,7 @@ def do_snapshot_delete(dlv_name, thin_id):
 
 def snapshot_delete(dlv_name, obt, thin_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         do_snapshot_delete(dlv_name, thin_id)
 
 
@@ -877,7 +877,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
 
 def remirror(dlv_name, obt, dlv_info, src_id, dst_leg):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         do_remirror(
             dlv_name, dlv_info, src_id, dst_leg)
@@ -906,7 +906,7 @@ def do_leg_remove(dlv_name, dlv_info, leg_id):
 
 def leg_remove(dlv_name, obt, dlv_info, leg_id):
     with RpcLock(dlv_name):
-        thost_verify(dlv_name, obt['major'], obt['minor'])
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
         do_leg_remove(dlv_name, dlv_info, leg_id)
 
@@ -936,14 +936,14 @@ def generate_pattern_list(prefix):
     return pattern_list
 
 
-def thost_release_dm(dlv_name_list):
-    dm_name_list = dm_get_all(conf.thost_prefix)
+def ihost_release_dm(dlv_name_list):
+    dm_name_list = dm_get_all(conf.ihost_prefix)
     dm_name_set = set(dm_name_list)
     ignore_list = []
     for dm_name in dm_name_set:
         for dlv_name in dlv_name_list:
-            pattern1 = '{thost_prefix}-{dlv_name}'.format(
-                thost_prefix=conf.thost_prefix,
+            pattern1 = '{ihost_prefix}-{dlv_name}'.format(
+                ihost_prefix=conf.ihost_prefix,
                 dlv_name=dlv_name,
             )
             if dm_name == pattern1:
@@ -955,7 +955,7 @@ def thost_release_dm(dlv_name_list):
                 break
     for dm_name in ignore_list:
         dm_name_set.remove(dm_name)
-    pattern_list = generate_pattern_list(conf.thost_prefix)
+    pattern_list = generate_pattern_list(conf.ihost_prefix)
     for pattern in pattern_list:
         removable_list = []
         for dm_name in dm_name_set:
@@ -968,19 +968,19 @@ def thost_release_dm(dlv_name_list):
     assert(len(dm_name_set) == 0)
 
 
-def thost_release_iscsi(target_name_set):
+def ihost_release_iscsi(target_name_set):
     iscsi_target_list = iscsi_login_get_all(conf.target_prefix)
     for target_name in iscsi_target_list:
         if target_name not in target_name_set:
             iscsi_logout(target_name)
 
 
-def thost_sync(thost_info, obt):
+def ihost_sync(ihost_info, obt):
     dlv_name_list = []
     target_name_set = set()
-    for dlv_name, dlv_info in thost_info:
+    for dlv_name, dlv_info in ihost_info:
         with RpcLock(dlv_name):
-            thost_verify(dlv_name, obt['major'], obt['minor'])
+            ihost_verify(dlv_name, obt['major'], obt['minor'])
             dlv_info_decode(dlv_info)
             do_dlv_aggregate(dlv_name, dlv_info)
             for group in dlv_info['groups']:
@@ -988,15 +988,15 @@ def thost_sync(thost_info, obt):
                     target_name = encode_target_name(leg['leg_id'])
                     target_name_set.add(target_name)
             dlv_name_list.append(dlv_name)
-    thost_release_dm(dlv_name_list)
-    thost_release_iscsi(target_name_set)
+    ihost_release_dm(dlv_name_list)
+    ihost_release_iscsi(target_name_set)
 
 
 def main():
     loginit()
     context_init(conf, logger)
     queue_init()
-    s = WrapperRpcServer(conf.thost_listener, conf.thost_port, logger)
+    s = WrapperRpcServer(conf.ihost_listener, conf.ihost_port, logger)
     s.register_function(ping)
     s.register_function(bm_get)
     s.register_function(dlv_aggregate)
@@ -1007,6 +1007,6 @@ def main():
     s.register_function(snapshot_delete)
     s.register_function(remirror)
     s.register_function(leg_remove)
-    s.register_function(thost_sync)
-    logger.info('thost_agent start')
+    s.register_function(ihost_sync)
+    logger.info('ihost_agent start')
     s.serve_forever()

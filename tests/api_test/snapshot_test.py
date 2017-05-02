@@ -69,8 +69,8 @@ fixture_snapshots = [
     },
 ]
 
-fixture_thost = {
-    'thost_name': 'thost0',
+fixture_ihost = {
+    'ihost_name': 'ihost0',
     'status': 'available',
     'timestamp': timestamp,
 }
@@ -115,8 +115,8 @@ class SnapshotTest(unittest.TestCase):
     def _prepare_obt(self):
         self.fm.obt_create(**fixture_obt)
 
-    def _prepare_thost(self):
-        self.fm.thost_create(**fixture_thost)
+    def _prepare_ihost(self):
+        self.fm.ihost_create(**fixture_ihost)
 
     def _prepare_snapshots(self):
         for snapshot in fixture_snapshots:
@@ -138,8 +138,8 @@ class SnapshotTest(unittest.TestCase):
     def test_snapshots_post(self, WrapperRpcClient):
         self._prepare_dlv()
         self._prepare_obt()
-        self._prepare_thost()
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self._prepare_ihost()
+        self.fm.dlv_attach('dlv0', 'ihost0')
         headers = {
             'Content-Type': 'application/json',
         }
@@ -164,8 +164,8 @@ class SnapshotTest(unittest.TestCase):
         self._prepare_dlv()
         self._prepare_snapshots()
         self._prepare_obt()
-        self._prepare_thost()
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self._prepare_ihost()
+        self.fm.dlv_attach('dlv0', 'ihost0')
         headers = {
             'Content-Type': 'application/json',
         }

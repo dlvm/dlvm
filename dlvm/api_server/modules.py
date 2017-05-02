@@ -109,12 +109,12 @@ class DistributeLogicalVolume(db.Model):
         'DistributeVolumeGroup',
         back_populates='dlvs',
     )
-    thost_name = db.Column(
+    ihost_name = db.Column(
         db.String(32),
-        db.ForeignKey('target_host.thost_name'),
+        db.ForeignKey('initiator_host.ihost_name'),
     )
-    thost = db.relationship(
-        'TargetHost',
+    ihost = db.relationship(
+        'InitiatorHost',
         back_populates='dlvs',
     )
     snapshots = db.relationship(
@@ -143,13 +143,13 @@ class DistributeLogicalVolume(db.Model):
     )
 
 
-class TargetHost(db.Model):
-    thost_name = db.Column(
+class InitiatorHost(db.Model):
+    ihost_name = db.Column(
         db.String(32),
         primary_key=True,
     )
     status = db.Column(
-        db.Enum('available', 'unavailable', name='thost_status'),
+        db.Enum('available', 'unavailable', name='ihost_status'),
         nullable=False,
     )
     timestamp = db.Column(
@@ -158,7 +158,7 @@ class TargetHost(db.Model):
     )
     dlvs = db.relationship(
         'DistributeLogicalVolume',
-        back_populates='thost',
+        back_populates='ihost',
     )
     annotation = db.Column(
         db.Text,

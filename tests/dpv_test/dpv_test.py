@@ -328,7 +328,7 @@ class RpcFunctionTest(unittest.TestCase):
             'leg_id': '001',
             'leg_size': str(1024*1024*1024),
             'dm_context': dm_context,
-            'thost_name': None,
+            'ihost_name': None,
         }
         dpv_info.append(leg_info)
         obt = {

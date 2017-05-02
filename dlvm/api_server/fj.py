@@ -11,14 +11,14 @@ from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, \
-    ThostError, FjStatusError
+    IhostError, FjStatusError
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
     Leg, Snapshot, FailoverJob
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
-    DpvClient, ThostClient, \
+    DpvClient, IhostClient, \
     obt_refresh, obt_encode
 
 
@@ -286,14 +286,14 @@ def do_fj_create(fj, dlv, obt):
     )
     dlv_info = get_dlv_info(dlv)
     dlv_info_encode(dlv_info)
-    thost_client = ThostClient(dlv.thost_name)
+    ihost_client = IhostClient(dlv.ihost_name)
     try:
-        thost_client.dlv_suspend(
+        ihost_client.dlv_suspend(
             dlv.dlv_name,
             obt_encode(obt),
             dlv_info,
         )
-        bm_dict = thost_client.bm_get(
+        bm_dict = ihost_client.bm_get(
             dlv.dlv_name,
             obt_encode(obt),
             dlv_info,
@@ -320,7 +320,7 @@ def do_fj_create(fj, dlv, obt):
             bm,
         )
     finally:
-        thost_client.dlv_resume(
+        ihost_client.dlv_resume(
             dlv.dlv_name,
             obt_encode(obt),
             dlv_info,
@@ -345,13 +345,13 @@ def fj_create(fj, dlv, obt):
         obt_refresh(obt)
         db.session.commit()
         return make_body('invalid_dlv_status', e.message), 400
-    except ThostError as e:
+    except IhostError as e:
         fj.status = 'create_failed'
         fj.timestamp = datetime.datetime.utcnow()
         db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     except DpvError as e:
         fj.status = 'create_failed'
         fj.timestamp = datetime.datetime.utcnow()
@@ -600,12 +600,12 @@ def handle_fj_cancel(params, args):
         do_fj_cancel(fj, dlv, obt)
     except FjStatusError as e:
         return make_body('invalid_fj_status', e.message), 400
-    except ThostError as e:
+    except IhostError as e:
         fj.status = 'cancel_failed'
         fj.timestamp = datetime.datetime.utcnow()
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     except DpvError as e:
         fj.status = 'cancel_failed'
         fj.timestamp = datetime.datetime.utcnow()
@@ -662,8 +662,8 @@ def do_fj_finish(fj, dlv, obt):
                 obt_encode(obt),
                 dlv.dlv_name,
             )
-        if dlv.thost.status == 'available':
-            thost_client = ThostClient(dlv.thost_name)
+        if dlv.ihost.status == 'available':
+            ihost_client = IhostClient(dlv.ihost_name)
             dlv_info = get_dlv_info(dlv)
             d_leg = {}
             d_leg['leg_id'] = dst_leg.leg_id
@@ -671,7 +671,7 @@ def do_fj_finish(fj, dlv, obt):
             d_leg['leg_size'] = str(dst_leg.leg_size)
             d_leg['dpv_name'] = dst_leg.dpv_name
             dlv_info_encode(dlv_info)
-            thost_client.remirror(
+            ihost_client.remirror(
                 dlv.dlv_name,
                 obt_encode(obt),
                 dlv_info,
@@ -716,12 +716,12 @@ def handle_fj_finish(params, args):
         do_fj_finish(fj, dlv, obt)
     except FjStatusError as e:
         return make_body('invalid_fj_status', e.message), 400
-    except ThostError as e:
+    except IhostError as e:
         fj.status = 'finish_failed'
         fj.timestamp = datetime.datetime.utcnow()
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     except DpvError as e:
         fj.status = 'finish_failed'
         fj.timestamp = datetime.datetime.utcnow()

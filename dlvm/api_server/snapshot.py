@@ -11,7 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.error import ObtConflictError, \
-    DlvStatusError, ThostError, ThinMaxRetryError, \
+    DlvStatusError, IhostError, ThinMaxRetryError, \
     SnapshotStatusError, DeleteActiveSnapshotError
 from dlvm.utils.constant import max_thin_id, max_thin_id_retry
 from modules import db, Snapshot
@@ -195,9 +195,9 @@ def snapshots_create(dlv, snap_pairs, obt):
 def snapshots_take(dlv, snapshots, obt):
     try:
         client = WrapperRpcClient(
-            str(dlv.thost_name),
-            conf.thost_port,
-            conf.thost_timeout,
+            str(dlv.ihost_name),
+            conf.ihost_port,
+            conf.ihost_timeout,
         )
         for snapshot in snapshots:
             client.snapshot_create(
@@ -207,14 +207,14 @@ def snapshots_take(dlv, snapshots, obt):
                 snapshot.ori_thin_id,
             )
     except socket.error, socket.timeout:
-        logger.error('connect to thost failed: %s', dlv.thost_name)
-        raise ThostError(dlv.thost_name)
+        logger.error('connect to ihost failed: %s', dlv.ihost_name)
+        raise IhostError(dlv.ihost_name)
     except Fault as e:
         if 'ObtConflict' in str(e):
             raise ObtConflictError()
         else:
-            logger.error('thost rpc failed: %s', e)
-            raise ThostError(dlv.thost_name)
+            logger.error('ihost rpc failed: %s', e)
+            raise IhostError(dlv.ihost_name)
 
 
 def snapshots_complete(dlv, snapshots, status, obt):
@@ -239,9 +239,9 @@ def handle_snapshots_post(params, args):
         return make_body('invalid_dlv_status', e.message), 400
     except SnapshotStatusError as e:
         return make_body('invalid_snapshot_status', e.message), 400
-    except ThostError as e:
+    except IhostError as e:
         snapshots_complete(dlv, snapshots, 'create_failed', obt)
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     else:
         snapshots_complete(dlv, snapshots, 'available', obt)
         return make_body('success'), 200
@@ -287,9 +287,9 @@ def snapshot_delete(dlv, snapshot, obt):
     db.session.commit()
     try:
         client = WrapperRpcClient(
-            str(dlv.thost_name),
-            conf.thost_port,
-            conf.thost_timeout,
+            str(dlv.ihost_name),
+            conf.ihost_port,
+            conf.ihost_timeout,
         )
         client.snapshot_delete(
             dlv.dlv_name,
@@ -297,14 +297,14 @@ def snapshot_delete(dlv, snapshot, obt):
             snapshot.thin_id,
         )
     except socket.error, socket.timeout:
-        logger.error('connect to thost failed: %s', dlv.thost_name)
-        raise ThostError(dlv.thost_name)
+        logger.error('connect to ihost failed: %s', dlv.ihost_name)
+        raise IhostError(dlv.ihost_name)
     except Fault as e:
         if 'ObtConflict' in str(e):
             raise ObtConflictError()
         else:
-            logger.error('thost rpc failed: %s', e)
-            raise ThostError(dlv.thost_name)
+            logger.error('ihost rpc failed: %s', e)
+            raise IhostError(dlv.ihost_name)
 
 
 snapshot_delete_parser = reqparse.RequestParser()
@@ -344,12 +344,12 @@ def handle_snapshot_delete(params, args):
         return make_body('invalid_snapshot_status', e.message), 400
     except DeleteActiveSnapshotError:
         return make_body('can_not_delete_active_snapshot'), 400
-    except ThostError as e:
+    except IhostError as e:
         snapshot.status = 'create_failed'
         db.session.add(snapshot)
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     else:
         db.session.delete(snapshot)
         obt_refresh(obt)

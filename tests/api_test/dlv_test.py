@@ -9,7 +9,7 @@ from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, OwnerBasedTransaction, Counter, TargetHost
+    Snapshot, Group, Leg, OwnerBasedTransaction, Counter, InitiatorHost
 from dlvm.api_server.handler import div_round_up
 
 
@@ -100,7 +100,7 @@ class DlvTest(unittest.TestCase):
             db.session.add(dvg)
             db.session.commit()
 
-    def _prepare_dlv(self, status, thost_name=None):
+    def _prepare_dlv(self, status, ihost_name=None):
         dlv_name = 'dlv0'
         dlv_size = 200*1024*1024*1024
         init_size = dlv_size
@@ -117,7 +117,7 @@ class DlvTest(unittest.TestCase):
                 status=status,
                 timestamp=datetime.datetime.utcnow(),
                 dvg_name=dvg_name,
-                thost_name=thost_name,
+                ihost_name=ihost_name,
             )
             db.session.add(dlv)
             snapshot = Snapshot(
@@ -173,14 +173,14 @@ class DlvTest(unittest.TestCase):
 
             db.session.commit()
 
-    def _prepare_thost(self, thost_name):
+    def _prepare_ihost(self, ihost_name):
         with self.app.app_context():
-            thost = TargetHost(
-                thost_name=thost_name,
+            ihost = InitiatorHost(
+                ihost_name=ihost_name,
                 status='available',
                 timestamp=datetime.datetime.utcnow(),
             )
-            db.session.add(thost)
+            db.session.add(ihost)
             db.session.commit()
 
     def _prepare_obt(self, t_id, t_owner, t_stage):
@@ -272,13 +272,13 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
     @patch('dlvm.api_server.dlv.DpvClient')
-    @patch('dlvm.api_server.dlv.ThostClient')
-    def test_dlv_attach(self, ThostClient, DpvClient):
+    @patch('dlvm.api_server.dlv.IhostClient')
+    def test_dlv_attach(self, IhostClient, DpvClient):
         client_mock = Mock()
-        ThostClient.return_value = client_mock
+        IhostClient.return_value = client_mock
         DpvClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
-        self._prepare_thost('thost0')
+        self._prepare_ihost('ihost0')
         self._prepare_dlv('detached')
         t_id = 't0'
         t_owner = 't_owner'
@@ -289,7 +289,7 @@ class DlvTest(unittest.TestCase):
         }
         data = {
             'action': 'attach',
-            'thost_name': 'thost0',
+            'ihost_name': 'ihost0',
             't_id': t_id,
             't_owner': t_owner,
             't_stage': t_stage,
@@ -299,14 +299,14 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
     @patch('dlvm.api_server.dlv.DpvClient')
-    @patch('dlvm.api_server.dlv.ThostClient')
-    def test_dlv_detach(self, ThostClient, DpvClient):
+    @patch('dlvm.api_server.dlv.IhostClient')
+    def test_dlv_detach(self, IhostClient, DpvClient):
         client_mock = Mock()
         DpvClient.return_value = client_mock
-        ThostClient.return_value = client_mock
+        IhostClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
-        self._prepare_thost('thost0')
-        self._prepare_dlv('attached', 'thost0')
+        self._prepare_ihost('ihost0')
+        self._prepare_dlv('attached', 'ihost0')
         t_id = 't0'
         t_owner = 't_owner'
         t_stage = 0
@@ -316,7 +316,7 @@ class DlvTest(unittest.TestCase):
         }
         data = {
             'action': 'detach',
-            'thost_name': 'thost0',
+            'ihost_name': 'ihost0',
             't_id': t_id,
             't_owner': t_owner,
             't_stage': t_stage,
@@ -325,10 +325,10 @@ class DlvTest(unittest.TestCase):
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.ThostClient')
-    def test_dlv_set_active(self, ThostClient):
+    @patch('dlvm.api_server.dlv.IhostClient')
+    def test_dlv_set_active(self, IhostClient):
         client_mock = Mock()
-        ThostClient.return_value = client_mock
+        IhostClient.return_value = client_mock
         self._prepare_dpvs_and_dvg()
         self._prepare_dlv('detached')
         t_id = 't0'

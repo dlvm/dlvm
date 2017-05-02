@@ -219,7 +219,7 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
             db.session.add(dlv)
         leg_info = {
             'leg_id': leg.leg_id,
-            'thost_name': dlv.thost_name,
+            'ihost_name': dlv.ihost_name,
         }
         dpv_info.append(leg_info)
     obt_refresh(obt)

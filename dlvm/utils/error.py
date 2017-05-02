@@ -17,7 +17,7 @@ class DpvError(Exception):
     pass
 
 
-class ThostError(Exception):
+class IhostError(Exception):
     pass
 
 
@@ -57,5 +57,5 @@ class FsmFailed(Exception):
     pass
 
 
-class DlvThostMisMatchError(Exception):
+class DlvIhostMisMatchError(Exception):
     pass

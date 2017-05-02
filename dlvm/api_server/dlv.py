@@ -11,8 +11,8 @@ from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, HasFjError, \
-    ThostError, SnapNameError, SnapshotStatusError, \
-    DlvThostMisMatchError
+    IhostError, SnapNameError, SnapshotStatusError, \
+    DlvIhostMisMatchError
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
@@ -20,7 +20,7 @@ from modules import db, \
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, div_round_up, dlv_get, \
     obt_get, obt_refresh, obt_encode, \
-    DpvClient, ThostClient
+    DpvClient, IhostClient
 
 
 logger = logging.getLogger('dlvm_api')
@@ -70,7 +70,7 @@ dlv_summary_fields['partition_count'] = fields.Integer
 dlv_summary_fields['status'] = fields.String
 dlv_summary_fields['timestamp'] = fields.String
 dlv_summary_fields['dvg_name'] = fields.String
-dlv_summary_fields['thost_name'] = fields.String
+dlv_summary_fields['ihost_name'] = fields.String
 dlv_summary_fields['active_snap_name'] = fields.String
 dlv_summary_fields['t_id'] = fields.String
 dlvs_get_fields = OrderedDict()
@@ -494,7 +494,7 @@ dlv_put_parser.add_argument(
     location='json',
 )
 dlv_put_parser.add_argument(
-    'thost_name',
+    'ihost_name',
     type=str,
     location='json',
 )
@@ -563,12 +563,12 @@ def do_attach(dlv, obt):
             client.leg_export(
                 leg.leg_id,
                 obt_encode(obt),
-                dlv.thost_name,
+                dlv.ihost_name,
             )
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
-    client = ThostClient(dlv.thost_name)
+    client = IhostClient(dlv.ihost_name)
     client.dlv_aggregate(
         dlv.dlv_name,
         obt_encode(obt),
@@ -576,29 +576,29 @@ def do_attach(dlv, obt):
     )
 
 
-def dlv_attach(dlv, thost_name, obt):
+def dlv_attach(dlv, ihost_name, obt):
     if dlv.status != 'detached':
         raise DlvStatusError(dlv.status)
     dlv.status = 'attaching'
     dlv.timestamp = datetime.datetime.utcnow()
-    dlv.thost_name = thost_name
+    dlv.ihost_name = ihost_name
     db.session.add(dlv)
     obt_refresh(obt)
     db.session.commit()
     return do_attach(dlv, obt)
 
 
-def handle_dlv_attach(dlv_name, thost_name, t_id, t_owner, t_stage):
+def handle_dlv_attach(dlv_name, ihost_name, t_id, t_owner, t_stage):
     try:
         dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_attach(dlv, thost_name, obt)
-    except ThostError as e:
+        dlv_attach(dlv, ihost_name, obt)
+    except IhostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
     else:
@@ -646,7 +646,7 @@ def do_detach(dlv, obt):
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
-    client = ThostClient(dlv.thost_name)
+    client = IhostClient(dlv.ihost_name)
     client.dlv_degregate(
         dlv.dlv_name,
         obt_encode(obt),
@@ -667,19 +667,19 @@ def do_detach(dlv, obt):
             client.leg_unexport(
                 leg.leg_id,
                 obt_encode(obt),
-                dlv.thost_name,
+                dlv.ihost_name,
             )
 
 
-def dlv_detach(dlv, thost_name, obt):
+def dlv_detach(dlv, ihost_name, obt):
     if dlv.status not in CAN_DETACH_STATUS:
         raise DlvStatusError(dlv.status)
-    if dlv.thost_name != thost_name:
+    if dlv.ihost_name != ihost_name:
         context = {
-            'dlv.thost_name': dlv.thost_name,
-            'thost_name': thost_name,
+            'dlv.ihost_name': dlv.ihost_name,
+            'ihost_name': ihost_name,
         }
-        raise DlvThostMisMatchError(context)
+        raise DlvIhostMisMatchError(context)
     dlv.status = 'detaching'
     dlv.timestamp = datetime.datetime.utcnow()
     db.session.add(dlv)
@@ -688,12 +688,12 @@ def dlv_detach(dlv, thost_name, obt):
     return do_detach(dlv, obt)
 
 
-def handle_dlv_detach(dlv_name, thost_name, t_id, t_owner, t_stage):
+def handle_dlv_detach(dlv_name, ihost_name, t_id, t_owner, t_stage):
     try:
         dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_detach(dlv, thost_name, obt)
-    except DlvThostMisMatchError as e:
-        return make_body('thost_mismatch', e.message), 500
+        dlv_detach(dlv, ihost_name, obt)
+    except DlvIhostMisMatchError as e:
+        return make_body('ihost_mismatch', e.message), 500
     except DpvError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
@@ -701,18 +701,18 @@ def handle_dlv_detach(dlv_name, thost_name, t_id, t_owner, t_stage):
         obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
-    except ThostError as e:
+    except IhostError as e:
         dlv.status = 'attach_failed'
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         obt_refresh(obt)
         db.session.commit()
-        return make_body('thost_failed', e.message), 500
+        return make_body('ihost_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
     else:
         dlv.status = 'detached'
-        dlv.thost_name = None
+        dlv.ihost_name = None
         dlv.timestamp = datetime.datetime.utcnow()
         db.session.add(dlv)
         obt_refresh(obt)
@@ -760,17 +760,17 @@ def handle_dlv_put(params, args):
     t_owner = args['t_owner']
     t_stage = args['t_stage']
     if args['action'] == 'attach':
-        if 'thost_name' not in args:
-            return make_body('no_thost_name'), 400
+        if 'ihost_name' not in args:
+            return make_body('no_ihost_name'), 400
         else:
             return handle_dlv_attach(
-                dlv_name, args['thost_name'], t_id, t_owner, t_stage)
+                dlv_name, args['ihost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'detach':
-        if 'thost_name' not in args:
-            return make_body('no_thost_name'), 400
+        if 'ihost_name' not in args:
+            return make_body('no_ihost_name'), 400
         else:
             return handle_dlv_detach(
-                dlv_name, args['thost_name'], t_id, t_owner, t_stage)
+                dlv_name, args['ihost_name'], t_id, t_owner, t_stage)
     elif args['action'] == 'set_active':
         if 'snap_name' not in args:
             return make_body('no_snap_name'), 400
@@ -801,7 +801,7 @@ dlv_fields['partition_count'] = fields.Integer
 dlv_fields['status'] = fields.String
 dlv_fields['timestamp'] = fields.String
 dlv_fields['dvg_name'] = fields.String
-dlv_fields['thost_name'] = fields.String
+dlv_fields['ihost_name'] = fields.String
 dlv_fields['active_snap_name'] = fields.String
 dlv_fields['t_id'] = fields.String
 dlv_fields['groups'] = fields.List(fields.Nested(group_fields))

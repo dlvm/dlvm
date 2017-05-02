@@ -67,8 +67,8 @@ fixture_fj = {
     'l_idx': 0,
 }
 
-fixture_thost = {
-    'thost_name': 'thost0',
+fixture_ihost = {
+    'ihost_name': 'ihost0',
     'status': 'available',
     'timestamp': timestamp,
 }
@@ -126,12 +126,12 @@ class FjTest(unittest.TestCase):
         self.assertEqual(fj['dlv_name'], 'dlv0')
 
     @patch('dlvm.api_server.fj.DpvClient')
-    @patch('dlvm.api_server.fj.ThostClient')
-    def test_fjs_post(self, ThostClient, DpvClient):
+    @patch('dlvm.api_server.fj.IhostClient')
+    def test_fjs_post(self, IhostClient, DpvClient):
         self._prepare_dlv()
         self.fm.obt_create(**fixture_obt)
-        self.fm.thost_create(**fixture_thost)
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
         headers = {
             'Content-Type': 'application/json',
         }
@@ -161,8 +161,8 @@ class FjTest(unittest.TestCase):
     def test_fj_cancel(self, DpvClient):
         self._prepare_dlv()
         self.fm.obt_create(**fixture_obt)
-        self.fm.thost_create(**fixture_thost)
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
         self._prepare_fj()
         headers = {
             'Content-Type': 'application/json',
@@ -180,12 +180,12 @@ class FjTest(unittest.TestCase):
         self.assertEqual(fj.status, 'canceled')
 
     @patch('dlvm.api_server.fj.DpvClient')
-    @patch('dlvm.api_server.fj.ThostClient')
-    def test_fj_finish(self, ThostClient, DpvClient):
+    @patch('dlvm.api_server.fj.IhostClient')
+    def test_fj_finish(self, IhostClient, DpvClient):
         self._prepare_dlv()
         self.fm.obt_create(**fixture_obt)
-        self.fm.thost_create(**fixture_thost)
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
         self._prepare_fj()
         headers = {
             'Content-Type': 'application/json',
@@ -205,8 +205,8 @@ class FjTest(unittest.TestCase):
     def test_fj_delete(self):
         self._prepare_dlv()
         self.fm.obt_create(**fixture_obt)
-        self.fm.thost_create(**fixture_thost)
-        self.fm.dlv_attach('dlv0', 'thost0')
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
         self._prepare_fj()
         self.fm.fj_set_status('fj0', 'finished')
         headers = {

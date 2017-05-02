@@ -154,7 +154,7 @@ def dlv_attach_action(client, obt, obt_args):
     kwargs = {
         'dlv_name': obt_args['dlv_name'],
         'action': 'attach',
-        'thost_name': obt_args['thost_name'],
+        'ihost_name': obt_args['ihost_name'],
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
@@ -184,7 +184,7 @@ def dlv_detach_action(client, obt, obt_args):
     kwargs = {
         'dlv_name': obt_args['dlv_name'],
         'action': 'detach',
-        'thost_name': obt_args['thost_name'],
+        'ihost_name': obt_args['ihost_name'],
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
@@ -246,23 +246,23 @@ dlv_detach_stage_info = {
 fsm_register('dlv_detach', dlv_detach_stage_info)
 
 
-def thost_available_action(client, obt, obt_args):
+def ihost_available_action(client, obt, obt_args):
     kwargs = {
-        'thost_name': obt_args['thost_name'],
+        'ihost_name': obt_args['ihost_name'],
         'action': 'set_available',
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
     }
-    ret = client.thost_put(**kwargs)
+    ret = client.ihost_put(**kwargs)
     return ret
 
 
-def thost_available_check(client, obt_args):
+def ihost_available_check(client, obt_args):
     retry = 0
     while retry < obt_args['max_retry']:
-        thost_name = obt_args['thost_name']
-        ret = client.thost_get(thost_name=thost_name)
+        ihost_name = obt_args['ihost_name']
+        ret = client.ihost_get(ihost_name=ihost_name)
         if ret['status_code'] != 200:
             return 'err', ret
         elif ret['body']['status'] == 'available':
@@ -272,19 +272,19 @@ def thost_available_check(client, obt_args):
     return 'err', ret
 
 
-thost_available_stage_info = {
+ihost_available_stage_info = {
     'init_stage_num': 1,
     'stages': {
         1: {
-            'action': thost_available_action,
-            'check': thost_available_check,
+            'action': ihost_available_action,
+            'check': ihost_available_check,
             'ok': -1,
             'err': -2,
         },
     },
 }
 
-fsm_register('thost_available', thost_available_stage_info)
+fsm_register('ihost_available', ihost_available_stage_info)
 
 
 def snap_create_action(client, obt, obt_args):
@@ -737,35 +737,35 @@ class Layer2(object):
     def obt_resume(self, t_id):
         return fsm_resume(self.client, t_id)
 
-    def thost_list(self):
-        ret = self.client.thosts_get()
+    def ihost_list(self):
+        ret = self.client.ihosts_get()
         return ret
 
-    def thost_display(self, thost_name):
-        ret = self.client.thost_get(thost_name=thost_name)
+    def ihost_display(self, ihost_name):
+        ret = self.client.ihost_get(ihost_name=ihost_name)
         return ret
 
-    def thost_create(self, thost_name):
-        ret = self.client.thosts_post(thost_name=thost_name)
+    def ihost_create(self, ihost_name):
+        ret = self.client.ihosts_post(ihost_name=ihost_name)
         return ret
 
-    def thost_delete(self, thost_name):
-        ret = self.client.thost_delete(thost_name=thost_name)
+    def ihost_delete(self, ihost_name):
+        ret = self.client.ihost_delete(ihost_name=ihost_name)
         return ret
 
-    def thost_unavailable(self, thost_name):
-        ret = self.client.thost_put(
-            thost_name=thost_name, action='set_unavailable')
+    def ihost_unavailable(self, ihost_name):
+        ret = self.client.ihost_put(
+            ihost_name=ihost_name, action='set_unavailable')
         return ret
 
-    def thost_available(self, thost_name):
+    def ihost_available(self, ihost_name):
         obt_args = {
-            'thost_name': thost_name,
+            'ihost_name': ihost_name,
             'max_retry': 10,
             'interval': 1,
         }
         return fsm_start(
-            'thost_available', self.client, obt_args)
+            'ihost_available', self.client, obt_args)
 
     def dvg_list(self):
         ret = self.client.dvgs_get()
@@ -824,20 +824,20 @@ class Layer2(object):
         ret = self.client.dlvs_get()
         return ret
 
-    def dlv_attach(self, dlv_name, thost_name):
+    def dlv_attach(self, dlv_name, ihost_name):
         obt_args = {
             'dlv_name': dlv_name,
-            'thost_name': thost_name,
+            'ihost_name': ihost_name,
             'max_retry': 10,
             'interval': 1,
         }
         return fsm_start(
             'dlv_attach', self.client, obt_args)
 
-    def dlv_detach(self, dlv_name, thost_name):
+    def dlv_detach(self, dlv_name, ihost_name):
         obt_args = {
             'dlv_name': dlv_name,
-            'thost_name': thost_name,
+            'ihost_name': ihost_name,
             'max_retry': 10,
             'interval': 1,
         }
@@ -870,12 +870,12 @@ class Layer2(object):
                 'snap_create_simple', self.client, obt_args)
         elif status == 'detached':
             groups = ret['data']['body']['groups']
-            thost_name = groups[0]['legs'][0]['dpv_name']
+            ihost_name = groups[0]['legs'][0]['dpv_name']
             obt_args = {
                 'dlv_name': dlv_name,
                 'snap_name': snap_name,
                 'ori_snap_name': ori_snap_name,
-                'thost_name': thost_name,
+                'ihost_name': ihost_name,
                 'ori_snap_name': ori_snap_name,
                 'max_retry': 10,
                 'interval': 1,
@@ -901,11 +901,11 @@ class Layer2(object):
                 'snap_delete_simple', self.client, obt_args)
         elif status == 'detached':
             groups = ret['data']['body']['groups']
-            thost_name = groups[0]['legs'][0]['dpv_name']
+            ihost_name = groups[0]['legs'][0]['dpv_name']
             obt_args = {
                 'dlv_name': dlv_name,
                 'snap_name': snap_name,
-                'thost_name': thost_name,
+                'ihost_name': ihost_name,
                 'max_retry': 10,
                 'interval': 1,
             }
@@ -939,11 +939,11 @@ class Layer2(object):
                 'fj_create_simple', self.client, obt_args)
         elif status == 'detached':
             groups = ret['data']['body']['groups']
-            thost_name = groups[0]['legs'][0]['dpv_name']
+            ihost_name = groups[0]['legs'][0]['dpv_name']
             obt_args = {
                 'fj_name': fj_name,
                 'dlv_name': dlv_name,
-                'thost_name': thost_name,
+                'ihost_name': ihost_name,
                 'ori_id': ori_id,
                 'max_retry': 10,
                 'interval': 1,

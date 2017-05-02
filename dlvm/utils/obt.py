@@ -39,9 +39,9 @@ def get_context():
     dpv_engine = create_engine(
         obt_db('dpv', conf.work_dir))
     DpvSession = sessionmaker(bind=dpv_engine)
-    thost_engine = create_engine(
-        obt_db('thost', conf.work_dir))
-    ThostSession = sessionmaker(bind=thost_engine)
+    ihost_engine = create_engine(
+        obt_db('ihost', conf.work_dir))
+    IhostSession = sessionmaker(bind=ihost_engine)
 
     context = {
         'dpv': {
@@ -51,12 +51,12 @@ def get_context():
             'major_file': obt_major_file('dpv', conf.work_dir),
             'logger': getLogger('dlvm_dpv'),
         },
-        'thost': {
-            'engine': thost_engine,
-            'Session': ThostSession,
+        'ihost': {
+            'engine': ihost_engine,
+            'Session': IhostSession,
             'default_major': None,
-            'major_file': obt_major_file('thost', conf.work_dir),
-            'logger': getLogger('thost_dpv'),
+            'major_file': obt_major_file('ihost', conf.work_dir),
+            'logger': getLogger('ihost_dpv'),
         },
     }
     return context
@@ -122,9 +122,9 @@ def do_verify(name, major, minor, c):
         session.close()
 
 
-def thost_verify(name, major, minor):
+def ihost_verify(name, major, minor):
     context = get_context()
-    do_verify(name, major, minor, context['thost'])
+    do_verify(name, major, minor, context['ihost'])
 
 
 def dpv_verify(name, major, minor):

@@ -182,24 +182,24 @@ CLI_CMDS = {
                 },
             },
             'attach': {
-                'help': 'attach dlv to a thost',
+                'help': 'attach dlv to a ihost',
                 'arguments': {
                     'dlv_name': {
                         'help': 'dlv name',
                     },
-                    'thost_name': {
-                        'help': 'thost_name',
+                    'ihost_name': {
+                        'help': 'ihost_name',
                     },
                 },
             },
             'detach': {
-                'help': 'detach dlv from a thost',
+                'help': 'detach dlv from a ihost',
                 'arguments': {
                     'dlv_name': {
                         'help': 'dlv name',
                     },
-                    'thost_name': {
-                        'help': 'thost_name',
+                    'ihost_name': {
+                        'help': 'ihost_name',
                     },
                 },
             },
@@ -262,49 +262,49 @@ CLI_CMDS = {
             },
         },
     },
-    'thost': {
-        'help': 'manage thost',
+    'ihost': {
+        'help': 'manage ihost',
         'cmds': {
             'list': {
-                'help': 'list thosts',
+                'help': 'list ihosts',
             },
             'create': {
-                'help': 'create thost',
+                'help': 'create ihost',
                 'arguments': {
-                    'thost_name': {
-                        'help': 'thost hostname',
+                    'ihost_name': {
+                        'help': 'ihost hostname',
                     },
                 },
             },
             'delete': {
-                'help': 'delete thost',
+                'help': 'delete ihost',
                 'arguments': {
-                    'thost_name': {
-                        'help': 'thost hostname',
+                    'ihost_name': {
+                        'help': 'ihost hostname',
                     },
                 },
             },
             'display': {
-                'help': 'show thost',
+                'help': 'show ihost',
                 'arguments': {
-                    'thost_name': {
-                        'help': 'thost hostname',
+                    'ihost_name': {
+                        'help': 'ihost hostname',
                     },
                 },
             },
             'available': {
-                'help': 'set thost to available status',
+                'help': 'set ihost to available status',
                 'arguments': {
-                    'thost_name': {
-                        'help': 'thost hostname',
+                    'ihost_name': {
+                        'help': 'ihost hostname',
                     },
                 },
             },
             'unavailable': {
-                'help': 'set thost to unavailable status',
+                'help': 'set ihost to unavailable status',
                 'arguments': {
-                    'thost_name': {
-                        'help': 'thost hostname',
+                    'ihost_name': {
+                        'help': 'ihost hostname',
                     },
                 },
             },

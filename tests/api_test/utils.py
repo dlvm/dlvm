@@ -3,7 +3,7 @@
 import uuid
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, TargetHost, FailoverJob, \
+    Snapshot, Group, Leg, InitiatorHost, FailoverJob, \
     OwnerBasedTransaction, Counter
 
 mirror_meta_size = 1024*1024*2
@@ -166,40 +166,40 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
-    def thost_create(self, thost_name, status, timestamp):
-        thost = TargetHost(
-            thost_name=thost_name,
+    def ihost_create(self, ihost_name, status, timestamp):
+        ihost = InitiatorHost(
+            ihost_name=ihost_name,
             status=status,
             timestamp=timestamp,
         )
-        db.session.add(thost)
+        db.session.add(ihost)
         db.session.commit()
 
     @app_context
-    def thost_set_status(self, thost_name, status):
-        thost = TargetHost \
+    def ihost_set_status(self, ihost_name, status):
+        ihost = InitiatorHost \
             .query \
-            .filter_by(thost_name=thost_name) \
+            .filter_by(ihost_name=ihost_name) \
             .one()
-        thost.status = status
-        db.session.add(thost)
+        ihost.status = status
+        db.session.add(ihost)
         db.session.commit()
 
     @app_context
-    def thost_get(self, thost_name):
-        thost = TargetHost \
+    def ihost_get(self, ihost_name):
+        ihost = InitiatorHost \
             .query \
-            .filter_by(thost_name=thost_name) \
+            .filter_by(ihost_name=ihost_name) \
             .one()
-        return thost
+        return ihost
 
     @app_context
-    def dlv_attach(self, dlv_name, thost_name):
+    def dlv_attach(self, dlv_name, ihost_name):
         dlv = DistributeLogicalVolume \
             .query \
             .filter_by(dlv_name=dlv_name) \
             .one()
-        dlv.thost_name = thost_name
+        dlv.ihost_name = ihost_name
         dlv.status = 'attached'
         db.session.add(dlv)
         db.session.commit()

@@ -46,7 +46,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dlvm_dpv_agent=dlvm.dpv_agent:main',
-            'dlvm_thost_agent=dlvm.thost_agent:main',
+            'dlvm_ihost_agent=dlvm.ihost_agent:main',
             'dlvm_init_db=dlvm.api_server:init_db',
             'dlvm_init_obt=dlvm.utils.obt:init_obt',
             'dlvm_monitor=dlvm.monitor:start',
