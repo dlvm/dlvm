@@ -432,6 +432,7 @@ def fj_mirror_status(leg_id):
 
 
 def dpv_release_unused(leg_id_list):
+    logger.debug('leg_id_list: %s', leg_id_list)
     target_name_set = set()
     layer2_name_set = set()
     dm_name_set = set()
@@ -446,15 +447,21 @@ def dpv_release_unused(leg_id_list):
         if iscsi_target not in target_name_set:
             iscsi_target_delete(iscsi_target)
     iscsi_backstore_list = iscsi_backstore_get_all(conf.dpv_prefix)
+    logger.debug('iscsi_backstore_list: %s', iscsi_backstore_list)
+    logger.debug('layer2_name_set: %s', layer2_name_set)
     for iscsi_backstore in iscsi_backstore_list:
         if iscsi_backstore not in layer2_name_set:
             iscsi_backstore_delete(iscsi_backstore)
     dm_name_list = dm_get_all(conf.dpv_prefix)
+    logger.debug('dm_name_list: %s', dm_name_list)
+    logger.debug('dm_name_set: %s', dm_name_set)
     for dm_name in dm_name_list:
         if dm_name not in dm_name_set:
             dm = DmBasic(dm_name)
             dm.remove()
     lv_name_list = lv_get_all(conf.local_vg)
+    logger.debug('lv_name_list: %s', lv_name_list)
+    logger.debug('lv_name_set: %s', lv_name_set)
     for lv_name in lv_name_list:
         if lv_name not in lv_name_set:
             lv_remove(lv_name, conf.local_vg)

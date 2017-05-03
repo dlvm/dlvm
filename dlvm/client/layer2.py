@@ -15,7 +15,7 @@ class Layer2Error(Exception):
 def dpv_available_action(client, obt, obt_args):
     kwargs = {
         'dpv_name': obt_args['dpv_name'],
-        'action': 'available',
+        'action': 'set_available',
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
         't_stage': obt['t_stage'],
@@ -723,7 +723,7 @@ class Layer2(object):
 
     def dpv_unavailable(self, dpv_name):
         ret = self.client.dpv_put(
-            dpv_name=dpv_name, action='unavailable')
+            dpv_name=dpv_name, action='set_unavailable')
         return ret
 
     def obt_list(self):

@@ -851,9 +851,10 @@ def iscsi_backstore_get_all(prefix):
     raw_list = r.out.split('\n')[1:-1]
     dev_list = []
     for item in raw_list:
-        start = item.find(prefix)
-        if start == -1:
+        if item.find(prefix) == -1:
             continue
+        p = ' o- '
+        start = item.find(p) + len(p)
         stop = item.find(' ...')
         dev_name = item[start:stop]
         dev_list.append(dev_name)
