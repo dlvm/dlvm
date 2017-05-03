@@ -94,7 +94,7 @@ def fsm_resume(client, t_id):
     del obt_args['name']
     history = []
     stage_info = fsm[name]
-    info = []
+    info = {}
     stages = stage_info['stages']
     stage_num = t_stage
     obt = {
@@ -104,7 +104,7 @@ def fsm_resume(client, t_id):
     if stage_num == 0:
         stage_num = stage_info['init_stage_num']
         return fsm_run(
-            obt, stages, stage_num, history, obt_args)
+            client, obt, stages, stage_num, history, obt_args)
     info['stage_num'] = stage_num
     stage = stages[stage_num]
     check = stage['check']
@@ -115,4 +115,4 @@ def fsm_resume(client, t_id):
     history.append(info)
     init_num = stage[status]
     return fsm_run(
-        obt, stages, init_num, history, obt_args)
+        client, obt, stages, init_num, history, obt_args)

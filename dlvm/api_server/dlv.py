@@ -646,12 +646,14 @@ def do_detach(dlv, obt):
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
-    client = IhostClient(dlv.ihost_name)
-    client.dlv_degregate(
-        dlv.dlv_name,
-        obt_encode(obt),
-        dlv_info,
-    )
+    ihost = dlv.ihost
+    if ihost.status == 'available':
+        client = IhostClient(dlv.ihost_name)
+        client.dlv_degregate(
+            dlv.dlv_name,
+            obt_encode(obt),
+            dlv_info,
+        )
 
     for group in dlv.groups:
         for leg in group.legs:
