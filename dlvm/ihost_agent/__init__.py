@@ -938,6 +938,8 @@ def generate_pattern_list(prefix):
 
 def ihost_release_dm(dlv_name_list):
     dm_name_list = dm_get_all(conf.ihost_prefix)
+    logger.debug('dm_name_list: %s', dm_name_list)
+    logger.debug('dlv_name_list: %s', dlv_name_list)
     dm_name_set = set(dm_name_list)
     ignore_list = []
     for dm_name in dm_name_set:
@@ -953,18 +955,21 @@ def ihost_release_dm(dlv_name_list):
             if dm_name.startswith(pattern2) is True:
                 ignore_list.append(dm_name)
                 break
+    logger.debug('ignore_list: %s', ignore_list)
     for dm_name in ignore_list:
         dm_name_set.remove(dm_name)
     pattern_list = generate_pattern_list(conf.ihost_prefix)
+    logger.debug('dm_name_set before: %s', dm_name_set)
     for pattern in pattern_list:
         removable_list = []
         for dm_name in dm_name_set:
-            if re.match(pattern, dm_name) is True:
+            if re.match(pattern, dm_name):
                 removable_list.append(dm_name)
         for dm_name in removable_list:
             dm = DmBasic(dm_name)
             dm.remove()
             dm_name_set.remove(dm_name)
+    logger.debug('dm_name_set after: %s', dm_name_set)
     assert(len(dm_name_set) == 0)
 
 

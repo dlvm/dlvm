@@ -31,7 +31,7 @@ def dpv_available_check(client, obt_args):
         ret = client.dpv_get(dpv_name=dpv_name)
         if ret['status_code'] != 200:
             return 'err', ret
-        if ret['body']['status'] == 'available':
+        if ret['data']['body']['status'] == 'available':
             return 'ok', ret
         time.sleep(obt_args['interval'])
         retry += 1
@@ -265,7 +265,7 @@ def ihost_available_check(client, obt_args):
         ret = client.ihost_get(ihost_name=ihost_name)
         if ret['status_code'] != 200:
             return 'err', ret
-        elif ret['body']['status'] == 'available':
+        elif ret['data']['body']['status'] == 'available':
             return 'ok', ret
         time.sleep(obt_args['interval'])
         retry += 1
