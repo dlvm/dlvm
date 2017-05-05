@@ -8,7 +8,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.configure import conf
 from dlvm.utils.error import ObtConflictError, DpvError
-from modules import db, DistributePhysicalVolume
+from modules import db, DistributePhysicalVolume, DistributeVolumeGroup
 from handler import handle_dlvm_request, make_body, check_limit, \
     obt_get, obt_refresh, obt_encode, DpvClient
 
@@ -226,13 +226,26 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
     db.session.commit()
     dpv_client = DpvClient(dpv_name)
     try:
-        dpv_client.dpv_sync(dpv_info, obt_encode(obt))
+        dpv_size_info = dpv_client.dpv_sync(dpv_info, obt_encode(obt))
     except DpvError as e:
         return make_body('dpv_failed', e.message), 500
     else:
-        obt_refresh(obt)
+        total_size = int(dpv_size_info['total_size'])
+        free_size = int(dpv_size_info['free_size'])
+        if dpv.dvg_name is not None:
+            dvg = DistributeVolumeGroup \
+                .query \
+                .with_lockmode('update') \
+                .filter_by(dvg_name=dpv.dvg_name) \
+                .one()
+            dvg.total_size = dvg.total_size - dpv.total_size + total_size
+            dvg.free_size = dvg.free_size - dpv.free_size + free_size
+            db.session.add(dvg)
+        dpv.total_size = total_size
+        dpv.free_size = free_size
         dpv.status = 'available'
         db.session.add(dpv)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
 

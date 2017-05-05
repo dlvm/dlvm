@@ -233,6 +233,14 @@ class DpvTest(unittest.TestCase):
 
     @patch('dlvm.api_server.dpv.DpvClient')
     def test_dpv_available(self, DpvClient):
+        client_mock = Mock()
+        DpvClient.return_value = client_mock
+        dpv_sync_mock = Mock()
+        client_mock.dpv_sync = dpv_sync_mock
+        dpv_sync_mock.return_value = {
+            'total_size': str(512*1024*1024*1024),
+            'free_size': str(512*1024*1024*1024),
+        }
         for dpv in fixture_dpvs:
             self.fm.dpv_create(**dpv)
         self.fm.dpv_set_status('dpv0', 'unavailable')

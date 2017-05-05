@@ -480,6 +480,7 @@ def dpv_sync(dpv_info, obt):
                 do_leg_export(leg_id, ihost_name)
         leg_id_list.append(leg_id)
     dpv_release_unused(leg_id_list)
+    return dpv_get_info()
 
 
 def main():
