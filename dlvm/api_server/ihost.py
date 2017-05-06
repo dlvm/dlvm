@@ -168,7 +168,7 @@ def handle_ihost_available(ihost_name, t_id, t_owner, t_stage):
         return make_body('invalid_ihost_status', ihost.status), 400
     ihost_info = []
     for dlv in ihost.dlvs:
-        if dlv.obt is not None:
+        if dlv.obt is not None and dlv.obt.t_id != obt.t_id:
             raise ObtConflictError()
         else:
             dlv.obt = obt

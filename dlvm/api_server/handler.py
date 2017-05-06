@@ -280,7 +280,7 @@ def get_dm_context():
 
 
 def get_dlv_info(dlv):
-    dlv_info = []
+    dlv_info = {}
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
     dm_context = get_dm_context()
@@ -308,4 +308,5 @@ def get_dlv_info(dlv):
             ileg['leg_size'] = leg.leg_size
             igroup['legs'].append(ileg)
         dlv_info['groups'].append(igroup)
-    return dlv_info_encode(dlv_info)
+    dlv_info_encode(dlv_info)
+    return dlv_info

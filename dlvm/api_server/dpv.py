@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from collections import OrderedDict
+import logging
 import datetime
 from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +11,11 @@ from dlvm.utils.configure import conf
 from dlvm.utils.error import ObtConflictError, DpvError
 from modules import db, DistributePhysicalVolume, DistributeVolumeGroup
 from handler import handle_dlvm_request, make_body, check_limit, \
-    obt_get, obt_refresh, obt_encode, DpvClient
+    obt_get, obt_refresh, obt_encode, DpvClient, get_dm_context
+
+
+logger = logging.getLogger('dlvm_api')
+
 
 dpvs_get_parser = reqparse.RequestParser()
 dpvs_get_parser.add_argument(
@@ -212,13 +217,22 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
     dpv_info = []
     for leg in dpv.legs:
         dlv = leg.group.dlv
-        if dlv.obt is not None:
+        if dlv.obt is not None and dlv.obt.t_id != obt.t_id:
+            logger.error(
+                'conflict obt: %s %s %s %s',
+                dlv.obt.t_id,
+                dlv.obt.t_owner,
+                dlv.obt.t_stage,
+                dlv.obt.annotation,
+            )
             raise ObtConflictError()
         else:
             dlv.obt = obt
             db.session.add(dlv)
         leg_info = {
             'leg_id': leg.leg_id,
+            'leg_size': str(leg.leg_size),
+            'dm_context': get_dm_context(),
             'ihost_name': dlv.ihost_name,
         }
         dpv_info.append(leg_info)
