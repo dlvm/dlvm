@@ -180,10 +180,14 @@
 			"put": {
 				"action": {
 					"type": "choice",
-					"choices": ["attach", "detach"],
+					"choices": ["attach", "detach", "set_snap"],
                     "required": false
 				},
                 "ihost_name": {
+                    "type": "str",
+                    "required": false
+                },
+                "snap_name": {
                     "type": "str",
                     "required": false
                 },

@@ -325,26 +325,16 @@ class DlvTest(unittest.TestCase):
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
 
-    @patch('dlvm.api_server.dlv.IhostClient')
-    def test_dlv_set_active(self, IhostClient):
-        client_mock = Mock()
-        IhostClient.return_value = client_mock
+    def test_dlv_set_snap(self):
         self._prepare_dpvs_and_dvg()
         self._prepare_dlv('detached')
-        t_id = 't0'
-        t_owner = 't_owner'
-        t_stage = 0
-        self._prepare_obt(t_id, t_owner, t_stage)
         self._prepare_snapshot('dlv0', 'snap1', 0, 1)
         headers = {
             'Content-Type': 'application/json',
         }
         data = {
-            'action': 'set_active',
+            'action': 'set_snap',
             'snap_name': 'snap1',
-            't_id': t_id,
-            't_owner': t_owner,
-            't_stage': t_stage,
         }
         data = json.dumps(data)
         resp = self.client.put('/dlvs/dlv0', headers=headers, data=data)

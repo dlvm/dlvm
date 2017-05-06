@@ -199,7 +199,18 @@ CLI_CMDS = {
                         'help': 'dlv name',
                     },
                     'ihost_name': {
-                        'help': 'ihost_name',
+                        'help': 'ihost name',
+                    },
+                },
+            },
+            'set_snap': {
+                'help': 'switch dlv to a specific snapshot',
+                'arguments': {
+                    'dlv_name': {
+                        'help': 'dlv name',
+                    },
+                    'snap_name': {
+                        'help': 'snap name',
                     },
                 },
             },

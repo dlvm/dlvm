@@ -844,6 +844,11 @@ class Layer2(object):
         return fsm_start(
             'dlv_detach', self.client, obt_args)
 
+    def dlv_set_snap(self, dlv_name, snap_name):
+        ret = self.client.dlv_put(
+            dlv_name=dlv_name, snap_name=snap_name, action='set_snap')
+        return ret
+
     def snap_list(self, dlv_name):
         ret = self.client.snaps_get(dlv_name=dlv_name)
         return ret

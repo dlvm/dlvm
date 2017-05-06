@@ -489,7 +489,7 @@ dlv_put_parser = reqparse.RequestParser()
 dlv_put_parser.add_argument(
     'action',
     type=str,
-    choices=('attach', 'detach', 'set_active'),
+    choices=('attach', 'detach', 'set_snap'),
     required=True,
     location='json',
 )
@@ -506,19 +506,16 @@ dlv_put_parser.add_argument(
 dlv_put_parser.add_argument(
     't_id',
     type=str,
-    required=True,
     location='json',
 )
 dlv_put_parser.add_argument(
     't_owner',
     type=str,
-    required=True,
     location='json',
 )
 dlv_put_parser.add_argument(
     't_stage',
     type=int,
-    required=True,
     location='json',
 )
 
@@ -722,7 +719,7 @@ def handle_dlv_detach(dlv_name, ihost_name, t_id, t_owner, t_stage):
         return make_body('success'), 200
 
 
-def dlv_set_active(dlv, snap_name, obt):
+def dlv_set_snap(dlv, snap_name, obt):
     full_snap_name = '{dlv_name}/{snap_name}'.format(
         dlv_name=dlv.dlv_name, snap_name=snap_name)
     if dlv.status != 'detached':
@@ -742,25 +739,42 @@ def dlv_set_active(dlv, snap_name, obt):
     db.session.commit()
 
 
-def handle_dlv_set_active(dlv_name, snap_name, t_id, t_owner, t_stage):
+def handle_dlv_set_snap(dlv_name, snap_name):
     try:
-        dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
-        dlv_set_active(dlv, snap_name, obt)
-    except DlvStatusError as e:
-        return make_body('invalid_dlv_status', e.message), 400
-    except SnapNameError as e:
-        return make_body('invalid_snap_name', e.message), 400
-    except SnapshotStatusError as e:
-        return make_body('invalid_snap_status', e.message), 400
-    else:
-        return make_body('success'), 200
+        dlv = DistributeLogicalVolume \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(dlv_name=dlv_name) \
+            .one()
+    except NoResultFound:
+        return make_body('dlv_not_exist'), 404
+
+    if dlv.status != 'detached':
+        return make_body('invalid_dlv_status', dlv.status), 400
+
+    full_snap_name = '{dlv_name}/{snap_name}'.format(
+        dlv_name=dlv.dlv_name, snap_name=snap_name)
+    try:
+        snapshot = Snapshot \
+            .query \
+            .filter_by(snap_name=full_snap_name) \
+            .one()
+    except NoResultFound:
+        return make_body('snap_not_exist'), 404
+    if snapshot.status != 'available':
+        return make_body('invalid_snap_status', snapshot.status), 400
+    dlv.active_snap_name = full_snap_name
+    db.session.add(dlv)
+    db.session.commit()
+    return make_body('success'), 200
 
 
 def handle_dlv_put(params, args):
     dlv_name = params[0]
-    t_id = args['t_id']
-    t_owner = args['t_owner']
-    t_stage = args['t_stage']
+    if args['action'] != 'set_snap':
+        t_id = args['t_id']
+        t_owner = args['t_owner']
+        t_stage = args['t_stage']
     if args['action'] == 'attach':
         if 'ihost_name' not in args:
             return make_body('no_ihost_name'), 400
@@ -773,12 +787,12 @@ def handle_dlv_put(params, args):
         else:
             return handle_dlv_detach(
                 dlv_name, args['ihost_name'], t_id, t_owner, t_stage)
-    elif args['action'] == 'set_active':
+    elif args['action'] == 'set_snap':
         if 'snap_name' not in args:
             return make_body('no_snap_name'), 400
         else:
-            return handle_dlv_set_active(
-                dlv_name, args['snap_name'], t_id, t_owner, t_stage)
+            return handle_dlv_set_snap(
+                dlv_name, args['snap_name'])
     else:
         assert(False)
 
