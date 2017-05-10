@@ -203,9 +203,12 @@ def dvg_reduce(dvg_name, dpv_name):
             }
             return make_body('size_error', context)
     else:
-        for pool in dpv.pools:
-            if pool.legs:
-                return make_body('pool_busy'), 403
+        for leg in dpv.legs:
+            context = {
+                'dlv_name': leg.group.dlv_name,
+                'leg_id': leg.leg_id,
+            }
+            return make_body('dpv_busy', context)
 
     dpv.dvg_name = None
     dvg.total_size -= dpv.total_size

@@ -120,8 +120,11 @@ def get_fj_meta1_name(leg_id, fj_name):
     )
 
 
-def do_leg_create(leg_id, leg_size, dm_context):
-    lv_path = lv_create(leg_id, leg_size, conf.local_vg)
+def do_leg_create(leg_id, leg_size, dm_context, create_lv):
+    if create_lv is True:
+        lv_path = lv_create(leg_id, leg_size, conf.local_vg)
+    else:
+        lv_path = lv_get_path(leg_id, conf.local_vg)
     leg_sectors = leg_size / 512
     layer1_name = get_layer1_name(leg_id)
     dm = DmLinear(layer1_name)
@@ -175,7 +178,7 @@ def do_leg_create(leg_id, leg_size, dm_context):
 def leg_create(leg_id, obt, leg_size, dm_context):
     with RpcLock(leg_id):
         dpv_verify(leg_id, obt['major'], obt['minor'])
-        do_leg_create(leg_id, int(leg_size), dm_context)
+        do_leg_create(leg_id, int(leg_size), dm_context, True)
 
 
 def do_leg_delete(leg_id):
@@ -475,8 +478,10 @@ def dpv_sync(dpv_info, obt):
         dm_context = leg_info['dm_context']
         ihost_name = leg_info['ihost_name']
         with RpcLock(leg_id):
-            do_leg_create(leg_id, int(leg_size), dm_context)
-            if ihost_name is not None:
+            do_leg_create(leg_id, int(leg_size), dm_context, False)
+            if ihost_name is None:
+                do_leg_unexport(leg_id, ihost_name)
+            else:
                 do_leg_export(leg_id, ihost_name)
         leg_id_list.append(leg_id)
     dpv_release_unused(leg_id_list)

@@ -298,16 +298,18 @@ class RpcFunctionTest(unittest.TestCase):
     @patch('dlvm.dpv_agent.iscsi_target_get_all')
     @patch('dlvm.dpv_agent.run_dd')
     @patch('dlvm.dpv_agent.iscsi_create')
-    @patch('dlvm.dpv_agent.lv_create')
+    @patch('dlvm.dpv_agent.lv_get_path')
     @patch('dlvm.dpv_agent.DmLinear')
     @patch('dlvm.dpv_agent.encode_target_name')
     @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.iscsi_unexport')
     @patch('dlvm.dpv_agent.conf')
     def test_dpv_sync(
-            self, conf, dpv_verify,
+            self, conf, iscsi_unexport,
+            dpv_verify,
             encode_target_name,
             DmLinear,
-            iscsi_create, lv_create, run_dd,
+            iscsi_create, lv_get_path, run_dd,
             iscsi_target_get_all,
             iscsi_target_delete,
             iscsi_backstore_get_all,

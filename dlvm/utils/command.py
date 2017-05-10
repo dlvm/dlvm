@@ -800,7 +800,9 @@ def iscsi_login_get_all(prefix):
         '-m',
         'node',
     ]
-    r = run_cmd(cmd)
+    r = run_cmd(cmd, accept_error=True)
+    if r.rcode != 0:
+        return []
     lines = r.out.split('\n')
     target_name_list = []
     for line in lines[:-1]:

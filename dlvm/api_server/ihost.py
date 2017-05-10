@@ -7,9 +7,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
 from dlvm.utils.error import ObtConflictError, IhostError
-from modules import db, InitiatorHost
+from modules import db, DistributePhysicalVolume, InitiatorHost
 from handler import handle_dlvm_request, make_body, check_limit, \
-    get_dlv_info, IhostClient, obt_get, obt_refresh, obt_encode
+    get_dlv_info, DpvClient, IhostClient, \
+    obt_get, obt_refresh, obt_encode
 
 
 ihost_summary_fields = OrderedDict()
@@ -174,6 +175,21 @@ def handle_ihost_available(ihost_name, t_id, t_owner, t_stage):
             dlv.obt = obt
             db.session.add(dlv)
         dlv_info = get_dlv_info(dlv)
+        for group in dlv.groups:
+            for leg in group.legs:
+                dpv = DistributePhysicalVolume \
+                    .query \
+                    .with_lockmode('update') \
+                    .filter_by(dpv_name=leg.dpv_name) \
+                    .one()
+                if dpv.status != 'available':
+                    continue
+                client = DpvClient(dpv.dpv_name)
+                client.leg_export(
+                    leg.leg_id,
+                    obt_encode(obt),
+                    dlv.ihost_name,
+                )
         ihost_info.append((dlv.dlv_name, dlv_info))
     obt_refresh(obt)
     db.session.commit()
