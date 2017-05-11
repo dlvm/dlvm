@@ -47,7 +47,7 @@ class DlvTest(unittest.TestCase):
                 dlv_name='dlv0',
                 dlv_size=10*1024*1024*1024,
                 data_size=10*1024*1024*1024,
-                partition_count=2,
+                stripe_number=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),
                 active_snap_name='dlv0/base',
@@ -57,7 +57,7 @@ class DlvTest(unittest.TestCase):
                 dlv_name='dlv1',
                 dlv_size=10*1024*1024*1024,
                 data_size=10*1024*1024*1024,
-                partition_count=2,
+                stripe_number=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),
                 active_snap_name='dlv1/base',
@@ -104,7 +104,7 @@ class DlvTest(unittest.TestCase):
         dlv_name = 'dlv0'
         dlv_size = 200*1024*1024*1024
         init_size = dlv_size
-        partition_count = 2
+        stripe_number = 2
         dvg_name = 'dvg0'
         snap_name = 'dlv0/base'
         with self.app.app_context():
@@ -112,7 +112,7 @@ class DlvTest(unittest.TestCase):
                 dlv_name=dlv_name,
                 dlv_size=dlv_size,
                 data_size=dlv_size,
-                partition_count=partition_count,
+                stripe_number=stripe_number,
                 active_snap_name=snap_name,
                 status=status,
                 timestamp=datetime.datetime.utcnow(),
@@ -144,8 +144,8 @@ class DlvTest(unittest.TestCase):
                 dlv_name=dlv_name,
             )
             db.session.add(group)
-            leg_size = div_round_up(group_size, partition_count)
-            legs_per_group = 2 * partition_count
+            leg_size = div_round_up(group_size, stripe_number)
+            legs_per_group = 2 * stripe_number
             for i in xrange(legs_per_group):
                 dpv_name = 'dpv%d' % i
                 dpv = DistributePhysicalVolume \
@@ -231,7 +231,7 @@ class DlvTest(unittest.TestCase):
             'dlv_name': 'dlv0',
             'dlv_size': 200*1024*1024*1024,
             'init_size': 100*1024*1024*1024,
-            'partition_count': 2,
+            'stripe_number': 2,
             'dvg_name': 'dvg0',
             't_id': t_id,
             't_owner': t_owner,

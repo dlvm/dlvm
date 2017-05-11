@@ -164,7 +164,7 @@ CLI_CMDS = {
                         'type': convert_to_byte,
                         'help': 'dlv init size',
                     },
-                    'partition_count': {
+                    'stripe_number': {
                         'type': int,
                         'help': 'partition count',
                     },

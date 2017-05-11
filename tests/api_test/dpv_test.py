@@ -158,7 +158,7 @@ class DpvTest(unittest.TestCase):
                 dlv_name=dlv_name,
                 dlv_size=64*1024*1024*1024,
                 data_size=64*1024*1024*1024,
-                partition_count=2,
+                stripe_number=2,
                 status='detached',
                 timestamp=datetime.datetime.utcnow(),
                 dvg_name=dvg.dvg_name,

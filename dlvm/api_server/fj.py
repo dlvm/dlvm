@@ -111,7 +111,7 @@ def get_dlv_info(dlv):
         .one()
     dlv_info['thin_id'] = snapshot.thin_id
     dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.partition_count
+    dm_context['stripe_number'] = dlv.stripe_number
     dlv_info['dm_context'] = dm_context
     dlv_info['groups'] = []
     for group in dlv.groups:

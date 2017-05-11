@@ -81,7 +81,7 @@ class DistributeLogicalVolume(db.Model):
         db.BigInteger,
         nullable=False,
     )
-    partition_count = db.Column(
+    stripe_number = db.Column(
         db.Integer,
         nullable=False,
     )

@@ -66,7 +66,7 @@ dlv_summary_fields = OrderedDict()
 dlv_summary_fields['dlv_name'] = fields.String
 dlv_summary_fields['dlv_size'] = fields.Integer
 dlv_summary_fields['data_size'] = fields.Integer
-dlv_summary_fields['partition_count'] = fields.Integer
+dlv_summary_fields['stripe_number'] = fields.Integer
 dlv_summary_fields['status'] = fields.String
 dlv_summary_fields['timestamp'] = fields.String
 dlv_summary_fields['dvg_name'] = fields.String
@@ -116,7 +116,7 @@ dlvs_post_parser.add_argument(
     location='json',
 )
 dlvs_post_parser.add_argument(
-    'partition_count',
+    'stripe_number',
     type=int,
     required=True,
     location='json',
@@ -271,7 +271,7 @@ def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
 def handle_dlvs_create_new(params, args):
     dlv_name = args['dlv_name']
     dlv_size = args['dlv_size']
-    partition_count = args['partition_count']
+    stripe_number = args['stripe_number']
     dvg_name = args['dvg_name']
     snap_name = '%s/base' % dlv_name
     t_id = args['t_id']
@@ -288,7 +288,7 @@ def handle_dlvs_create_new(params, args):
         dlv_name=dlv_name,
         dlv_size=dlv_size,
         data_size=init_size,
-        partition_count=partition_count,
+        stripe_number=stripe_number,
         status='creating',
         timestamp=datetime.datetime.utcnow(),
         dvg_name=dvg_name,
@@ -335,9 +335,9 @@ def handle_dlvs_create_new(params, args):
     )
     db.session.add(group)
     leg_size = div_round_up(
-        group_size, partition_count) + conf.mirror_meta_size
+        group_size, stripe_number) + conf.mirror_meta_size
     leg_size = div_round_up(leg_size, conf.lvm_unit) * conf.lvm_unit
-    legs_per_group = 2 * partition_count
+    legs_per_group = 2 * stripe_number
     for i in xrange(legs_per_group):
         leg = Leg(
             leg_id=uuid.uuid4().hex,
@@ -525,7 +525,7 @@ def do_attach(dlv, obt):
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
     dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.partition_count
+    dm_context['stripe_number'] = dlv.stripe_number
     dlv_info['dm_context'] = dm_context
     dlv_info['data_size'] = dlv.data_size
     snapshot = Snapshot \
@@ -620,7 +620,7 @@ def do_detach(dlv, obt):
     dlv_info = {}
     dlv_info['dlv_name'] = dlv.dlv_name
     dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.partition_count
+    dm_context['stripe_number'] = dlv.stripe_number
     dlv_info['dm_context'] = dm_context
     snapshot = Snapshot \
         .query \
@@ -813,7 +813,7 @@ dlv_fields = OrderedDict()
 dlv_fields['dlv_name'] = fields.String
 dlv_fields['dlv_size'] = fields.Integer
 dlv_fields['data_size'] = fields.Integer
-dlv_fields['partition_count'] = fields.Integer
+dlv_fields['stripe_number'] = fields.Integer
 dlv_fields['status'] = fields.String
 dlv_fields['timestamp'] = fields.String
 dlv_fields['dvg_name'] = fields.String

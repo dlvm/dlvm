@@ -147,7 +147,7 @@
 					"type": "int",
 					"required": true
 				},
-				"partition_count": {
+				"stripe_number": {
 					"type": "int",
 					"required": true
 				},

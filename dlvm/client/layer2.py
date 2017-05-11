@@ -58,7 +58,7 @@ def dlv_create_action(client, obt, obt_args):
         'dlv_name': obt_args['dlv_name'],
         'dlv_size': obt_args['dlv_size'],
         'init_size': obt_args['init_size'],
-        'partition_count': obt_args['partition_count'],
+        'stripe_number': obt_args['stripe_number'],
         'dvg_name': obt_args['dvg_name'],
         't_id': obt['t_id'],
         't_owner': obt['t_owner'],
@@ -794,13 +794,13 @@ class Layer2(object):
         return ret
 
     def dlv_create(
-            self, dlv_name, dvg_name, dlv_size, init_size, partition_count):
+            self, dlv_name, dvg_name, dlv_size, init_size, stripe_number):
         obt_args = {
             'dlv_name': dlv_name,
             'dvg_name': dvg_name,
             'dlv_size': dlv_size,
             'init_size': init_size,
-            'partition_count': partition_count,
+            'stripe_number': stripe_number,
             'max_retry': 10,
             'interval': 1,
         }

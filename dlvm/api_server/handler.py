@@ -284,7 +284,7 @@ def get_dlv_info(dlv):
     dlv_info['dlv_name'] = dlv.dlv_name
     dlv_info['dlv_size'] = dlv.dlv_size
     dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.partition_count
+    dm_context['stripe_number'] = dlv.stripe_number
     dlv_info['dm_context'] = dm_context
     dlv_info['data_size'] = dlv.data_size
     snapshot = Snapshot \

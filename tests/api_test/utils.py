@@ -67,14 +67,14 @@ class FixtureManager(object):
 
     @app_context
     def dlv_create(
-            self, dlv_name, dlv_size, data_size, partition_count, status,
+            self, dlv_name, dlv_size, data_size, stripe_number, status,
             timestamp, dvg_name, igroups):
         snap_name = '%s/base' % dlv_name
         dlv = DistributeLogicalVolume(
             dlv_name=dlv_name,
             dlv_size=dlv_size,
             data_size=data_size,
-            partition_count=partition_count,
+            stripe_number=stripe_number,
             status=status,
             timestamp=timestamp,
             active_snap_name=snap_name,
@@ -107,8 +107,8 @@ class FixtureManager(object):
                 legs_per_group = 2
             else:
                 leg_size = div_round_up(
-                    group_size, partition_count) + mirror_meta_size
-                legs_per_group = 2 * partition_count
+                    group_size, stripe_number) + mirror_meta_size
+                legs_per_group = 2 * stripe_number
             dpvs = DistributePhysicalVolume \
                 .query \
                 .filter_by(dvg_name=dvg_name) \

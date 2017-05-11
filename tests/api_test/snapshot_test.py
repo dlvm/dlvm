@@ -44,7 +44,7 @@ fixture_dlv = {
     'dlv_name': 'dlv0',
     'dlv_size': 16*1024*1024*1024,
     'data_size': 8*1024*1024*1024,
-    'partition_count': 1,
+    'stripe_number': 1,
     'status': 'detached',
     'timestamp': timestamp,
     'dvg_name': 'dvg0',
