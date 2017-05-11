@@ -505,6 +505,7 @@ def iscsi_get_context(target_name, iscsi_ip_port):
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
+        '-I', ctx.conf.initiator_iface,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
@@ -513,6 +514,7 @@ def iscsi_get_context(target_name, iscsi_ip_port):
             '-m', 'discovery',
             '-t', 'sendtargets',
             '-p', iscsi_ip_port,
+            '-I', ctx.conf.initiator_iface,
         ]
         run_cmd(cmd)
         cmd = [
@@ -520,6 +522,7 @@ def iscsi_get_context(target_name, iscsi_ip_port):
             '-m', 'node',
             '-o', 'show',
             '-T', target_name,
+            '-I', ctx.conf.initiator_iface,
         ]
         r = run_cmd(cmd)
     return iscsi_extract_context(r.out)
@@ -567,6 +570,7 @@ def iscsi_login(target_name, dpv_name):
         '--login',
         '-T', target_name,
         '-p', iscsi_ip_port,
+        '-I', ctx.conf.initiator_iface,
     ]
     run_cmd(cmd)
     verify_dev_path(iscsi_path)
@@ -580,6 +584,7 @@ def iscsi_logout(target_name):
         '-m', 'node',
         '-o', 'show',
         '-T', target_name,
+        '-I', ctx.conf.initiator_iface,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
@@ -592,6 +597,7 @@ def iscsi_logout(target_name):
             '-m', 'node',
             '--logout',
             '-T', target_name,
+            '-I', ctx.conf.initiator_iface,
         ]
         run_cmd(cmd)
     # iscsiadm -m node -T target_name -o delete
@@ -600,6 +606,7 @@ def iscsi_logout(target_name):
         '-m', 'node',
         '-T', target_name,
         '-o', 'delete',
+        '-I', ctx.conf.initiator_iface,
     ]
     run_cmd(cmd)
 
@@ -799,6 +806,7 @@ def iscsi_login_get_all(prefix):
         ctx.cp.get_path('iscsiadm'),
         '-m',
         'node',
+        '-I', ctx.conf.initiator_iface,
     ]
     r = run_cmd(cmd, accept_error=True)
     if r.rcode != 0:
