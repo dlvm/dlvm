@@ -137,7 +137,6 @@ group_fields['dlv_name'] = fields.String
 leg_fields = OrderedDict()
 leg_fields['leg_id'] = fields.String
 leg_fields['idx'] = fields.Integer
-leg_fields['thin_id'] = fields.Integer
 leg_fields['group'] = fields.Nested(group_fields)
 
 dpv_fields = OrderedDict()
