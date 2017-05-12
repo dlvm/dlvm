@@ -51,10 +51,12 @@ def fsm_run(
 
     client.obt_delete(t_id=obt['t_id'], t_owner=obt['t_owner'])
     if stage_num == -1:
-        success = True
+        return {'success': True}
     else:
-        success = False
-    return success, history
+        return {
+            'success': False,
+            'history': history,
+        }
 
 
 def fsm_start(name, client, obt_args):
