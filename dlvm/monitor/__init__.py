@@ -31,9 +31,10 @@ def create_tasks():
 
     @app.task
     def single_leg_failed(dlv_name, leg_id):
-        cmd_name = conf.monitor_single_leg_failed
+        cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
+            'single_leg_failed',
             dlv_name,
             leg_id,
         ]
@@ -42,9 +43,10 @@ def create_tasks():
 
     @app.task
     def multi_legs_failed(dlv_name, leg0_id, leg1_id):
-        cmd_name = conf.monitor_multi_legs_failed
+        cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
+            'multi_legs_failed',
             dlv_name,
             leg0_id,
             leg1_id,
@@ -54,9 +56,10 @@ def create_tasks():
 
     @app.task
     def pool_full(dlv_name):
-        cmd_name = conf.monitor_pool_full
+        cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
+            'pool_full',
             dlv_name,
         ]
         run_cmd(cmd)
@@ -64,9 +67,10 @@ def create_tasks():
 
     @app.task
     def fj_mirror_failed(fj_name):
-        cmd_name = conf.monitor_fj_mirror_failed
+        cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
+            'fj_mirror_failed',
             fj_name,
         ]
         run_cmd(cmd)
@@ -74,9 +78,10 @@ def create_tasks():
 
     @app.task
     def fj_mirror_complete(fj_name):
-        cmd_name = conf.monitor_fj_mirror_complete
+        cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
+            'fj_mirror_complete'
             fj_name,
         ]
         run_cmd(cmd)

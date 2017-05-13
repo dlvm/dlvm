@@ -43,6 +43,9 @@ setup(
             'client/api_format.json'
         ],
     },
+    data_files=[
+        ('bin', ['bin/dlvm_monitor_program']),
+    ],
     entry_points={
         'console_scripts': [
             'dlvm_dpv_agent=dlvm.dpv_agent:main',
