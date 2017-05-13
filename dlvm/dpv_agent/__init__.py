@@ -120,8 +120,8 @@ def get_fj_meta1_name(leg_id, fj_name):
     )
 
 
-def do_leg_create(leg_id, leg_size, dm_context, create_lv):
-    if create_lv is True:
+def do_leg_create(leg_id, leg_size, dm_context, init):
+    if init is True:
         lv_path = lv_create(leg_id, leg_size, conf.local_vg)
     else:
         lv_path = lv_get_path(leg_id, conf.local_vg)
@@ -151,25 +151,26 @@ def do_leg_create(leg_id, leg_size, dm_context, create_lv):
     mirror_meta_size = thin_block_size * mirror_meta_blocks
     mirror_data_size = leg_size - mirror_meta_size
     mirror_region_size = dm_context['mirror_region_size']
-    file_name = 'dlvm-leg-{leg_id}'.format(leg_id=leg_id)
-    file_path = os.path.join(conf.tmp_dir, file_name)
-    bm = BitMap(mirror_data_size/mirror_region_size)
-    generate_mirror_meta(
-        file_path,
-        mirror_meta_size,
-        mirror_data_size,
-        mirror_region_size,
-        bm,
-    )
-    run_dd(file_path, layer2_path)
-    run_dd(
-        '/dev/zero',
-        layer2_path,
-        bs=thin_block_size,
-        seek=mirror_meta_blocks,
-        count=1,
-    )
-    os.remove(file_path)
+    if init is True:
+        file_name = 'dlvm-leg-{leg_id}'.format(leg_id=leg_id)
+        file_path = os.path.join(conf.tmp_dir, file_name)
+        bm = BitMap(mirror_data_size/mirror_region_size)
+        generate_mirror_meta(
+            file_path,
+            mirror_meta_size,
+            mirror_data_size,
+            mirror_region_size,
+            bm,
+        )
+        run_dd(file_path, layer2_path)
+        run_dd(
+            '/dev/zero',
+            layer2_path,
+            bs=thin_block_size,
+            seek=mirror_meta_blocks,
+            count=1,
+        )
+        os.remove(file_path)
 
     target_name = encode_target_name(leg_id)
     iscsi_create(target_name, leg_id, layer2_path)
@@ -437,12 +438,12 @@ def fj_mirror_status(leg_id):
 def dpv_release_unused(leg_id_list):
     logger.debug('leg_id_list: %s', leg_id_list)
     target_name_set = set()
-    layer2_name_set = set()
+    backstore_name_set = set()
     dm_name_set = set()
     lv_name_set = set(leg_id_list)
     for leg_id in leg_id_list:
         target_name_set.add(encode_target_name(leg_id))
-        layer2_name_set.add(get_layer2_name(leg_id))
+        backstore_name_set.add(leg_id)
         dm_name_set.add(get_layer1_name(leg_id))
         dm_name_set.add(get_layer2_name(leg_id))
     iscsi_target_list = iscsi_target_get_all(conf.target_prefix)
@@ -451,9 +452,9 @@ def dpv_release_unused(leg_id_list):
             iscsi_target_delete(iscsi_target)
     iscsi_backstore_list = iscsi_backstore_get_all(conf.dpv_prefix)
     logger.debug('iscsi_backstore_list: %s', iscsi_backstore_list)
-    logger.debug('layer2_name_set: %s', layer2_name_set)
+    logger.debug('backstore_name_set: %s', backstore_name_set)
     for iscsi_backstore in iscsi_backstore_list:
-        if iscsi_backstore not in layer2_name_set:
+        if iscsi_backstore not in backstore_name_set:
             iscsi_backstore_delete(iscsi_backstore)
     dm_name_list = dm_get_all(conf.dpv_prefix)
     logger.debug('dm_name_list: %s', dm_name_list)
