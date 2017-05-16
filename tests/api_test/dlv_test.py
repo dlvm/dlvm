@@ -213,7 +213,7 @@ class DlvTest(unittest.TestCase):
             db.session.add(snapshot)
             db.session.commit()
 
-    @patch('dlvm.api_server.dlv.DpvClient')
+    @patch('dlvm.api_server.allocator.DpvClient')
     def test_dlvs_create_new(self, DpvClient):
         client_mock = Mock()
         DpvClient.return_value = client_mock
@@ -248,7 +248,7 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(dlv.status, 'detached')
         self.assertEqual(leg_create_mock.call_count, 6)
 
-    @patch('dlvm.api_server.dlv.DpvClient')
+    @patch('dlvm.api_server.allocator.DpvClient')
     def test_dlv_delete(self, DpvClient):
         client_mock = Mock()
         DpvClient.return_value = client_mock

@@ -20,7 +20,7 @@ DEFAULT_CONF = {
     'snapshot_list_limit': 100,
     'dpv_timeout': 300,
     'ihost_timeout': 300,
-    'cross_dpv': True,
+    'test_mode': False,
     'init_factor': 4,
     'init_max': 1024*1024*1024*200,
     'init_min': 1024*1024*1024*1,

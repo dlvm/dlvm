@@ -214,7 +214,7 @@ def allocate_dpv(leg, group, dvg_name, obt):
     dpvs = []
     batch_count = dpv_search_overhead
     exclude_name_set = set()
-    if conf.cross_dpv is True:
+    if conf.test_mode is not True:
         for ileg in group.legs:
             assert(ileg.dpv_name not in exclude_name_set)
             exclude_name_set.add(ileg.dpv_name)

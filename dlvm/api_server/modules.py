@@ -133,6 +133,11 @@ class DistributeLogicalVolume(db.Model):
         'FailoverJob',
         back_populates='dlv',
     )
+    ej = db.relationship(
+        'ExtendJob',
+        back_populates='dlv',
+        uselist=False,
+    )
     t_id = db.Column(
         db.String(32),
         db.ForeignKey('owner_based_transaction.t_id'),
@@ -218,11 +223,18 @@ class Group(db.Model):
     dlv_name = db.Column(
         db.String(32),
         db.ForeignKey('distribute_logical_volume.dlv_name'),
-        nullable=False,
     )
     dlv = db.relationship(
         'DistributeLogicalVolume',
         back_populates='groups',
+    )
+    ej_name = db.Column(
+        db.String(32),
+        db.ForeignKey('extend_job.ej_name'),
+    )
+    ej = db.relationship(
+        'ExtendJob',
+        back_populates='group',
     )
     legs = db.relationship(
         'Leg',
@@ -304,6 +316,43 @@ class FailoverJob(db.Model):
     dlv = db.relationship(
         'DistributeLogicalVolume',
         back_populates='fjs',
+    )
+
+
+class ExtendJob(db.Model):
+    ej_name = db.Column(
+        db.String(32),
+        primary_key=True,
+    )
+    status = db.Column(
+        db.Enum(
+            'creating', 'create_failed',
+            'canceling', 'cancel_failed',
+            'canceled',
+            'created',
+            'finishing', 'finish_failed',
+            'finished',
+            name='ej_status',
+        ),
+        nullable=False,
+    )
+    timestamp = db.Column(
+        db.DateTime,
+        nullable=False,
+    )
+    dlv_name = db.Column(
+        db.String(32),
+        db.ForeignKey('distribute_logical_volume.dlv_name'),
+        nullable=False,
+    )
+    dlv = db.relationship(
+        'DistributeLogicalVolume',
+        back_populates='ej',
+    )
+    group = db.relationship(
+        'Group',
+        back_populates='ej',
+        uselist=False,
     )
 
 

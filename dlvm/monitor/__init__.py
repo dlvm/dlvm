@@ -81,7 +81,7 @@ def create_tasks():
         cmd_name = conf.monitor_program
         cmd = [
             cmd_name,
-            'fj_mirror_complete'
+            'fj_mirror_complete',
             fj_name,
         ]
         run_cmd(cmd)

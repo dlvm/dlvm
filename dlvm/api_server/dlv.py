@@ -3,25 +3,23 @@
 from collections import OrderedDict
 import uuid
 import logging
-import random
 import datetime
 from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
-from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, HasFjError, \
     IhostError, SnapNameError, SnapshotStatusError, \
     DlvIhostMisMatchError
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
-    DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
+    DistributePhysicalVolume, DistributeLogicalVolume, \
     Snapshot, Group, Leg
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, div_round_up, dlv_get, \
     obt_get, obt_refresh, obt_encode, \
     DpvClient, IhostClient
-
+from allocator import allocate_dpvs_for_group, free_dpvs_from_group
 
 logger = logging.getLogger('dlvm_api')
 
@@ -132,6 +130,7 @@ dlvs_post_parser.add_argument(
     required=True,
     location='json',
 )
+
 dlvs_post_parser.add_argument(
     't_id',
     type=str,
@@ -152,99 +151,12 @@ dlvs_post_parser.add_argument(
 )
 
 
-def select_dpvs(dvg_name, required_size, batch_count, offset):
-    logger.debug(
-        'select_dpvs: %s %d %d %d',
-        dvg_name, required_size, batch_count, offset)
-    dpvs = DistributePhysicalVolume \
-        .query \
-        .filter_by(dvg_name=dvg_name) \
-        .filter_by(status='available') \
-        .filter(DistributePhysicalVolume.free_size > required_size) \
-        .order_by(DistributePhysicalVolume.free_size.desc()) \
-        .limit(batch_count) \
-        .offset(offset) \
-        .with_entities(DistributePhysicalVolume.dpv_name) \
-        .all()
-    random.shuffle(dpvs)
-    return dpvs
-
-
-def allocate_dpvs_for_group(group, dlv_name, dvg_name, obt):
-    dpvs = []
-    dpv_name_set = set()
-    batch_count = len(group.legs) * dpv_search_overhead
-    i = -1
-    total_leg_size = 0
-    for leg in group.legs:
-        i += 1
-        if leg.dpv is not None:
-            continue
-        leg_size = leg.leg_size
-        while True:
-            if len(dpvs) == 0:
-                if conf.cross_dpv is True:
-                    dpvs = select_dpvs(
-                        dvg_name, leg_size, batch_count, i)
-                else:
-                    dpvs = select_dpvs(
-                        dvg_name, leg_size, batch_count, 0)
-            if len(dpvs) == 0:
-                logger.warning(
-                    'allocate dpvs failed, %s %s %d',
-                    dlv_name, dvg_name, leg.leg_size)
-                raise NoEnoughDpvError()
-            dpv = dpvs.pop()
-            if dpv.dpv_name in dpv_name_set:
-                continue
-            else:
-                if conf.cross_dpv is True:
-                    dpv_name_set.add(dpv.dpv_name)
-            dpv = DistributePhysicalVolume \
-                .query \
-                .with_lockmode('update') \
-                .filter_by(dpv_name=dpv.dpv_name) \
-                .one()
-            if dpv.status != 'available':
-                continue
-            if dpv.free_size < leg_size:
-                continue
-            dpv.free_size -= leg_size
-            total_leg_size += leg_size
-            leg.dpv = dpv
-            db.session.add(dpv)
-            db.session.add(leg)
-            break
-
-    dvg = DistributeVolumeGroup \
-        .query \
-        .with_lockmode('update') \
-        .filter_by(dvg_name=dvg_name) \
-        .one()
-    assert(dvg.free_size >= total_leg_size)
-    dvg.free_size -= total_leg_size
-    db.session.add(dvg)
-    obt_refresh(obt)
-    db.session.commit()
-
-    dm_context = get_dm_context()
-    for leg in group.legs:
-        dpv_name = leg.dpv_name
-        client = DpvClient(dpv_name)
-        client.leg_create(
-            leg.leg_id,
-            obt_encode(obt),
-            str(leg.leg_size),
-            dm_context,
-        )
-
-
 def dlv_create_new(dlv_name, t_id, t_owner, t_stage):
     try:
         dlv, obt = dlv_get(dlv_name, t_id, t_owner, t_stage)
         for group in dlv.groups:
             allocate_dpvs_for_group(
-                group, dlv.dlv_name, dlv.dvg_name, obt)
+                group, dlv.dvg_name, obt, conf.test_mode)
     except DpvError as e:
         dlv.status = 'create_failed'
         dlv.timestamp = datetime.datetime.utcnow()
@@ -401,49 +313,6 @@ CAN_DELETE_STATUS = (
 )
 
 
-def free_dpvs_from_group(group, dlv_name, dvg_name, obt):
-    dpv_dict = {}
-    for leg in group.legs:
-        dpv_name = leg.dpv_name
-        if dpv_name is None:
-            continue
-        dpv = DistributePhysicalVolume \
-            .query \
-            .with_lockmode('update') \
-            .filter_by(dpv_name=dpv_name) \
-            .one()
-        dpv_dict[dpv_name] = dpv
-        if dpv.status != 'available':
-            continue
-        client = DpvClient(dpv_name)
-        client.leg_delete(
-            leg.leg_id,
-            obt_encode(obt),
-        )
-
-    total_free_size = 0
-    for leg in group.legs:
-        leg_size = leg.leg_size
-        dpv_name = leg.dpv_name
-        db.session.delete(leg)
-        if dpv_name is None:
-            continue
-        dpv = dpv_dict[dpv_name]
-        if dpv.status != 'available':
-            continue
-        dpv.free_size += leg_size
-        total_free_size += leg_size
-        db.session.add(dpv)
-    dvg = DistributeVolumeGroup \
-        .query \
-        .with_lockmode('update') \
-        .filter_by(dvg_name=dvg_name) \
-        .one()
-    dvg.free_size += total_free_size
-    db.session.add(dvg)
-    db.session.delete(group)
-
-
 def dlv_delete(dlv, obt):
     if dlv.status not in CAN_DELETE_STATUS:
         raise DlvStatusError(dlv.status)
@@ -454,7 +323,8 @@ def dlv_delete(dlv, obt):
     obt_refresh(obt)
     db.session.commit()
     for group in dlv.groups:
-        free_dpvs_from_group(group, dlv.dlv_name, dlv.dvg_name, obt)
+        free_dpvs_from_group(
+            group, dlv.dvg_name, obt)
     for snapshot in dlv.snapshots:
         db.session.delete(snapshot)
     db.session.delete(dlv)
@@ -611,6 +481,7 @@ def handle_dlv_attach(dlv_name, ihost_name, t_id, t_owner, t_stage):
 
 CAN_DETACH_STATUS = (
     'attached',
+    'attaching',
     'attach_failed',
     'detach_failed',
 )
@@ -660,14 +531,13 @@ def do_detach(dlv, obt):
                 .with_lockmode('update') \
                 .filter_by(dpv_name=dpv_name) \
                 .one()
-            if dpv.status != 'available':
-                continue
-            client = DpvClient(dpv_name)
-            client.leg_unexport(
-                leg.leg_id,
-                obt_encode(obt),
-                dlv.ihost_name,
-            )
+            if dpv.status == 'available':
+                client = DpvClient(dpv_name)
+                client.leg_unexport(
+                    leg.leg_id,
+                    obt_encode(obt),
+                    dlv.ihost_name,
+                )
 
 
 def dlv_detach(dlv, ihost_name, obt):
@@ -819,6 +689,8 @@ dlv_fields['timestamp'] = fields.String
 dlv_fields['dvg_name'] = fields.String
 dlv_fields['ihost_name'] = fields.String
 dlv_fields['active_snap_name'] = fields.String
+dlv_fields['ej_name'] = fields.String(
+    attribute=lambda x: x.ej.ej_name if x.ej else None)
 dlv_fields['t_id'] = fields.String
 dlv_fields['groups'] = fields.List(fields.Nested(group_fields))
 
