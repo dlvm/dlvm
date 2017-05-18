@@ -322,7 +322,7 @@ CLI_CMDS = {
         },
     },
     'fj': {
-        'help': 'majage failover job',
+        'help': 'manage failover job',
         'cmds': {
             'list': {
                 'help': 'list fjs',
@@ -345,11 +345,11 @@ CLI_CMDS = {
                 'help': 'create fj',
                 'arguments': {
                     'fj_name': {
-                        'help': 'fj_name',
+                        'help': 'fj name',
                         'required': True,
                     },
                     'dlv_name': {
-                        'help': 'dlv_name',
+                        'help': 'dlv name',
                         'required': True,
                     },
                     'ori_id': {
@@ -372,6 +372,41 @@ CLI_CMDS = {
                 'arguments': {
                     'fj_name': {
                         'help': 'fj_name',
+                        'required': True,
+                    },
+                },
+            },
+        },
+    },
+    'ej': {
+        'help': 'manage extend job',
+        'cmds': {
+            'list': {
+                'help': 'list ejs',
+            },
+            'display': {
+                'help': 'show ej',
+                'arguments': {
+                    'ej_name': {
+                        'help': 'ej name',
+                        'required': True,
+                    },
+                },
+            },
+            'create': {
+                'help': 'create ej',
+                'arguments': {
+                    'ej_name': {
+                        'help': 'ej name',
+                        'required': True,
+                    },
+                    'dlv_name': {
+                        'help': 'dlv name',
+                        'required': True,
+                    },
+                    'ej_size': {
+                        'help': 'ej size',
+                        'type': convert_to_byte,
                         'required': True,
                     },
                 },
