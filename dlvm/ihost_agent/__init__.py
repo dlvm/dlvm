@@ -12,7 +12,8 @@ from dlvm.utils.command import context_init, \
     DmPool, DmThin, DmError, \
     iscsi_login, iscsi_logout, \
     dm_get_all, iscsi_login_get_all
-from dlvm.utils.helper import chunks, encode_target_name, dlv_info_decode
+from dlvm.utils.helper import chunks, encode_target_name, \
+    dlv_info_decode, group_decode
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, report_single_leg, \
     report_multi_legs, report_pool
@@ -997,6 +998,43 @@ def ihost_sync(ihost_info, obt):
     ihost_release_iscsi(target_name_set)
 
 
+def do_dlv_extend(dlv_name, dlv_info, ej_group):
+    dm_context = generate_dm_context(dlv_info['dm_context'])
+    current_sectors = 0
+    table = []
+    for group in dlv_info['groups']:
+        stripe_path = create_stripe(dlv_name, group, dm_context)
+        group_sectors = group['group_size'] / 512
+        line = {
+            'start': current_sectors,
+            'length': group_sectors,
+            'dev_path': stripe_path,
+            'offset': 0,
+        }
+        table.append(line)
+        current_sectors += group_sectors
+    stripe_path = create_stripe(dlv_name, ej_group, dm_context)
+    group_sectors = ej_group['group_size'] / 512
+    line = {
+        'start': current_sectors,
+        'length': group_sectors,
+        'dev_path': stripe_path,
+        'offset': 0,
+    }
+    table.append(line)
+    thin_data_name = get_thin_data_name(dlv_name)
+    dm = DmLinear(thin_data_name)
+    dm.reload(table)
+
+
+def dlv_extend(dlv_name, obt, dlv_info, ej_group):
+    with RpcLock(dlv_name):
+        ihost_verify(dlv_name, obt['major'], obt['minor'])
+        dlv_info_decode(dlv_info)
+        group_decode(ej_group)
+        return do_dlv_extend(dlv_name, dlv_info, ej_group)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -1013,5 +1051,6 @@ def main():
     s.register_function(remirror)
     s.register_function(leg_remove)
     s.register_function(ihost_sync)
+    s.register_function(dlv_extend)
     logger.info('ihost_agent start')
     s.serve_forever()

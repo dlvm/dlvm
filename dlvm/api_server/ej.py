@@ -386,7 +386,7 @@ def do_ej_finish(ej, dlv, obt):
         dlv_info = get_dlv_info(dlv)
         if dlv.ihost.status == 'available':
             ihost_client = IhostClient(dlv.ihost_name)
-            ihost_client.extend(
+            ihost_client.dlv_extend(
                 dlv.dlv_name,
                 obt_encode(obt),
                 dlv_info,
