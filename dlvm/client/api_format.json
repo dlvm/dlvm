@@ -423,6 +423,90 @@
 				}
 			}
 		},
+        "ejs": {
+            "path": "/ejs",
+            "get": {
+                "prev": {
+					"type": "str",
+					"required": false
+				},
+				"limit": {
+					"type": "int",
+					"required": false
+				},
+				"order_by": {
+					"type": "choice",
+					"choices": ["ej_name", "timestamp", "dlv_name"]
+				},
+				"reverse": {
+					"type": "bool",
+					"required": false
+				}
+            },
+            "post": {
+                "ej_name": {
+                    "type": "str",
+                    "required": true
+				},
+				"dlv_name": {
+					"type": "str",
+					"required": true
+				},
+				"ej_size": {
+					"type": "int",
+					"required": true
+				},
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
+		"ej": {
+			"path": "/ejs/{ej_name}",
+			"get": {
+			},
+			"put": {
+				"action": {
+					"type": "choice",
+					"choices": ["cancel", "finish"]
+				},
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			},
+			"delete": {
+				"t_id": {
+					"type": "str",
+					"required": true
+				},
+				"t_owner": {
+					"type": "str",
+					"required": true
+				},
+				"t_stage": {
+					"type": "str",
+					"required": true
+				}
+			}
+		},
 		"obts": {
 			"path": "/obts",
 			"get": {

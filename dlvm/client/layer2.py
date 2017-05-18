@@ -691,6 +691,154 @@ fj_finish_stage_info = {
 fsm_register('fj_finish', fj_finish_stage_info)
 
 
+def ej_create_action(client, obt, obt_args):
+    kwargs = {
+        'ej_name': obt_args['ej_name'],
+        'dlv_name': obt_args['dlv_name'],
+        'ej_size': obt_args['ej_size'],
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.ejs_post(**kwargs)
+    return ret
+
+
+def ej_create_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        ej_name = obt_args['ej_name']
+        ret = client.ej_get(ej_name=ej_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'created':
+            return 'ok', ret
+        elif status != 'creating':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def ej_cancel_action(client, obt, obt_args):
+    kwargs = {
+        'ej_name': obt_args['ej_name'],
+        'action': 'cancel',
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.ej_put(**kwargs)
+    return ret
+
+
+def ej_cancel_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        ej_name = obt_args['ej_name']
+        ret = client.ej_get(ej_name=ej_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'canceled':
+            return 'ok', ret
+        elif status != 'canceling':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def ej_finish_action(client, obt, obt_args):
+    kwargs = {
+        'ej_name': obt_args['ej_name'],
+        'action': 'finish',
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.ej_put(**kwargs)
+    return ret
+
+
+def ej_finish_check(client, obt_args):
+    retry = 0
+    while retry < obt_args['max_retry']:
+        ej_name = obt_args['ej_name']
+        ret = client.ej_get(ej_name=ej_name)
+        if ret['status_code'] != 200:
+            return 'err', ret
+        status = ret['data']['body']['status']
+        if status == 'finished':
+            return 'ok',  ret
+        elif status != 'finishing':
+            return 'err', ret
+        time.sleep(obt_args['interval'])
+        retry += 1
+    return 'err', ret
+
+
+def ej_delete_action(client, obt, obt_args):
+    kwargs = {
+        'ej_name': obt_args['ej_name'],
+        't_id': obt['t_id'],
+        't_owner': obt['t_owner'],
+        't_stage': obt['t_stage'],
+    }
+    ret = client.ej_delete(**kwargs)
+    return ret
+
+
+def ej_delete_check(client, obt_args):
+    ej_name = obt_args['ej_name']
+    ret = client.ej_get(ej_name=ej_name)
+    if ret['status_code'] == 404:
+        return 'ok', ret
+    else:
+        return 'err', ret
+
+
+ej_create_stage_info = {
+    'init_stage_num': 1,
+    'stages': {
+        1: {
+            'action': ej_create_action,
+            'check': ej_create_check,
+            'ok': 2,
+            'err': 10,
+        },
+        2: {
+            'action': ej_finish_action,
+            'check': ej_finish_check,
+            'ok': 3,
+            'err': 2,
+        },
+        3: {
+            'action': ej_delete_action,
+            'check': ej_delete_check,
+            'ok': -1,
+            'err': 3,
+        },
+        10: {
+            'action': ej_cancel_action,
+            'check': ej_cancel_check,
+            'ok': 11,
+            'err': 10,
+        },
+        11: {
+            'action': ej_delete_action,
+            'check': ej_delete_check,
+            'ok': -2,
+            'err': 11,
+        },
+    },
+}
+
+
+fsm_register('ej_create', ej_create_stage_info)
+
+
 class Layer2(object):
 
     def __init__(self, api_server_list):
@@ -975,3 +1123,22 @@ class Layer2(object):
         }
         return fsm_start(
             'fj_finish', self.client, obt_args)
+
+    def ej_list(self):
+        ret = self.client.ejs_get()
+        return ret
+
+    def ej_display(self, ej_name):
+        ret = self.client.ej_get(ej_name=ej_name)
+        return ret
+
+    def ej_create(self, ej_name, ej_size, dlv_name):
+        obt_args = {
+            'ej_name': ej_name,
+            'dlv_name': dlv_name,
+            'ej_size': ej_size,
+            'max_retry': 10,
+            'interval': 1,
+        }
+        return fsm_start(
+            'ej_create', self.client, obt_args)
