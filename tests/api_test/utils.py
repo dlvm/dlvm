@@ -366,12 +366,18 @@ class FixtureManager(object):
         leg_size = div_round_up(
             group_size, stripe_number) + mirror_meta_size
         legs_per_group = 2 * stripe_number
+        dpvs = DistributePhysicalVolume \
+            .query \
+            .filter_by(dvg_name=dlv.dvg_name) \
+            .limit(legs_per_group) \
+            .all()
         for i in xrange(legs_per_group):
             leg = Leg(
                 leg_id=uuid.uuid4().hex,
                 idx=i,
                 group=group,
                 leg_size=leg_size,
+                dpv_name=dpvs[i].dpv_name,
             )
             db.session.add(leg)
         db.session.commit()
@@ -382,7 +388,7 @@ class FixtureManager(object):
             .query \
             .filter_by(ej_name=ej_name) \
             .one()
-        ej.status == status
+        ej.status = status
         if ej.status == 'finished':
             ej.group.dlv_name = ej.dlv_name
             db.session.add(ej.group)

@@ -156,3 +156,67 @@ class EjTest(unittest.TestCase):
         ej = data['body']
         self.assertEqual(ej['ej_name'], 'ej0')
         self.assertEqual(ej['group']['group_size'], 8*1024*1024*1024)
+
+    @patch('dlvm.api_server.allocator.DpvClient')
+    def test_ej_cancel(self, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
+        self._prepare_ej()
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'cancel',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/ejs/ej0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        ej = self.fm.ej_get('ej0')
+        self.assertEqual(ej.status, 'canceled')
+
+    @patch('dlvm.api_server.ej.DpvClient')
+    @patch('dlvm.api_server.ej.IhostClient')
+    def test_ej_finish(self, IhostClient, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
+        self._prepare_ej()
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'finish',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/ejs/ej0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        ej = self.fm.ej_get('ej0')
+        self.assertEqual(ej.status, 'finished')
+
+    def test_ej_delete(self):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self.fm.ihost_create(**fixture_ihost)
+        self.fm.dlv_attach('dlv0', 'ihost0')
+        self._prepare_ej()
+        self.fm.ej_set_status('ej0', 'finished')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.delete('/ejs/ej0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
