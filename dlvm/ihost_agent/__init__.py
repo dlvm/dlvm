@@ -999,11 +999,16 @@ def ihost_sync(ihost_info, obt):
 
 
 def do_dlv_extend(dlv_name, dlv_info, ej_group):
+    logger.debug(dlv_name)
+    logger.debug(dlv_info)
+    logger.debug(ej_group)
     dm_context = generate_dm_context(dlv_info['dm_context'])
     current_sectors = 0
     table = []
-    for group in dlv_info['groups']:
-        stripe_path = create_stripe(dlv_name, group, dm_context)
+    for group in dlv_info['groups'][1:]:
+        stripe_name = get_stripe_name(dlv_name, group['idx'])
+        dm = DmStripe(stripe_name)
+        stripe_path = dm.get_path()
         group_sectors = group['group_size'] / 512
         line = {
             'start': current_sectors,
@@ -1024,6 +1029,30 @@ def do_dlv_extend(dlv_name, dlv_info, ej_group):
     table.append(line)
     thin_data_name = get_thin_data_name(dlv_name)
     dm = DmLinear(thin_data_name)
+    dm.reload(table)
+    thin_data_path = dm.get_path()
+
+    thin_meta_name = get_thin_meta_name(dlv_name)
+    dm = DmLinear(thin_meta_name)
+    thin_meta_path = dm.get_path()
+
+    thin_data_size = dlv_info['data_size'] + ej_group['group_size']
+    thin_data_sectors = thin_data_size / 512
+    assert(thin_data_sectors == (current_sectors+group_sectors))
+
+    thin_block_sectors = dm_context['thin_block_sectors']
+    low_water_mark = dm_context['low_water_mark']
+
+    pool_name = get_pool_name(dlv_name)
+    dm = DmPool(pool_name)
+    table = {
+        'start': 0,
+        'length': thin_data_sectors,
+        'meta_path': thin_meta_path,
+        'data_path': thin_data_path,
+        'block_sectors': thin_block_sectors,
+        'low_water_mark': low_water_mark,
+    }
     dm.reload(table)
 
 
