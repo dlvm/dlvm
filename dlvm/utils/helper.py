@@ -23,6 +23,24 @@ def encode_initiator_name(host_name):
     )
 
 
+def group_encode(group):
+    if 'group_size' in group:
+        group['group_size'] = str(group['group_size'])
+        if 'legs' in group:
+            for leg in group['legs']:
+                if 'leg_size' in leg:
+                    leg['leg_size'] = str(leg['leg_size'])
+
+
+def group_decode(group):
+    if 'group_size' in group:
+        group['group_size'] = int(group['group_size'])
+        if 'legs' in group:
+            for leg in group['legs']:
+                if 'leg_size' in leg:
+                    leg['leg_size'] = int(leg['leg_size'])
+
+
 def dlv_info_encode(dlv_info):
     if 'dlv_size' in dlv_info:
         dlv_info['dlv_size'] = str(dlv_info['dlv_size'])
@@ -30,12 +48,7 @@ def dlv_info_encode(dlv_info):
         dlv_info['data_size'] = str(dlv_info['data_size'])
     if 'groups' in dlv_info:
         for group in dlv_info['groups']:
-            if 'group_size' in group:
-                group['group_size'] = str(group['group_size'])
-            if 'legs' in group:
-                for leg in group['legs']:
-                    if 'leg_size' in leg:
-                        leg['leg_size'] = str(leg['leg_size'])
+            group_encode(group)
 
 
 def dlv_info_decode(dlv_info):
@@ -45,9 +58,4 @@ def dlv_info_decode(dlv_info):
         dlv_info['data_size'] = int(dlv_info['data_size'])
     if 'groups' in dlv_info:
         for group in dlv_info['groups']:
-            if 'group_size' in group:
-                group['group_size'] = int(group['group_size'])
-            if 'legs' in group:
-                for leg in group['legs']:
-                    if 'leg_size' in leg:
-                        leg['leg_size'] = int(leg['leg_size'])
+            group_decode(group)

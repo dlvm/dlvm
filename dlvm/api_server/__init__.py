@@ -14,6 +14,7 @@ from ihost import Ihosts, Ihost
 from obt import Obts, Obt
 from snapshot import Snaps, Snap
 from fj import Fjs, Fj
+from ej import Ejs, Ej
 
 root_get_fields = OrderedDict()
 root_get_fields['endpoints'] = fields.List(fields.String)
@@ -55,6 +56,8 @@ def create_app():
     api.add_resource(Snap, '/dlvs/<string:dlv_name>/snaps/<string:snap_name>')
     api.add_resource(Fjs, '/fjs')
     api.add_resource(Fj, '/fjs/<string:fj_name>')
+    api.add_resource(Ejs, '/ejs')
+    api.add_resource(Ej, '/ejs/<string:ej_name>')
     return app
 
 

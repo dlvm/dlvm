@@ -29,7 +29,11 @@ class FjStatusError(Exception):
     pass
 
 
-class HasFjError(Exception):
+class EjStatusError(Exception):
+    pass
+
+
+class DependenceCheckError(Exception):
     pass
 
 

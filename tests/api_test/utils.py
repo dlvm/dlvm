@@ -3,7 +3,7 @@
 import uuid
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, InitiatorHost, FailoverJob, \
+    Snapshot, Group, Leg, InitiatorHost, FailoverJob, ExtendJob, \
     OwnerBasedTransaction, Counter
 
 mirror_meta_size = 1024*1024*2
@@ -326,4 +326,65 @@ class FixtureManager(object):
             .one()
         dpv.status = status
         db.session.add(dpv)
+        db.session.commit()
+
+    @app_context
+    def ej_get(self, ej_name):
+        ej = ExtendJob \
+            .query \
+            .filter_by(ej_name=ej_name) \
+            .one()
+        return ej
+
+    @app_context
+    def ej_create(self, ej_name, status, timestamp, dlv_name, ej_size):
+        ej = ExtendJob(
+            ej_name=ej_name,
+            status=status,
+            timestamp=timestamp,
+            dlv_name=dlv_name,
+            ej_size=ej_size,
+        )
+        db.session.add(ej)
+        dlv = DistributeLogicalVolume \
+            .query \
+            .filter_by(dlv_name=dlv_name) \
+            .one()
+        max_idx = 0
+        for group in dlv.groups:
+            max_idx = max(max_idx, group.idx)
+        idx = max_idx + 1
+        group_size = ej_size
+        stripe_number = dlv.stripe_number
+        group = Group(
+            group_id=uuid.uuid4().hex,
+            idx=idx,
+            group_size=group_size,
+            ej_name=ej_name,
+        )
+        db.session.add(group)
+        leg_size = div_round_up(
+            group_size, stripe_number) + mirror_meta_size
+        legs_per_group = 2 * stripe_number
+        for i in xrange(legs_per_group):
+            leg = Leg(
+                leg_id=uuid.uuid4().hex,
+                idx=i,
+                group=group,
+                leg_size=leg_size,
+            )
+            db.session.add(leg)
+        db.session.commit()
+
+    @app_context
+    def ej_set_status(self, ej_name, status):
+        ej = ExtendJob \
+            .query \
+            .filter_by(ej_name=ej_name) \
+            .one()
+        ej.status == status
+        if ej.status == 'finished':
+            ej.group.dlv_name = ej.dlv_name
+            db.session.add(ej.group)
+        db.session.add(ej)
         db.session.commit()

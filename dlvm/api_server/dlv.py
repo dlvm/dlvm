@@ -8,7 +8,7 @@ from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
-    DlvStatusError, HasFjError, \
+    DlvStatusError, DependenceCheckError, \
     IhostError, SnapNameError, SnapshotStatusError, \
     DlvIhostMisMatchError
 from dlvm.utils.helper import dlv_info_encode
@@ -18,7 +18,8 @@ from modules import db, \
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, div_round_up, dlv_get, \
     obt_get, obt_refresh, obt_encode, \
-    DpvClient, IhostClient
+    DpvClient, IhostClient, \
+    dlv_detach_check, dlv_delete_check
 from allocator import allocate_dpvs_for_group, free_dpvs_from_group
 
 logger = logging.getLogger('dlvm_api')
@@ -316,8 +317,7 @@ CAN_DELETE_STATUS = (
 def dlv_delete(dlv, obt):
     if dlv.status not in CAN_DELETE_STATUS:
         raise DlvStatusError(dlv.status)
-    if len(dlv.fjs) != 0:
-        raise HasFjError()
+    dlv_delete_check(dlv)
     dlv.status = 'deleting'
     dlv.timestamp = datetime.datetime.utcnow()
     obt_refresh(obt)
@@ -349,8 +349,8 @@ def handle_dlv_delete(params, args):
         return make_body('dpv_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
-    except HasFjError:
-        return make_body('has_fj'), 400
+    except DependenceCheckError as e:
+        return make_body('dependence_check_failed', e.message), 400
     else:
         return make_body('success'), 200
 
@@ -424,14 +424,13 @@ def do_attach(dlv, obt):
                 .with_lockmode('update') \
                 .filter_by(dpv_name=dpv_name) \
                 .one()
-            if dpv.status != 'available':
-                continue
-            client = DpvClient(dpv_name)
-            client.leg_export(
-                leg.leg_id,
-                obt_encode(obt),
-                dlv.ihost_name,
-            )
+            if dpv.status == 'available':
+                client = DpvClient(dpv_name)
+                client.leg_export(
+                    leg.leg_id,
+                    obt_encode(obt),
+                    dlv.ihost_name,
+                )
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
 
@@ -549,6 +548,7 @@ def dlv_detach(dlv, ihost_name, obt):
             'ihost_name': ihost_name,
         }
         raise DlvIhostMisMatchError(context)
+    dlv_detach_check(dlv)
     dlv.status = 'detaching'
     dlv.timestamp = datetime.datetime.utcnow()
     db.session.add(dlv)
@@ -579,6 +579,8 @@ def handle_dlv_detach(dlv_name, ihost_name, t_id, t_owner, t_stage):
         return make_body('ihost_failed', e.message), 500
     except DlvStatusError as e:
         return make_body('invalid_dlv_status', e.message), 400
+    except DependenceCheckError as e:
+        return make_body('dependence_check_failed', e.message), 400
     else:
         dlv.status = 'detached'
         dlv.ihost_name = None

@@ -340,6 +340,10 @@ class ExtendJob(db.Model):
         db.DateTime,
         nullable=False,
     )
+    ej_size = db.Column(
+        db.BigInteger,
+        nullable=False,
+    )
     dlv_name = db.Column(
         db.String(32),
         db.ForeignKey('distribute_logical_volume.dlv_name'),

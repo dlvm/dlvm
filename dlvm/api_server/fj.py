@@ -11,7 +11,8 @@ from dlvm.utils.configure import conf
 from dlvm.utils.constant import dpv_search_overhead
 from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, \
-    IhostError, FjStatusError
+    IhostError, FjStatusError, \
+    DependenceCheckError
 from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
@@ -19,7 +20,8 @@ from modules import db, \
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, IhostClient, \
-    obt_refresh, obt_encode
+    obt_refresh, obt_encode, \
+    dlv_detach_register, dlv_delete_register
 
 
 logger = logging.getLogger('dlvm_api')
@@ -600,21 +602,17 @@ def handle_fj_cancel(params, args):
         do_fj_cancel(fj, dlv, obt)
     except FjStatusError as e:
         return make_body('invalid_fj_status', e.message), 400
-    except IhostError as e:
-        fj.status = 'cancel_failed'
-        fj.timestamp = datetime.datetime.utcnow()
-        obt_refresh(obt)
-        db.session.commit()
-        return make_body('ihost_failed', e.message), 500
     except DpvError as e:
         fj.status = 'cancel_failed'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
     else:
         fj.status = 'canceled'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
@@ -622,6 +620,7 @@ def handle_fj_cancel(params, args):
 
 CAN_FINISH_STATUS = (
     'processing',
+    'finishing',
     'finish_failed',
 )
 
@@ -670,7 +669,6 @@ def do_fj_finish(fj, dlv, obt):
             d_leg['idx'] = dst_leg.idx
             d_leg['leg_size'] = str(dst_leg.leg_size)
             d_leg['dpv_name'] = dst_leg.dpv_name
-            dlv_info_encode(dlv_info)
             ihost_client.remirror(
                 dlv.dlv_name,
                 obt_encode(obt),
@@ -719,18 +717,21 @@ def handle_fj_finish(params, args):
     except IhostError as e:
         fj.status = 'finish_failed'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('ihost_failed', e.message), 500
     except DpvError as e:
         fj.status = 'finish_failed'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('dpv_failed', e.message), 500
     else:
         fj.status = 'finished'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         obt_refresh(obt)
         db.session.commit()
         return make_body('success'), 200
@@ -830,3 +831,18 @@ class Fj(Resource):
             fj_delete_parser,
             handle_fj_delete,
         )
+
+
+@dlv_detach_register
+def fj_check_for_dlv_detach(dlv):
+    for fj in dlv.fjs:
+        if fj.status in ('finishing', 'finish_failed'):
+            msg = 'fj: %s %s' % (fj.fj_name, fj.status)
+            raise DependenceCheckError(msg)
+
+
+@dlv_delete_register
+def fj_check_for_dlv_delete(dlv):
+    for fj in dlv.fjs:
+        msg = 'fj: %s' % fj.fj_name
+        raise DependenceCheckError(msg)

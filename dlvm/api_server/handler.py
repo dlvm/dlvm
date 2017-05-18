@@ -310,3 +310,29 @@ def get_dlv_info(dlv):
         dlv_info['groups'].append(igroup)
     dlv_info_encode(dlv_info)
     return dlv_info
+
+
+dlv_detach_list = []
+
+
+def dlv_detach_register(func):
+    dlv_detach_list.append(func)
+    return func
+
+
+def dlv_detach_check(dlv):
+    for func in dlv_detach_list:
+        func(dlv)
+
+
+dlv_delete_list = []
+
+
+def dlv_delete_register(func):
+    dlv_delete_list.append(func)
+    return func
+
+
+def dlv_delete_check(dlv):
+    for func in dlv_delete_list:
+        func(dlv)
