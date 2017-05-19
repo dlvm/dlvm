@@ -424,6 +424,7 @@ CLI_CMDS = {
                 'arguments': {
                     't_id': {
                         'help': 'obt id',
+                        'required': True,
                     },
                 },
             },
@@ -432,6 +433,7 @@ CLI_CMDS = {
                 'arguments': {
                     't_id': {
                         'help': 'obt id',
+                        'required': True,
                     },
                 },
             },

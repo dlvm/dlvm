@@ -199,6 +199,7 @@ def generate_dm_context(dmc):
 
 
 def mirror_check(args):
+    logger.debug('enter mirror_check: %s', args)
     mirror_name = args['mirror_name']
     dm = DmMirror(mirror_name)
     try:
@@ -207,6 +208,7 @@ def mirror_check(args):
         logger.info('mirror status failed: %s %s', mirror_name, e)
         return False
     else:
+        logger.debug('mirror_check result: %s %s', mirror_name, status)
         if status['hc0'] == 'A' and status['hc1'] == 'A':
             return False
         else:
@@ -214,6 +216,7 @@ def mirror_check(args):
 
 
 def mirror_action(args):
+    logger.debug('enter mirror_action: %s', args)
     mirror_name = args['mirror_name']
     dlv_name = args['dlv_name']
     leg0_id = args['leg0_id']
@@ -228,11 +231,18 @@ def mirror_action(args):
         report_single_leg(dlv_name, leg1_id)
     else:
         report_multi_legs(dlv_name, leg0_id, leg1_id)
+    logger.debug('exit mirror_action: %s', args)
 
 
 def mirror_event(args):
-    dm = DmMirror(args['mirror_name'])
-    dm.wait_event(mirror_check, mirror_action, args)
+    mirror_name = args['mirror_name']
+    logger.debug('enter mirror_event %s', mirror_name)
+    try:
+        dm = DmMirror(mirror_name)
+        dm.wait_event(mirror_check, mirror_action, args)
+    except Exception:
+        logger.error('mirror_event failed: %s', mirror_name, exc_info=True)
+    logger.debug('exit mirror_event %s', mirror_name)
 
 
 def create_mirror_leg(dlv_name, g_idx, leg, dev_path, dm_context):
@@ -464,8 +474,11 @@ def pool_action(args):
 
 
 def pool_event(args):
+    pool_name = args['pool_name']
+    logger.debug('enter pool_event %s', pool_name)
     dm = DmPool(args['pool_name'])
     dm.wait_event(pool_check, pool_action, args)
+    logger.debug('exit pool_event %s', pool_name)
 
 
 def create_final(

@@ -143,7 +143,7 @@ def dm_wait(name, event_number):
         ctx.cp.get_path('dmsetup'),
         'wait',
         name,
-        event_number,
+        str(event_number),
     ]
     run_cmd(cmd)
 
@@ -265,9 +265,9 @@ class DmBasic(object):
         info['open_count'] = int(items[-1])
         items = lines[5].split()
         info['event_number'] = int(items[-1])
-        itmes = lines[6].split()
-        info['major'] = int(itmes[-2])
-        info['minor'] = int(itmes[-1])
+        items = lines[6].split()
+        info['major'] = int(items[-2][:-1])
+        info['minor'] = int(items[-1])
         items = lines[7].split()
         info['number_of_targets'] = int(items[-1])
         return info
@@ -383,10 +383,10 @@ class DmPool(DmBasic):
         status['length'] = int(items[1])
         status['type'] = items[2]
         status['transaction_id'] = items[3]
-        used_meta, total_meta = map(int, items[4].split())
+        used_meta, total_meta = map(int, items[4].split('/'))
         status['used_meta'] = used_meta
         status['total_meta'] = total_meta
-        used_data, total_data = map(int, items[5].split())
+        used_data, total_data = map(int, items[5].split('/'))
         status['used_data'] = used_data
         status['total_data'] = total_data
         return status
