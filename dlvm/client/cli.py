@@ -437,6 +437,15 @@ CLI_CMDS = {
                     },
                 },
             },
+            'cancel': {
+                'help': 'cancel obt',
+                'arguments': {
+                    't_id': {
+                        'help': 'obt id',
+                        'required': True,
+                    },
+                },
+            },
         },
     },
 }

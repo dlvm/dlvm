@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import uuid
 import time
 from layer1 import Layer1
 from fsm import fsm_register, fsm_start, fsm_resume
@@ -884,6 +885,26 @@ class Layer2(object):
 
     def obt_resume(self, t_id):
         return fsm_resume(self.client, t_id)
+
+    def obt_cancel(self, t_id):
+        ret = self.client.obt_get(t_id=t_id)
+        if ret['status_code'] != 200:
+            return {'success': False}
+        t_owner = ret['data']['body']['t_owner']
+        new_owner = uuid.uuid4().hex
+        ret = self.client.obt_put(
+            t_id=t_id,
+            t_owner=t_owner,
+            action='preempt',
+            new_owner=new_owner,
+        )
+        if ret['status_code'] != 200:
+            return {'success': False}
+        ret = self.client.obt_delete(t_id=t_id, t_owner=new_owner)
+        if ret['status_code'] != 200:
+            return {'success': False}
+        else:
+            return {'success': True}
 
     def ihost_list(self):
         ret = self.client.ihosts_get()
