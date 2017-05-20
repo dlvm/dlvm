@@ -13,15 +13,15 @@ from dlvm.utils.error import NoEnoughDpvError, DpvError, \
     DlvStatusError, \
     IhostError, FjStatusError, \
     DependenceCheckError
-from dlvm.utils.helper import dlv_info_encode
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, \
-    Leg, Snapshot, FailoverJob
+    Leg, FailoverJob
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, IhostClient, \
     obt_refresh, obt_encode, \
-    dlv_detach_register, dlv_delete_register
+    dlv_detach_register, dlv_delete_register, \
+    get_dlv_info
 
 
 logger = logging.getLogger('dlvm_api')
@@ -99,38 +99,6 @@ def handle_fjs_get(params, args):
     fjs = query.all()
     body = marshal({'fjs': fjs}, fjs_get_fields)
     return body['fjs'], 200
-
-
-def get_dlv_info(dlv):
-    dlv_info = {}
-    dlv_info['dlv_name'] = dlv.dlv_name
-    dlv_info['dlv_size'] = dlv.dlv_size
-    dlv_info['data_size'] = dlv.data_size
-    snapshot = Snapshot \
-        .query \
-        .filter_by(snap_name=dlv.active_snap_name) \
-        .with_entities(Snapshot.thin_id) \
-        .one()
-    dlv_info['thin_id'] = snapshot.thin_id
-    dm_context = get_dm_context()
-    dm_context['stripe_number'] = dlv.stripe_number
-    dlv_info['dm_context'] = dm_context
-    dlv_info['groups'] = []
-    for group in dlv.groups:
-        igroup = {}
-        igroup['group_id'] = group.group_id
-        igroup['idx'] = group.idx
-        igroup['group_size'] = group.group_size
-        igroup['legs'] = []
-        for leg in group.legs:
-            ileg = {}
-            ileg['leg_id'] = leg.leg_id
-            ileg['dpv_name'] = leg.dpv_name
-            ileg['idx'] = leg.idx
-            ileg['leg_size'] = leg.leg_size
-            igroup['legs'].append(ileg)
-        dlv_info['groups'].append(igroup)
-    return dlv_info
 
 
 def get_fj_legs(fj):
@@ -287,7 +255,6 @@ def do_fj_create(fj, dlv, obt):
         dst_leg.leg_id,
     )
     dlv_info = get_dlv_info(dlv)
-    dlv_info_encode(dlv_info)
     ihost_client = IhostClient(dlv.ihost_name)
     try:
         ihost_client.dlv_suspend(
