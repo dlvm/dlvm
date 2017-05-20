@@ -412,6 +412,7 @@ fj_get_parser.add_argument(
 
 fj_leg_fields = OrderedDict()
 fj_leg_fields['idx'] = fields.String
+fj_leg_fields['leg_id'] = fields.String
 fj_leg_fields['leg_size'] = fields.Integer
 fj_leg_fields['dpv_name'] = fields.String
 fj_leg_fields['fj_role'] = fields.String
@@ -626,7 +627,7 @@ def do_fj_finish(fj, dlv, obt):
             dst_client.leg_export(
                 dst_leg.leg_id,
                 obt_encode(obt),
-                dlv.dlv_name,
+                dlv.ihost_name,
             )
         if dlv.ihost.status == 'available':
             ihost_client = IhostClient(dlv.ihost_name)

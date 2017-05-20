@@ -359,6 +359,7 @@ class RpcFunctionTest(unittest.TestCase):
 
     @patch('dlvm.ihost_agent.Thread')
     @patch('dlvm.ihost_agent.iscsi_login')
+    @patch('dlvm.ihost_agent.iscsi_logout')
     @patch('dlvm.ihost_agent.DmError')
     @patch('dlvm.ihost_agent.DmThin')
     @patch('dlvm.ihost_agent.DmPool')
@@ -381,7 +382,7 @@ class RpcFunctionTest(unittest.TestCase):
             conf, ihost_verify, encode_target_name,
             DmBasic, DmLinear, DmStripe, DmMirror,
             DmPool, DmThin, DmError,
-            iscsi_login, Thread,
+            iscsi_logout, iscsi_login, Thread,
     ):
         dm_context = {
             'thin_block_size': 4*1024*1024,

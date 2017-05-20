@@ -245,7 +245,8 @@ def mirror_event(args):
     logger.debug('exit mirror_event %s', mirror_name)
 
 
-def create_mirror_leg(dlv_name, g_idx, leg, dev_path, dm_context):
+def create_mirror_leg(
+        dlv_name, g_idx, leg, dev_path, dm_context, rebuild=False):
     mirror_meta_sectors = dm_context['mirror_meta_sectors']
     mirror_meta_name = get_mirror_meta_name(dlv_name, g_idx, leg['idx'])
     dm = DmLinear(mirror_meta_name)
@@ -255,7 +256,10 @@ def create_mirror_leg(dlv_name, g_idx, leg, dev_path, dm_context):
         'dev_path': dev_path,
         'offset': 0,
     }]
-    meta_path = dm.create(table)
+    if rebuild is True:
+        meta_path = dm.reload(table)
+    else:
+        meta_path = dm.create(table)
     leg_sectors = leg['leg_size'] / 512
     mirror_data_sectors = leg_sectors - mirror_meta_sectors
     mirror_data_name = get_mirror_data_name(dlv_name, g_idx, leg['idx'])
@@ -266,7 +270,10 @@ def create_mirror_leg(dlv_name, g_idx, leg, dev_path, dm_context):
         'dev_path': dev_path,
         'offset': mirror_meta_sectors,
     }]
-    data_path = dm.create(table)
+    if rebuild is True:
+        data_path = dm.reload(table)
+    else:
+        data_path = dm.create(table)
     return meta_path, data_path
 
 
@@ -797,6 +804,7 @@ def snapshot_delete(dlv_name, obt, thin_id):
 def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
     dm_context = generate_dm_context(dlv_info['dm_context'])
     src_leg = None
+    ori_leg = None
     m_idx = None
     g_idx = None
     for group in dlv_info['groups']:
@@ -805,8 +813,10 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
         for m, (leg0, leg1) in enumerate(chunks(legs, 2)):
             if leg0['leg_id'] == src_id:
                 src_leg = leg0
+                ori_leg = leg1
             elif leg1['leg_id'] == src_id:
                 src_leg = leg1
+                ori_leg = leg0
             if src_leg is not None:
                 m_idx = m
                 g_idx = group['idx']
@@ -851,7 +861,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
         src_meta_path, src_data_path = create_mirror_leg(
             dlv_name, g_idx, src_leg, src_path, dm_context)
         dst_meta_path, dst_data_path = create_mirror_leg(
-            dlv_name, g_idx, dst_leg, dst_path, dm_context)
+            dlv_name, g_idx, dst_leg, dst_path, dm_context, rebuild=True)
         mirror_name = get_mirror_name(dlv_name, g_idx, m_idx)
         dm = DmMirror(mirror_name)
         if src_leg['idx'] < dst_leg['idx']:
@@ -887,6 +897,7 @@ def do_remirror(dlv_name, dlv_info, src_id, dst_leg):
         }
         t = Thread(target=mirror_event, args=(args,))
         t.start()
+    logout_leg(ori_leg['leg_id'])
 
 
 def remirror(dlv_name, obt, dlv_info, src_id, dst_leg):

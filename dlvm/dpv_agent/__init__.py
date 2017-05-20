@@ -259,7 +259,7 @@ def fj_leg_export(
 
 def do_fj_leg_unexport(leg_id, fj_name, src_name):
     layer2_name = get_layer2_name_fj(leg_id, fj_name)
-    target_name = encode_initiator_name(layer2_name)
+    target_name = encode_target_name(layer2_name)
     initiator_name = encode_initiator_name(src_name)
     iscsi_unexport(target_name, initiator_name)
     iscsi_delete(target_name, layer2_name)
