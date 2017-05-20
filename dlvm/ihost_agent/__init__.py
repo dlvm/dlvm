@@ -257,7 +257,8 @@ def create_mirror_leg(
         'offset': 0,
     }]
     if rebuild is True:
-        meta_path = dm.reload(table)
+        dm.reload(table)
+        meta_path = dm.get_path()
     else:
         meta_path = dm.create(table)
     leg_sectors = leg['leg_size'] / 512
@@ -271,7 +272,8 @@ def create_mirror_leg(
         'offset': mirror_meta_sectors,
     }]
     if rebuild is True:
-        data_path = dm.reload(table)
+        dm.reload(table)
+        data_path = dm.get_path()
     else:
         data_path = dm.create(table)
     return meta_path, data_path
@@ -904,6 +906,7 @@ def remirror(dlv_name, obt, dlv_info, src_id, dst_leg):
     with RpcLock(dlv_name):
         ihost_verify(dlv_name, obt['major'], obt['minor'])
         dlv_info_decode(dlv_info)
+        dst_leg['leg_size'] = int(dst_leg['leg_size'])
         do_remirror(
             dlv_name, dlv_info, src_id, dst_leg)
 
