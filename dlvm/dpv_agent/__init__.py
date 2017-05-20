@@ -459,10 +459,17 @@ def dpv_release_unused(leg_id_list):
     dm_name_list = dm_get_all(conf.dpv_prefix)
     logger.debug('dm_name_list: %s', dm_name_list)
     logger.debug('dm_name_set: %s', dm_name_set)
+    level_1_list = []
     for dm_name in dm_name_list:
         if dm_name not in dm_name_set:
-            dm = DmBasic(dm_name)
-            dm.remove()
+            if dm_name.endswith('-1'):
+                level_1_list.append(dm_name)
+            else:
+                dm = DmBasic(dm_name)
+                dm.remove()
+    for dm_name in level_1_list:
+        dm = DmBasic(dm_name)
+        dm.remove()
     lv_name_list = lv_get_all(conf.local_vg)
     logger.debug('lv_name_list: %s', lv_name_list)
     logger.debug('lv_name_set: %s', lv_name_set)

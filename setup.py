@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='dlvm',
-    version='0.3.4',
+    version='0.4.0',
     description='a distribute storage system base on lvm and iscsi',
     long_description=long_description,
     url='https://github.com/dlvm/dlvm',
