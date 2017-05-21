@@ -215,6 +215,12 @@ def handle_dpv_availalbe(dpv_name, t_id, t_owner, t_stage):
         return make_body('invalid_dpv_status', dpv.status), 400
     dpv_info = []
     for leg in dpv.legs:
+        if leg.group is not None and leg.group.dlv is not None:
+            skip = False
+        else:
+            skip = True
+        if skip is True:
+            continue
         dlv = leg.group.dlv
         if dlv.obt is not None and dlv.obt.t_id != obt.t_id:
             logger.error(
