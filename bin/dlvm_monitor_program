@@ -1,5 +1,0 @@
-#!/bin/bash
-
-echo $* >> /tmp/dlvm_monitor_event
-
-exit 0

@@ -43,7 +43,7 @@ DEFAULT_CONF = {
     'iscsi_port': 3260,
     'iscsi_userid': 'dlvm_user',
     'iscsi_password': 'dlvm_password',
-    'monitor_program': '/opt/dlvm_env/bin/dlvm_monitor_program',
+    'monitor_program': '/opt/dlvm_env/bin/dlvm_monitor_action.py',
     'fj_meta_size': 4194304,
     'bm_throttle': 0,
     'target_prefix': 'iqn.2016-12.dlvm.target',

@@ -44,7 +44,7 @@ setup(
         ],
     },
     data_files=[
-        ('bin', ['bin/dlvm_monitor_program']),
+        ('bin', ['bin/dlvm_monitor_action.py']),
     ],
     entry_points={
         'console_scripts': [
