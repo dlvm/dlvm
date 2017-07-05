@@ -17,6 +17,7 @@ fixture_dpvs = [
         'dpv_name': 'dpv0',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
+        'in_sync': True,
         'status': 'available',
         'timestamp': timestamp,
     },
@@ -24,6 +25,7 @@ fixture_dpvs = [
         'dpv_name': 'dpv1',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
+        'in_sync': True,
         'status': 'available',
         'timestamp': timestamp,
     },
@@ -31,6 +33,7 @@ fixture_dpvs = [
         'dpv_name': 'dpv2',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
+        'in_sync': True,
         'status': 'available',
         'timestamp': timestamp,
     },
@@ -71,6 +74,7 @@ fixture_snapshots = [
 
 fixture_ihost = {
     'ihost_name': 'ihost0',
+    'in_sync': True,
     'status': 'available',
     'timestamp': timestamp,
 }

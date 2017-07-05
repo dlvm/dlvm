@@ -15,6 +15,7 @@ from handler import handle_dlvm_request, make_body, check_limit, \
 
 ihost_summary_fields = OrderedDict()
 ihost_summary_fields['ihost_name'] = fields.String
+ihost_summary_fields['in_sync'] = fields.Boolean
 ihost_summary_fields['status'] = fields.String
 ihost_summary_fields['timestamp'] = fields.DateTime
 ihosts_get_fields = OrderedDict()
@@ -93,6 +94,7 @@ def handle_ihosts_post(params, args):
     ihost_name = args['ihost_name']
     ihost = InitiatorHost(
         ihost_name=ihost_name,
+        in_sync=True,
         status='available',
         timestamp=datetime.datetime.utcnow(),
     )
@@ -243,6 +245,7 @@ dlv_fields['dlv_name'] = fields.String
 
 ihost_fields = OrderedDict()
 ihost_fields['ihost_name'] = fields.String
+ihost_fields['in_sync'] = fields.Boolean
 ihost_fields['status'] = fields.String
 ihost_fields['timestamp'] = fields.DateTime
 ihost_fields['dlvs'] = fields.List(fields.Nested(dlv_fields))

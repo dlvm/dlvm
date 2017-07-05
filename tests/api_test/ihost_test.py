@@ -13,6 +13,7 @@ timestamp = datetime.datetime(2016, 7, 21, 23, 58, 59)
 
 fixture_ihost = {
     'ihost_name': 'ihost0',
+    'in_sync': True,
     'status': 'available',
     'timestamp': timestamp,
 }

@@ -18,6 +18,10 @@ class DistributePhysicalVolume(db.Model):
         db.BigInteger,
         nullable=False,
     )
+    in_sync = db.Column(
+        db.Boolean,
+        nullable=False,
+    )
     status = db.Column(
         db.Enum('available', 'unavailable', name='dpv_status'),
         nullable=False,
@@ -152,6 +156,10 @@ class InitiatorHost(db.Model):
     ihost_name = db.Column(
         db.String(32),
         primary_key=True,
+    )
+    in_sync = db.Column(
+        db.Boolean,
+        nullable=False,
     )
     status = db.Column(
         db.Enum('available', 'unavailable', name='ihost_status'),

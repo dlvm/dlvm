@@ -63,6 +63,7 @@ dpv_summary_fields = OrderedDict()
 dpv_summary_fields['dpv_name'] = fields.String
 dpv_summary_fields['total_size'] = fields.Integer
 dpv_summary_fields['free_size'] = fields.Integer
+dpv_summary_fields['in_sync'] = fields.Boolean
 dpv_summary_fields['status'] = fields.String
 dpv_summary_fields['dvg_name'] = fields.String
 dpvs_get_fields = OrderedDict()
@@ -107,6 +108,7 @@ def handle_dpvs_post(params, args):
         dpv_name=args['dpv_name'],
         total_size=int(dpv_info['total_size']),
         free_size=int(dpv_info['free_size']),
+        in_sync=True,
         status='available',
         timestamp=datetime.datetime.utcnow(),
     )
@@ -143,6 +145,7 @@ dpv_fields = OrderedDict()
 dpv_fields['dpv_name'] = fields.String
 dpv_fields['total_size'] = fields.Integer
 dpv_fields['free_size'] = fields.Integer
+dpv_fields['in_sync'] = fields.Boolean
 dpv_fields['status'] = fields.String
 dpv_fields['dvg_name'] = fields.String
 dpv_fields['legs'] = fields.List(fields.Nested(leg_fields))

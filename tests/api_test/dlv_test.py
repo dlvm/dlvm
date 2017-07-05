@@ -87,6 +87,7 @@ class DlvTest(unittest.TestCase):
                     dpv_name='dpv%s' % i,
                     total_size=total_size,
                     free_size=free_size,
+                    in_sync=True,
                     status='available',
                     timestamp=datetime.datetime.utcnow(),
                     dvg_name='dvg0',
@@ -177,6 +178,7 @@ class DlvTest(unittest.TestCase):
         with self.app.app_context():
             ihost = InitiatorHost(
                 ihost_name=ihost_name,
+                in_sync=True,
                 status='available',
                 timestamp=datetime.datetime.utcnow(),
             )

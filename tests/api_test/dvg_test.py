@@ -87,6 +87,7 @@ class DvgTest(unittest.TestCase):
                 dpv_name='dpv0',
                 total_size=512*1024*1024*1024,
                 free_size=512*1024*1024*1024,
+                in_sync=True,
                 status='available',
                 timestamp=datetime.datetime.utcnow(),
             )
@@ -116,6 +117,7 @@ class DvgTest(unittest.TestCase):
                 dpv_name='dpv0',
                 total_size=0,
                 free_size=0,
+                in_sync=True,
                 status='available',
                 timestamp=datetime.datetime.utcnow(),
             )

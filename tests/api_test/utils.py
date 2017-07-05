@@ -27,11 +27,14 @@ class FixtureManager(object):
         self.app = app
 
     @app_context
-    def dpv_create(self, dpv_name, total_size, free_size, status, timestamp):
+    def dpv_create(
+            self, dpv_name, total_size, free_size,
+            in_sync, status, timestamp):
         dpv = DistributePhysicalVolume(
             dpv_name=dpv_name,
             total_size=total_size,
             free_size=free_size,
+            in_sync=in_sync,
             status=status,
             timestamp=timestamp,
         )
@@ -166,9 +169,10 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
-    def ihost_create(self, ihost_name, status, timestamp):
+    def ihost_create(self, ihost_name, in_sync, status, timestamp):
         ihost = InitiatorHost(
             ihost_name=ihost_name,
+            in_sync=in_sync,
             status=status,
             timestamp=timestamp,
         )
