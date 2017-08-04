@@ -3,7 +3,7 @@
 import random
 import logging
 from dlvm.utils.constant import dpv_search_overhead
-from dlvm.utils.error import NoEnoughDpvError
+from dlvm.utils.error import NoEnoughDpvError, DpvError
 from modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup
 from handler import get_dm_context, \
@@ -115,10 +115,15 @@ def free_dpvs_from_group(group, dvg_name, obt):
         dpv_dict[dpv_name] = dpv
         if dpv.status == 'available':
             client = DpvClient(dpv_name)
-            client.leg_delete(
-                leg.leg_id,
-                obt_encode(obt),
-            )
+            try:
+                client.leg_delete(
+                    leg.leg_id,
+                    obt_encode(obt),
+                )
+            except DpvError as e:
+                dpv.in_sync = False
+                db.session.add(dpv)
+                logger.warning('dpv failed: %s', e.message)
 
     total_free_size = 0
     for leg in group.legs:

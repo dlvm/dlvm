@@ -516,11 +516,16 @@ def do_detach(dlv, obt):
     ihost = dlv.ihost
     if ihost.status == 'available':
         client = IhostClient(dlv.ihost_name)
-        client.dlv_degregate(
-            dlv.dlv_name,
-            obt_encode(obt),
-            dlv_info,
-        )
+        try:
+            client.dlv_degregate(
+                dlv.dlv_name,
+                obt_encode(obt),
+                dlv_info,
+            )
+        except IhostError as e:
+            logger.warning('ihost failed: %s', e.message)
+            ihost.in_sync = False
+            db.session.add(ihost)
 
     for group in dlv.groups:
         for leg in group.legs:
@@ -532,11 +537,16 @@ def do_detach(dlv, obt):
                 .one()
             if dpv.status == 'available':
                 client = DpvClient(dpv_name)
-                client.leg_unexport(
-                    leg.leg_id,
-                    obt_encode(obt),
-                    dlv.ihost_name,
-                )
+                try:
+                    client.leg_unexport(
+                        leg.leg_id,
+                        obt_encode(obt),
+                        dlv.ihost_name,
+                    )
+                except DpvError as e:
+                    logger.warning('dpv failed: %s', e.message)
+                    dpv.in_sync = False
+                    db.session.add(dpv)
 
 
 def dlv_detach(dlv, ihost_name, obt):
