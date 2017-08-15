@@ -137,6 +137,32 @@ class DlvTest(unittest.TestCase):
                 dlv_name=dlv_name,
             )
             db.session.add(group)
+            leg_size = 1024 * 1024 * 48
+            for i in xrange(2):
+                dpv_name = 'dpv%d' % i
+                dpv = DistributePhysicalVolume \
+                    .query \
+                    .filter_by(dpv_name=dpv_name) \
+                    .one()
+                dpv.free_size -= leg_size
+                db.session.add(dpv)
+
+                dvg = DistributeVolumeGroup \
+                    .query \
+                    .filter_by(dvg_name='dvg0') \
+                    .one()
+                dvg.free_size -= leg_size
+                db.session.add(dvg)
+
+                leg = Leg(
+                    leg_id=uuid.uuid4().hex,
+                    idx=i,
+                    leg_size=leg_size,
+                    group=group,
+                    dpv_name=dpv_name,
+                )
+                db.session.add(leg)
+
             group_size = init_size
             group = Group(
                 group_id=uuid.uuid4().hex,
@@ -246,6 +272,40 @@ class DlvTest(unittest.TestCase):
             dlv = DistributeLogicalVolume \
                 .query \
                 .filter_by(dlv_name='dlv0') \
+                .one()
+        self.assertEqual(dlv.status, 'detached')
+        self.assertEqual(leg_create_mock.call_count, 6)
+
+    @patch('dlvm.api_server.allocator.DpvClient')
+    def test_dlvs_clone(self, DpvClient):
+        client_mock = Mock()
+        DpvClient.return_value = client_mock
+        leg_create_mock = Mock()
+        client_mock.leg_create = leg_create_mock
+        self._prepare_dpvs_and_dvg()
+        self._prepare_dlv('detached')
+        t_id = 't0'
+        t_owner = 't_owner'
+        t_stage = 0
+        self._prepare_obt(t_id, t_owner, t_stage)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'dlv_name': 'dlv1',
+            'src_dlv_name': 'dlv0',
+            'dvg_name': 'dvg0',
+            't_id': t_id,
+            't_owner': t_owner,
+            't_stage': t_stage,
+        }
+        data = json.dumps(data)
+        resp = self.client.post('/dlvs', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        with self.app.app_context():
+            dlv = DistributeLogicalVolume \
+                .query \
+                .filter_by(dlv_name='dlv1') \
                 .one()
         self.assertEqual(dlv.status, 'detached')
         self.assertEqual(leg_create_mock.call_count, 6)

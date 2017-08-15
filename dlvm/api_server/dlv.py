@@ -99,25 +99,21 @@ dlvs_post_parser = reqparse.RequestParser()
 dlvs_post_parser.add_argument(
     'dlv_name',
     type=str,
-    required=True,
     location='json',
 )
 dlvs_post_parser.add_argument(
     'dlv_size',
     type=int,
-    required=True,
     location='json',
 )
 dlvs_post_parser.add_argument(
     'init_size',
     type=int,
-    required=True,
     location='json',
 )
 dlvs_post_parser.add_argument(
     'stripe_number',
     type=int,
-    required=True,
     location='json',
 )
 dlvs_post_parser.add_argument(
@@ -128,7 +124,6 @@ dlvs_post_parser.add_argument(
 dlvs_post_parser.add_argument(
     'dvg_name',
     type=str,
-    required=True,
     location='json',
 )
 
@@ -265,7 +260,56 @@ def handle_dlvs_create_new(params, args):
 
 
 def handle_dlvs_clone(params, args):
-    pass
+    dlv_name = args['dlv_name']
+    src_dlv_name = args['src_dlv_name']
+    dvg_name = args['dvg_name']
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    src_dlv, obt = dlv_get(src_dlv_name, t_id, t_owner, t_stage)
+    dlv = DistributeLogicalVolume(
+        dlv_name=dlv_name,
+        dlv_size=src_dlv.dlv_size,
+        data_size=src_dlv.data_size,
+        stripe_number=src_dlv.stripe_number,
+        status='creating',
+        timestamp=datetime.datetime.utcnow(),
+        dvg_name=dvg_name,
+        active_snap_name=src_dlv.active_snap_name,
+        t_id=obt.t_id,
+    )
+    db.session.add(dlv)
+    for src_snapshot in src_dlv.snapshots:
+        real_name = src_snapshot.snap_name.split('/')[1]
+        snap_name = '%s/%s' % (dlv_name, real_name)
+        snapshot = Snapshot(
+            snap_name=snap_name,
+            timestamp=datetime.datetime.utcnow(),
+            thin_id=src_snapshot.thin_id,
+            ori_thin_id=src_snapshot.ori_thin_id,
+            status=src_snapshot.status,
+            dlv_name=dlv_name,
+        )
+        db.session.add(snapshot)
+    for src_group in src_dlv.groups:
+        group = Group(
+            group_id=uuid.uuid4().hex,
+            idx=src_group.idx,
+            group_size=src_group.group_size,
+            dlv_name=dlv_name,
+        )
+        db.session.add(group)
+        for src_leg in src_group.legs:
+            leg = Leg(
+                leg_id=uuid.uuid4().hex,
+                idx=src_leg.idx,
+                group=group,
+                leg_size=src_leg.leg_size,
+            )
+            db.session.add(leg)
+    obt_refresh(obt)
+    db.session.commit()
+    return dlv_create_new(dlv_name, t_id, t_owner, t_stage)
 
 
 def handle_dlvs_post(params, args):
