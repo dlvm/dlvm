@@ -3,7 +3,7 @@
 import uuid
 from dlvm.api_server.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume, \
-    Snapshot, Group, Leg, InitiatorHost, FailoverJob, ExtendJob, \
+    Snapshot, Group, Leg, InitiatorHost, FailoverJob, ExtendJob, CloneJob, \
     OwnerBasedTransaction, Counter
 
 mirror_meta_size = 1024*1024*2
@@ -397,4 +397,17 @@ class FixtureManager(object):
             ej.group.dlv_name = ej.dlv_name
             db.session.add(ej.group)
         db.session.add(ej)
+        db.session.commit()
+
+    @app_context
+    def cj_create(
+            self, cj_name, status, timestamp, src_dlv_name, dst_dlv_name):
+        cj = CloneJob(
+            cj_name=cj_name,
+            status=status,
+            timestamp=timestamp,
+            src_dlv_name=src_dlv_name,
+            dst_dlv_name=dst_dlv_name,
+        )
+        db.session.add(cj)
         db.session.commit()

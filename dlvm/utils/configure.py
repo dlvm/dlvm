@@ -17,6 +17,7 @@ DEFAULT_CONF = {
     'ihost_list_limit': 100,
     'fj_list_limit': 100,
     'ej_list_limit': 100,
+    'cj_list_limit': 100,
     'obt_list_limit': 100,
     'snapshot_list_limit': 100,
     'dpv_timeout': 300,

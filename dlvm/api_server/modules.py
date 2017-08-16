@@ -150,6 +150,13 @@ class DistributeLogicalVolume(db.Model):
         'OwnerBasedTransaction',
         back_populates='dlvs',
     )
+    src_cjs = db.relationship(
+        'CloneJob',
+        back_populates='src_dlv',
+    )
+    dst_cj_name = db.Column(
+        db.String(32),
+    )
 
 
 class InitiatorHost(db.Model):
@@ -365,6 +372,42 @@ class ExtendJob(db.Model):
         'Group',
         back_populates='ej',
         uselist=False,
+    )
+
+
+class CloneJob(db.Model):
+    cj_name = db.Column(
+        db.String(32),
+        primary_key=True,
+    )
+    status = db.Column(
+        db.Enum(
+            'creating', 'create_failed',
+            'canceling', 'cancel_failed',
+            'canceled',
+            'processing',
+            'finishing', 'finish_failed',
+            'finished',
+            name='fj_status',
+        ),
+        nullable=False,
+    )
+    timestamp = db.Column(
+        db.DateTime,
+        nullable=False,
+    )
+    src_dlv_name = db.Column(
+        db.String(32),
+        db.ForeignKey('distribute_logical_volume.dlv_name'),
+        nullable=False,
+    )
+    src_dlv = db.relationship(
+        'DistributeLogicalVolume',
+        back_populates='src_cjs',
+    )
+    dst_dlv_name = db.Column(
+        db.String(32),
+        nullable=False,
     )
 
 
