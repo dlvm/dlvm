@@ -395,8 +395,10 @@ class DmPool(DmBasic):
 class DmThin(DmBasic):
 
     def _format_table(self, param):
-        table = '{start} {length} thin {pool_path} {thin_id}'.format(
-            **param)
+        table_str = '{start} {length} thin {pool_path} {thin_id}'
+        if 'ori_path' in param:
+            table_str += ' {ori_path}'
+        table = table_str.format(**param)
         return table
 
 

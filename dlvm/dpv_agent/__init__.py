@@ -9,7 +9,7 @@ from dlvm.utils.loginit import loginit
 from dlvm.utils.rpc_wrapper import WrapperRpcServer
 from dlvm.utils.obt import dpv_verify
 from dlvm.utils.command import context_init, \
-    DmBasic, DmLinear, DmMirror, \
+    DmBasic, DmLinear, DmMirror, DmPool, DmThin, \
     lv_create, lv_remove, lv_get_path, vg_get_size, \
     run_dd, \
     iscsi_create, iscsi_delete, \
@@ -87,17 +87,17 @@ def dpv_get_info():
 
 
 def get_layer1_name(leg_id):
-    return '{dpv_prefix}-{leg_id}-1'.format(
+    return '{dpv_prefix}-layer1-{leg_id}'.format(
         dpv_prefix=conf.dpv_prefix, leg_id=leg_id)
 
 
 def get_layer2_name(leg_id):
-    return '{dpv_prefix}-{leg_id}-2'.format(
+    return '{dpv_prefix}-layer2-{leg_id}'.format(
         dpv_prefix=conf.dpv_prefix, leg_id=leg_id)
 
 
 def get_layer2_name_fj(leg_id, fj_name):
-    return '{dpv_prefix}-{leg_id}-fj-{fj_name}'.format(
+    return '{dpv_prefix}-fj-layer2-{leg_id}-{fj_name}'.format(
         dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
@@ -105,7 +105,7 @@ def get_layer2_name_fj(leg_id, fj_name):
 
 
 def get_fj_meta0_name(leg_id, fj_name):
-    return '{dpv_prefix}-{leg_id}-{fj_name}-0'.format(
+    return 'fj-meta0-{leg_id}-{fj_name}'.format(
         dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
@@ -113,10 +113,51 @@ def get_fj_meta0_name(leg_id, fj_name):
 
 
 def get_fj_meta1_name(leg_id, fj_name):
-    return '{dpv_prefix}-{leg_id}-{fj_name}-1'.format(
+    return 'fj-meta1-{leg_id}-{fj_name}'.format(
         dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
+    )
+
+
+def get_layer2_name_cj(leg_id, cj_name):
+    return '{dpv_prefix}-cj-layer2-{leg_id}-{cj_name}'.format(
+        dpv_prefix=conf.dpv_prefix,
+        leg_id=leg_id,
+        cj_name=cj_name,
+    )
+
+
+def get_cj_data_name(leg_id, cj_name):
+    return 'cj-data-{leg_id}-{cj_name}'.format(
+        leg_id=leg_id, cj_name=cj_name)
+
+
+def get_cj_meta_name(leg_id, cj_name):
+    return 'cj-meta-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+
+
+def get_cj_pool_name(leg_id, cj_name):
+    return 'cj-pool-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+
+
+def get_cj_thin_name(leg_id, cj_name):
+    return 'cj-thin-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+
+
+def get_cj_meta0_name(leg_id, cj_name):
+    return 'cj-meta0-{leg_id}-{cj_name}'.format(
+        dpv_prefix=conf.dpv_prefix,
+        leg_id=leg_id,
+        cj_name=cj_name,
+    )
+
+
+def get_cj_meta1_name(leg_id, cj_name):
+    return 'cj-meta1-{leg_id}-{cj_name}'.format(
+        dpv_prefix=conf.dpv_prefix,
+        leg_id=leg_id,
+        cj_name=cj_name,
     )
 
 
@@ -496,6 +537,98 @@ def dpv_sync(dpv_info, obt):
     return dpv_get_info()
 
 
+def do_cj_leg_export(leg_id, cj_name, dst_name, leg_size):
+    leg_sectors = leg_size / 512
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmLinear(layer1_name)
+    layer1_path = dm.get_path()
+    layer2_name = get_layer2_name_cj(leg_id, cj_name)
+    dm = DmLinear(layer2_name)
+    table = [{
+        'start': 0,
+        'length': leg_sectors,
+        'dev_path': layer1_path,
+        'offset': 0,
+    }]
+    layer2_path = dm.create(table)
+    target_name = encode_target_name(layer2_name)
+    iscsi_create(target_name, layer2_name, layer2_path)
+    initiator_name = encode_initiator_name(dst_name)
+    iscsi_export(target_name, initiator_name)
+
+
+def cj_leg_export(
+        leg_id, obt, cj_name, dst_name, leg_size):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, obt['major'], obt['minor'])
+        do_cj_leg_export(leg_id, cj_name, dst_name, int(leg_size))
+
+
+def do_cj_leg_unexport(leg_id, cj_name, dst_name):
+    layer2_name = get_layer2_name_cj(leg_id, cj_name)
+    target_name = encode_target_name(layer2_name)
+    initiator_name = encode_initiator_name(dst_name)
+    iscsi_unexport(target_name, initiator_name)
+    iscsi_delete(target_name, layer2_name)
+    dm = DmLinear(layer2_name)
+    dm.remove()
+
+
+def cj_leg_unexport(
+        leg_id, obt, cj_name, dst_name):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, obt['major'], obt['minor'])
+        do_cj_leg_unexport(leg_id, cj_name, dst_name)
+
+
+def do_cj_login(leg_id, cj_name, src_name, src_id, leg_size):
+    src_layer2_name = get_layer2_name_cj(src_id, cj_name)
+    target_name = encode_target_name(src_layer2_name)
+    ori_path = iscsi_login(target_name, src_name)
+    data_size = leg_size / conf.cj_data_factor
+    data_name = get_cj_data_name(leg_id, cj_name)
+    lv_create(data_name, data_size, conf.local_vg)
+    data_path = lv_get_path(data_name, conf.local_vg)
+    meta_name = get_cj_meta_name(leg_id, cj_name)
+    lv_create(meta_name, conf.cj_meta_size, conf.local_vg)
+    meta_path = lv_get_path(meta_name, conf.local_vg)
+    pool_name = get_cj_pool_name(leg_id, cj_name)
+    dm = DmPool(pool_name)
+    table = {
+        'start': 0,
+        'length': data_size / 512,
+        'meta_path': meta_path,
+        'data_path': data_path,
+        'block_sectors': conf.cj_block_sectors,
+        'low_water_mark': conf.cj_low_water_mark,
+    }
+    pool_path = dm.create(table)
+    message = {
+        'action': 'thin',
+        'thin_id': 0,
+    }
+    dm.message(message)
+    thin_name = get_cj_thin_name(leg_id, cj_name)
+    dm = DmThin(thin_name)
+    table = {
+        'start': 0,
+        'length': leg_size / 512,
+        'pool_path': pool_path,
+        'thin_id': 0,
+        'ori_path': ori_path,
+    }
+    dm.create(table)
+
+
+def cj_login(
+        leg_id, obt, cj_name,
+        src_name, src_id, leg_size):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, obt['major'], obt['minor'])
+        do_cj_login(
+            leg_id, cj_name, src_name, src_id, int(leg_size))
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -514,5 +647,8 @@ def main():
     s.register_function(fj_mirror_start)
     s.register_function(fj_mirror_stop)
     s.register_function(fj_mirror_status)
+    s.register_function(cj_leg_export)
+    s.register_function(cj_leg_unexport)
+    s.register_function(cj_login)
     logger.info('dpv_agent start')
     s.serve_forever()
