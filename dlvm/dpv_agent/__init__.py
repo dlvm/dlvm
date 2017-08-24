@@ -106,7 +106,6 @@ def get_layer2_name_fj(leg_id, fj_name):
 
 def get_fj_meta0_name(leg_id, fj_name):
     return 'fj-meta0-{leg_id}-{fj_name}'.format(
-        dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
     )
@@ -114,7 +113,6 @@ def get_fj_meta0_name(leg_id, fj_name):
 
 def get_fj_meta1_name(leg_id, fj_name):
     return 'fj-meta1-{leg_id}-{fj_name}'.format(
-        dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         fj_name=fj_name,
     )
@@ -134,20 +132,22 @@ def get_cj_data_name(leg_id, cj_name):
 
 
 def get_cj_meta_name(leg_id, cj_name):
-    return 'cj-meta-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+    return 'cj-meta-{leg_id}-{cj_name}'.format(
+        leg_id=leg_id, cj_name=cj_name)
 
 
 def get_cj_pool_name(leg_id, cj_name):
-    return 'cj-pool-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+    return 'cj-pool-{leg_id}-{cj_name}'.format(
+        leg_id=leg_id, cj_name=cj_name)
 
 
 def get_cj_thin_name(leg_id, cj_name):
-    return 'cj-thin-{leg_id}-{cj_name}'.format(cj_name=cj_name)
+    return 'cj-thin-{leg_id}-{cj_name}'.format(
+        leg_id=leg_id, cj_name=cj_name)
 
 
 def get_cj_meta0_name(leg_id, cj_name):
     return 'cj-meta0-{leg_id}-{cj_name}'.format(
-        dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         cj_name=cj_name,
     )
@@ -155,7 +155,6 @@ def get_cj_meta0_name(leg_id, cj_name):
 
 def get_cj_meta1_name(leg_id, cj_name):
     return 'cj-meta1-{leg_id}-{cj_name}'.format(
-        dpv_prefix=conf.dpv_prefix,
         leg_id=leg_id,
         cj_name=cj_name,
     )

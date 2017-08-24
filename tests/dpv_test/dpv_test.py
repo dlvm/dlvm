@@ -9,7 +9,7 @@ from dlvm.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     fj_leg_export, fj_leg_unexport, fj_login, \
     fj_mirror_start, fj_mirror_stop, fj_mirror_status, \
-    dpv_sync
+    dpv_sync, cj_leg_export, cj_leg_unexport, cj_login
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -340,3 +340,65 @@ class RpcFunctionTest(unittest.TestCase):
             'minor': 0,
         }
         dpv_sync(dpv_info, obt)
+
+    @patch('dlvm.dpv_agent.iscsi_export')
+    @patch('dlvm.dpv_agent.iscsi_create')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_leg_export(
+            self, conf, dpv_verify, DmLinear,
+            iscsi_create, iscsi_export,
+    ):
+        leg_id = '001'
+        cj_name = 'cj0'
+        dst_name = 'dpv0'
+        leg_size = str(10*1024*1024*1024)
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        cj_leg_export(
+            leg_id, obt, cj_name, dst_name, leg_size)
+
+    @patch('dlvm.dpv_agent.iscsi_unexport')
+    @patch('dlvm.dpv_agent.iscsi_delete')
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_leg_unexport(
+            self, conf, dpv_verify, DmLinear,
+            iscsi_delete, iscsi_unexport,
+    ):
+        leg_id = '001'
+        cj_name = 'cj0'
+        dst_name = 'dpv0'
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        cj_leg_unexport(
+            leg_id, obt, cj_name, dst_name)
+
+    @patch('dlvm.dpv_agent.lv_create')
+    @patch('dlvm.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv_agent.DmThin')
+    @patch('dlvm.dpv_agent.DmPool')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_login(
+            self, conf, dpv_verify,
+            DmPool, DmThin,
+            iscsi_login, lv_create,
+    ):
+        leg_id = '001'
+        cj_name = 'cj0'
+        src_name = 'dpv1'
+        src_id = '002'
+        leg_size = str(10*1024*1024*1024)
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        cj_login(
+            leg_id, obt, cj_name, src_name, src_id, leg_size)
