@@ -10,7 +10,7 @@ from dlvm.dpv_agent import main, \
     fj_leg_export, fj_leg_unexport, fj_login, \
     fj_mirror_start, fj_mirror_stop, fj_mirror_status, \
     dpv_sync, cj_leg_export, cj_leg_unexport, cj_login, \
-    cj_mirror_start, cj_mirror_stop
+    cj_mirror_start, cj_mirror_stop, cj_mirror_status
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -462,3 +462,27 @@ class RpcFunctionTest(unittest.TestCase):
         }
         cj_mirror_stop(
             leg_id, obt, cj_name, src_id, str(leg_size))
+
+    @patch('dlvm.dpv_agent.DmMirror')
+    @patch('dlvm.dpv_agent.DmBasic')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_mirror_status(
+            self, conf,
+            DmBasic, DmMirror,
+    ):
+        dm_mock = Mock()
+        DmBasic.return_value = dm_mock
+        dm_mock.get_type.return_value = 'raid'
+        DmMirror.return_value = dm_mock
+        status = {
+            'hc0': 'A',
+            'hc1': 'A',
+            'curr': 30,
+            'total': 100,
+            'sync_action': None,
+            'mismatch_cnt': 0,
+        }
+        dm_mock.status.return_value = status
+        leg_id = '001'
+        ret = cj_mirror_status(leg_id)
+        self.assertEqual(ret, status)

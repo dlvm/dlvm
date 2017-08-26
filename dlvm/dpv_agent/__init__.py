@@ -784,6 +784,29 @@ def cj_mirror_stop(
             leg_id, cj_name, src_id, int(leg_size))
 
 
+def do_cj_mirror_status(leg_id):
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmBasic(layer1_name)
+    dm_type = dm.get_type()
+    if dm_type != 'raid':
+        raise DpvError('wrong dm_type: %s' % dm_type)
+    dm = DmMirror(layer1_name)
+    status = dm.status()
+    return {
+        'hc0': status['hc0'],
+        'hc1': status['hc1'],
+        'curr': status['curr'],
+        'total': status['total'],
+        'sync_action': status['sync_action'],
+        'mismatch_cnt': status['mismatch_cnt'],
+    }
+
+
+def cj_mirror_status(leg_id):
+    with RpcLock(leg_id):
+        return do_cj_mirror_status(leg_id)
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -807,5 +830,6 @@ def main():
     s.register_function(cj_login)
     s.register_function(cj_mirror_start)
     s.register_function(cj_mirror_stop)
+    s.register_function(cj_mirror_status)
     logger.info('dpv_agent start')
     s.serve_forever()
