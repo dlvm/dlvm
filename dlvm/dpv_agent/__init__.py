@@ -21,7 +21,8 @@ from dlvm.utils.command import context_init, \
 from dlvm.utils.helper import encode_target_name, encode_initiator_name
 from dlvm.utils.bitmap import BitMap
 from dlvm.utils.queue import queue_init, \
-    report_fj_mirror_failed, report_fj_mirror_complete
+    report_fj_mirror_failed, report_fj_mirror_complete, \
+    report_cj_mirror_failed, report_cj_mirror_complete
 from mirror_meta import generate_mirror_meta
 
 
@@ -72,6 +73,26 @@ def fj_thread_remove(leg_id):
 def fj_thread_check(leg_id):
     with fj_thread_lock:
         return leg_id in fj_thread_set
+
+
+cj_thread_set = set()
+cj_thread_lock = Lock()
+
+
+def cj_thread_add(leg_id):
+    with cj_thread_lock:
+        cj_thread_set.add(leg_id)
+
+
+def cj_thread_remove(leg_id):
+    with cj_thread_lock:
+        if leg_id in cj_thread_set:
+            cj_thread_set.remove(leg_id)
+
+
+def cj_thread_check(leg_id):
+    with cj_thread_lock:
+        return leg_id in cj_thread_set
 
 
 def ping(message):
@@ -365,7 +386,7 @@ def do_fj_mirror_start(
         return
     logger.info('bm=[%s]', bm)
     bm = BitMap.fromhexstring(bm)
-    file_name = 'dlvm-{fj_name}'.format(fj_name=fj_name)
+    file_name = 'dlvm-fj-{fj_name}'.format(fj_name=fj_name)
     file_path = os.path.join(conf.tmp_dir, file_name)
     fj_meta0_name = get_fj_meta0_name(leg_id, fj_name)
     fj_meta0_path = lv_get_path(fj_meta0_name, conf.local_vg)
@@ -591,6 +612,7 @@ def do_cj_login(leg_id, cj_name, src_name, src_id, leg_size):
     meta_name = get_cj_meta_name(leg_id, cj_name)
     lv_create(meta_name, conf.cj_meta_size, conf.local_vg)
     meta_path = lv_get_path(meta_name, conf.local_vg)
+    run_dd('/dev/zero', meta_path, bs='1M', count=1)
     pool_name = get_cj_pool_name(leg_id, cj_name)
     dm = DmPool(pool_name)
     table = {
@@ -628,6 +650,140 @@ def cj_login(
             leg_id, cj_name, src_name, src_id, int(leg_size))
 
 
+def cj_mirror_event(args):
+    leg_id = args['leg_id']
+    cj_name = args['cj_name']
+    mirror_name = args['mirror_name']
+    dm = DmMirror(mirror_name)
+    while 1:
+        time.sleep(conf.cj_mirror_interval)
+        if cj_thread_check(leg_id) is False:
+            break
+        try:
+            status = dm.status()
+        except Exception as e:
+            logger.info('cj mirror status failed: %s %s', args, e)
+            report_cj_mirror_failed(cj_name)
+            break
+        if status['hc0'] == 'D' or status['hc1'] == 'D':
+            report_cj_mirror_failed(cj_name)
+            break
+        elif status['hc0'] == 'A' and status['hc1'] == 'A':
+            report_cj_mirror_complete(cj_name)
+            break
+
+
+def do_cj_mirror_start(
+        leg_id, cj_name,
+        src_name, src_id,
+        leg_size, dmc, bm,
+):
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmBasic(layer1_name)
+    dm_type = dm.get_type()
+    if dm_type == 'raid':
+        return
+    logger.info('bm=[%s]', bm)
+    bm = BitMap.fromhexstring(bm)
+    file_name = 'dlvm-cj-{cj_name}'.format(cj_name=cj_name)
+    file_path = os.path.join(conf.tmp_dir, file_name)
+    cj_meta0_name = get_cj_meta0_name(leg_id, cj_name)
+    cj_meta0_path = lv_get_path(cj_meta0_name, conf.local_vg)
+    cj_meta1_name = get_cj_meta1_name(leg_id, cj_name)
+    cj_meta1_path = lv_get_path(cj_meta1_name, conf.local_vg)
+    generate_mirror_meta(
+        file_path,
+        conf.fj_meta_size,
+        leg_size,
+        dmc['thin_block_size'],
+        bm,
+    )
+    run_dd(file_path, cj_meta0_path)
+    run_dd(file_path, cj_meta1_path)
+    os.remove(file_path)
+
+    leg_sectors = leg_size / 512
+    thin_name = get_cj_thin_name(src_id, cj_name)
+    dm = DmThin(thin_name)
+    src_dev_path = dm.get_path()
+    dst_dev_path = lv_get_path(leg_id, conf.local_vg)
+    dm = DmMirror(layer1_name)
+    table = {
+        'start': 0,
+        'offset': leg_sectors,
+        'region_size': dmc['thin_block_size'],
+        'meta0': cj_meta0_path,
+        'data0': src_dev_path,
+        'meta1': cj_meta1_path,
+        'data1': dst_dev_path,
+    }
+    dm.reload(table)
+    cj_thread_add(leg_id)
+    args = {
+        'leg_id': leg_id,
+        'cj_name': cj_name,
+        'mirror_name': layer1_name,
+    }
+    t = Thread(target=cj_mirror_event, args=(args,))
+    t.start()
+
+
+def cj_mirror_start(
+        leg_id, obt, cj_name,
+        src_name, src_id,
+        leg_size, dmc, bm):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, obt['major'], obt['minor'])
+        do_cj_mirror_start(
+            leg_id, cj_name,
+            src_name, src_id,
+            int(leg_size), dmc, bm,
+        )
+
+
+def do_cj_mirror_stop(
+        leg_id, cj_name, src_id, leg_size):
+    cj_thread_remove(leg_id)
+    leg_sectors = leg_size / 512
+    layer1_name = get_layer1_name(leg_id)
+    dm = DmLinear(layer1_name)
+    lv_path = lv_get_path(leg_id, conf.local_vg)
+    table = [{
+        'start': 0,
+        'length': leg_sectors,
+        'dev_path': lv_path,
+        'offset': 0,
+    }]
+    dm.reload(table)
+    cj_meta0_name = get_cj_meta0_name(leg_id, cj_name)
+    lv_remove(cj_meta0_name, conf.local_vg)
+    cj_meta1_name = get_cj_meta1_name(leg_id, cj_name)
+    lv_remove(cj_meta1_name, conf.local_vg)
+
+    thin_name = get_cj_thin_name(leg_id, cj_name)
+    dm = DmThin(thin_name)
+    dm.remove()
+    pool_name = get_cj_pool_name(leg_id, cj_name)
+    dm = DmPool(pool_name)
+    dm.remove()
+    meta_name = get_cj_meta_name(leg_id, cj_name)
+    lv_remove(meta_name, conf.local_vg)
+    data_name = get_cj_data_name(leg_id, cj_name)
+    lv_remove(data_name, conf.local_vg)
+
+    src_layer2_name = get_layer2_name_cj(src_id, cj_name)
+    target_name = encode_target_name(src_layer2_name)
+    iscsi_logout(target_name)
+
+
+def cj_mirror_stop(
+        leg_id, obt, cj_name, src_id, leg_size):
+    with RpcLock(leg_id):
+        dpv_verify(leg_id, obt['major'], obt['minor'])
+        do_cj_mirror_stop(
+            leg_id, cj_name, src_id, int(leg_size))
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -649,5 +805,7 @@ def main():
     s.register_function(cj_leg_export)
     s.register_function(cj_leg_unexport)
     s.register_function(cj_login)
+    s.register_function(cj_mirror_start)
+    s.register_function(cj_mirror_stop)
     logger.info('dpv_agent start')
     s.serve_forever()

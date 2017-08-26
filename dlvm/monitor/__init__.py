@@ -86,6 +86,29 @@ def create_tasks():
         ]
         run_cmd(cmd)
     d['fj_mirror_complete'] = fj_mirror_complete
+
+    @app.task
+    def cj_mirror_failed(cj_name):
+        cmd_name = conf.monitor_program
+        cmd = [
+            cmd_name,
+            'cj_mirror_failed',
+            cj_name,
+        ]
+        run_cmd(cmd)
+    d['cj_mirror_failed'] = cj_mirror_failed
+
+    @app.task
+    def cj_mirror_complete(cj_name):
+        cmd_name = conf.monitor_program
+        cmd = [
+            cmd_name,
+            'cj_mirror_complete',
+            cj_name,
+        ]
+        run_cmd(cmd)
+    d['cj_mirror_complete'] = cj_mirror_complete
+
     return d
 
 

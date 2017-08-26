@@ -31,3 +31,11 @@ def report_fj_mirror_failed(fj_name):
 
 def report_fj_mirror_complete(fj_name):
     queue_functions['fj_mirror_complete'].delay(fj_name)
+
+
+def report_cj_mirror_failed(cj_name):
+    queue_functions['cj_mirror_failed'].delay(cj_name)
+
+
+def report_cj_mirror_complete(cj_name):
+    queue_functions['cj_mirror_complete'].delay(cj_name)

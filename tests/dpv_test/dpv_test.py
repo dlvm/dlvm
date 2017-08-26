@@ -9,7 +9,8 @@ from dlvm.dpv_agent import main, \
     leg_create, leg_delete, leg_export, leg_unexport, \
     fj_leg_export, fj_leg_unexport, fj_login, \
     fj_mirror_start, fj_mirror_stop, fj_mirror_status, \
-    dpv_sync, cj_leg_export, cj_leg_unexport, cj_login
+    dpv_sync, cj_leg_export, cj_leg_unexport, cj_login, \
+    cj_mirror_start, cj_mirror_stop
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.bitmap import BitMap
 
@@ -382,13 +383,14 @@ class RpcFunctionTest(unittest.TestCase):
 
     @patch('dlvm.dpv_agent.lv_create')
     @patch('dlvm.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv_agent.run_dd')
     @patch('dlvm.dpv_agent.DmThin')
     @patch('dlvm.dpv_agent.DmPool')
     @patch('dlvm.dpv_agent.dpv_verify')
     @patch('dlvm.dpv_agent.conf')
     def test_cj_login(
             self, conf, dpv_verify,
-            DmPool, DmThin,
+            DmPool, DmThin, run_dd,
             iscsi_login, lv_create,
     ):
         leg_id = '001'
@@ -402,3 +404,61 @@ class RpcFunctionTest(unittest.TestCase):
         }
         cj_login(
             leg_id, obt, cj_name, src_name, src_id, leg_size)
+
+    @patch('dlvm.dpv_agent.Thread')
+    @patch('dlvm.dpv_agent.run_dd')
+    @patch('dlvm.dpv_agent.DmMirror')
+    @patch('dlvm.dpv_agent.DmBasic')
+    @patch('dlvm.dpv_agent.iscsi_login')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_mirror_start(
+            self, conf, dpv_verify,
+            encode_target_name,
+            iscsi_login,
+            DmBasic, DmMirror,
+            run_dd, Thread,
+    ):
+        conf.tmp_dir = self.tmp_dir
+        leg_id = '001'
+        cj_name = 'cj0'
+        src_name = 'dpv2'
+        src_id = '002'
+        leg_size = 1024*1024*1024
+        dmc = {
+            'thin_block_size': 2*1024*1024,
+        }
+        bm_size = leg_size / dmc['thin_block_size']
+        bm = BitMap(bm_size).tohexstring()
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        cj_mirror_start(
+            leg_id, obt, cj_name, src_name, src_id, str(leg_size), dmc, bm)
+
+    @patch('dlvm.dpv_agent.DmLinear')
+    @patch('dlvm.dpv_agent.DmPool')
+    @patch('dlvm.dpv_agent.DmThin')
+    @patch('dlvm.dpv_agent.lv_remove')
+    @patch('dlvm.dpv_agent.iscsi_logout')
+    @patch('dlvm.dpv_agent.encode_target_name')
+    @patch('dlvm.dpv_agent.dpv_verify')
+    @patch('dlvm.dpv_agent.conf')
+    def test_cj_mirror_stop(
+            self, conf, dpv_verify,
+            encode_target_name,
+            iscsi_logout, lv_remove,
+            DmThin, DmPool, DmLinear,
+    ):
+        leg_id = '001'
+        cj_name = 'cj0'
+        src_id = '002'
+        leg_size = 1024*1024*1024
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        cj_mirror_stop(
+            leg_id, obt, cj_name, src_id, str(leg_size))
