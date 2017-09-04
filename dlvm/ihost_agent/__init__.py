@@ -11,7 +11,7 @@ from dlvm.utils.command import context_init, \
     DmBasic, DmLinear, DmStripe, DmMirror, \
     DmPool, DmThin, DmError, \
     iscsi_login, iscsi_logout, \
-    dm_get_all, iscsi_login_get_all
+    dm_get_all, iscsi_login_get_all, run_dd
 from dlvm.utils.helper import chunks, encode_target_name, \
     dlv_info_decode, group_decode
 from dlvm.utils.bitmap import BitMap
@@ -1091,6 +1091,89 @@ def dlv_extend(dlv_name, obt, dlv_info, ej_group):
         return do_dlv_extend(dlv_name, dlv_info, ej_group)
 
 
+def do_metadata_copy(
+        src_name, dst_name,
+        target_id, thin_id_list,
+        dst_info):
+    pool_name = get_pool_name(src_name)
+    dm = DmPool(pool_name)
+    src_pool_path = dm.get_path()
+    remove_final(dst_name)
+    pool_name = get_pool_name(dst_name)
+    dm = DmPool(pool_name)
+    dst_pool_path = dm.get_path()
+    run_dd(src_pool_path, dst_pool_path)
+
+    dlv_info_decode(dst_info)
+    dlv_size = dst_info['dlv_size']
+    data_size = dst_info['data_size']
+    dm_context = generate_dm_context(dst_info['dm_context'])
+
+    thin_meta_name = get_thin_meta_name(dst_name)
+    dm = DmLinear(thin_meta_name)
+    thin_meta_path = dm.get_path()
+
+    thin_data_name = get_thin_data_name(dst_name)
+    dm = DmLinear(thin_data_name)
+    thin_data_path = dm.get_path()
+
+    thin_data_sectors = data_size / 512
+    thin_block_sectors = dm_context['thin_block_sectors']
+    low_water_mark = dm_context['low_water_mark']
+
+    table = {
+        'start': 0,
+        'length': thin_data_sectors,
+        'meta_path': thin_meta_path,
+        'data_path': thin_data_path,
+        'block_sectors': thin_block_sectors,
+        'low_water_mark': low_water_mark,
+    }
+    dm.create(table)
+
+    if target_id != 0:
+        message = {
+            'action': 'delete',
+            'thin_id': 0,
+        }
+        dm.message(message)
+        message = {
+            'action': 'snap',
+            'thin_id': 0,
+            'ori_thin_id': target_id,
+        }
+        dm.message(message)
+    for thin_id in thin_id_list:
+        if thin_id != 0:
+            message = {
+                'action': 'delete',
+                'thin_id': thin_id,
+            }
+            dm.message(message)
+
+    create_final(
+        dst_name, dlv_size, 0,
+        thin_meta_path, thin_data_path, data_size,
+        dm_context,
+    )
+
+
+def metadata_copy(
+        src_name, dst_name, obt,
+        target_id, thin_id_list,
+        dst_info,
+):
+    with RpcLock(src_name):
+        with RpcLock(dst_name):
+            ihost_verify(src_name, obt['major'], obt['minor'])
+            ihost_verify(dst_name, obt['major'], obt['minor'])
+            return do_metadata_copy(
+                src_name, dst_name,
+                target_id, thin_id_list,
+                dst_info,
+            )
+
+
 def main():
     loginit()
     context_init(conf, logger)
@@ -1108,5 +1191,6 @@ def main():
     s.register_function(leg_remove)
     s.register_function(ihost_sync)
     s.register_function(dlv_extend)
+    s.register_function(metadata_copy)
     logger.info('ihost_agent start')
     s.serve_forever()

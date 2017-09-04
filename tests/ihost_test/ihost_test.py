@@ -9,7 +9,7 @@ from dlvm.ihost_agent import main, bm_get, \
     dlv_suspend, dlv_resume, \
     snapshot_create, snapshot_delete, \
     remirror, leg_remove, ihost_sync, \
-    dlv_extend
+    dlv_extend, metadata_copy
 from dlvm.utils.rpc_wrapper import WrapperRpcClient
 from dlvm.utils.helper import chunks, dlv_info_encode, group_encode
 from dlvm.utils.bitmap import BitMap
@@ -626,3 +626,87 @@ class RpcFunctionTest(unittest.TestCase):
         }
         group_encode(ej_group)
         dlv_extend('dlv0', obt, dlv_info, ej_group)
+
+    @patch('dlvm.ihost_agent.Thread')
+    @patch('dlvm.ihost_agent.iscsi_login')
+    @patch('dlvm.ihost_agent.DmError')
+    @patch('dlvm.ihost_agent.DmThin')
+    @patch('dlvm.ihost_agent.DmPool')
+    @patch('dlvm.ihost_agent.DmMirror')
+    @patch('dlvm.ihost_agent.DmStripe')
+    @patch('dlvm.ihost_agent.DmLinear')
+    @patch('dlvm.ihost_agent.DmBasic')
+    @patch('dlvm.ihost_agent.run_dd')
+    @patch('dlvm.ihost_agent.encode_target_name')
+    @patch('dlvm.ihost_agent.ihost_verify')
+    @patch('dlvm.ihost_agent.conf')
+    @patch('dlvm.ihost_agent.report_pool')
+    @patch('dlvm.ihost_agent.report_multi_legs')
+    @patch('dlvm.ihost_agent.report_single_leg')
+    @patch('dlvm.ihost_agent.queue_init')
+    @patch('dlvm.ihost_agent.loginit')
+    def test_metadata_copy(
+            self, loginit,
+            queue_init, report_single_leg,
+            report_multi_legs, report_pool,
+            conf, ihost_verify, encode_target_name,
+            run_dd, DmBasic, DmLinear, DmStripe, DmMirror,
+            DmPool, DmThin, DmError,
+            iscsi_login, Thread,
+    ):
+        dm_context = {
+            'thin_block_size': 4*1024*1024,
+            'mirror_meta_blocks': 1,
+            'mirror_region_size': 4*1024*1024,
+            'stripe_number': 1,
+            'stripe_chunk_blocks': 1,
+            'low_water_mark': 100,
+        }
+        groups = [{
+            'idx': 0,
+            'group_size': 16*1024*1024,
+            'legs': [{
+                'leg_id': '000',
+                'idx': 0,
+                'leg_size': 16*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv0',
+            }, {
+                'leg_id': '001',
+                'idx': 1,
+                'leg_size': 16*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv1',
+            }],
+        }, {
+            'idx': 1,
+            'group_size': 512*1024*1024,
+            'legs': [{
+                'leg_id': '002',
+                'idx': 0,
+                'leg_size': 512*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv2',
+            }, {
+                'leg_id': '003',
+                'idx': 1,
+                'leg_size': 512*1024*1024+4*1024*1024,
+                'dpv_name': 'dpv3',
+            }],
+        }]
+        dst_info = {
+            'dlv_size': 1024*1024*1024,
+            'data_size': 512*1024*1024,
+            'thin_id': 0,
+            'dm_context': dm_context,
+            'groups': groups,
+        }
+        dlv_info_encode(dst_info)
+        obt = {
+            'major': 1,
+            'minor': 0,
+        }
+        target_id = 1
+        thin_id_list = [0, 1, 2]
+        metadata_copy(
+            'dlv0', 'dlv1', obt,
+            target_id, thin_id_list,
+            dst_info,
+        )

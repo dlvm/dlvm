@@ -151,12 +151,51 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
         raise CjStatusError(cj.status)
     if src_dlv.status != 'attached':
         raise SrcStatusError(src_dlv.status)
-    if dst_dlv.status != 'detached':
+    if dst_dlv.status != 'attached':
         raise DstStatusError(dst_dlv.status)
     if src_dlv.fjs:
         raise SrcFjError
     if src_dlv.ej:
         raise SrcEjError
+    leg_dict = {}
+    for group in src_dlv.groups:
+        for leg in group.legs:
+            src_client = DpvClient(leg.dpv_name)
+            src_client.cj_leg_export(
+                leg.leg_id,
+                obt_encode(obt),
+                cj.cj_name,
+                dst_dlv.dlv_name,
+                str(leg.leg_size),
+            )
+            key = '%s-%s' % (group.idx, leg.idx)
+            leg_dict[key] = leg.leg_id
+    for group in dst_dlv.groups:
+        for leg in group.legs:
+            key = '%s-%s' % (group.idx, leg.idx)
+            dst_client = DpvClient(leg.dpv_name)
+            dst_client.cj_login(
+                leg.leg_id,
+                obt_encode(obt),
+                cj.cj_name,
+                src_dlv.dlv_name,
+                leg_dict[key],
+                str(leg.leg_size),
+            )
+    src_info = get_dlv_info(src_dlv)
+    ihost_client = IhostClient(src_dlv.ihost_name)
+    try:
+        ihost_client.dlv_suspend(
+            src_dlv.dlv_name,
+            obt_encode(obt),
+            src_info,
+        )
+    finally:
+        ihost_client.dlv_resume(
+            src_dlv.dlv_name,
+            obt_encode(obt),
+            src_info,
+        )
 
 
 def cj_create(cj, src_dlv, dst_dlv, obt):
@@ -215,6 +254,7 @@ def handle_cjs_post(params, args):
     cj_name = args['cj_name']
     src_name = args['src_name']
     dst_name = args['dst_name']
+    snap_name = '%s/%s' % (src_name, args['snap_name'])
     t_id = args['t_id']
     t_owner = args['t_owner']
     t_stage = args['t_stage']
@@ -226,6 +266,7 @@ def handle_cjs_post(params, args):
         timestamp=datetime.datetime.utcnow(),
         src_dlv_name=src_name,
         dst_dlv_name=dst_name,
+        snap_name=snap_name,
     )
     db.session.add(cj)
     obt_refresh(obt)
