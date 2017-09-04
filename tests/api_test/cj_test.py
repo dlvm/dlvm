@@ -85,6 +85,7 @@ fixture_cj = {
     'timestamp': timestamp,
     'src_dlv_name': 'dlv0',
     'dst_dlv_name': 'dlv1',
+    'snap_name': 'base',
 }
 
 fixture_ihost = {

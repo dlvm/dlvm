@@ -401,13 +401,17 @@ class FixtureManager(object):
 
     @app_context
     def cj_create(
-            self, cj_name, status, timestamp, src_dlv_name, dst_dlv_name):
+            self, cj_name,
+            status, timestamp,
+            src_dlv_name, dst_dlv_name, snap_name
+    ):
         cj = CloneJob(
             cj_name=cj_name,
             status=status,
             timestamp=timestamp,
             src_dlv_name=src_dlv_name,
             dst_dlv_name=dst_dlv_name,
+            snap_name='%s/%s' % (src_dlv_name, snap_name)
         )
         db.session.add(cj)
         db.session.commit()

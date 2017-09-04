@@ -331,6 +331,7 @@ def fj_create(fj, dlv, obt):
     else:
         fj.status = 'processing'
         fj.timestamp = datetime.datetime.utcnow()
+        db.session.add(fj)
         db.session.add(dlv)
         obt_refresh(obt)
         db.session.commit()

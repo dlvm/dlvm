@@ -63,3 +63,23 @@ class FsmFailed(Exception):
 
 class DlvIhostMisMatchError(Exception):
     pass
+
+
+class SrcFjError(Exception):
+    pass
+
+
+class SrcEjError(Exception):
+    pass
+
+
+class CjStatusError(Exception):
+    pass
+
+
+class SrcStatusError(Exception):
+    pass
+
+
+class DstStatusError(Exception):
+    pass

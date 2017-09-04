@@ -409,6 +409,10 @@ class CloneJob(db.Model):
         db.String(32),
         nullable=False,
     )
+    snap_name = db.Column(
+        db.String(64),
+        db.ForeignKey('snapshot.snap_name'),
+    )
 
 
 class OwnerBasedTransaction(db.Model):
