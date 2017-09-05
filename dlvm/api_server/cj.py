@@ -166,7 +166,7 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
         thin_id_list.append(snapshot.thin_id)
 
     leg_dict = {}
-    for group in src_dlv.groups:
+    for group in src_dlv.groups[1:]:
         for leg in group.legs:
             src_client = DpvClient(leg.dpv_name)
             src_client.cj_leg_export(
@@ -178,7 +178,7 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
             )
             key = '%s-%s' % (group.idx, leg.idx)
             leg_dict[key] = leg.leg_id
-    for group in dst_dlv.groups:
+    for group in dst_dlv.groups[1:]:
         for leg in group.legs:
             key = '%s-%s' % (group.idx, leg.idx)
             dst_client = DpvClient(leg.dpv_name)
@@ -217,7 +217,7 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
             thin_id_list,
             dst_info,
         )
-        for group in dst_dlv.groups:
+        for group in dst_dlv.groups[1:]:
             leg_list = []
             for leg in group.legs:
                 ileg = {}
@@ -334,6 +334,70 @@ class Cjs(Resource):
 
     def post(self):
         return handle_dlvm_request(None, cjs_post_parser, handle_cjs_post)
+
+
+cj_get_parser = reqparse.RequestParser()
+cj_get_parser.add_argument(
+    'with_process',
+    type=str,
+    choices=('true', 'false'),
+    default='False',
+    location='args',
+)
+
+
+cj_fields = OrderedDict()
+cj_fields['cj_name'] = fields.String
+cj_fields['timestamp'] = fields.DateTime
+cj_fields['status'] = fields.String
+cj_fields['snap_name'] = SnapName(attribute='snap_name')
+
+
+def get_process_status(cj):
+    pass
+
+
+def handle_cj_get(params, args):
+    cj_name = params[0]
+    try:
+        cj = CloneJob \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(cj_name=cj_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
+    if args['with_process'] == 'true':
+        process = get_process_status(cj)
+    else:
+        process = {}
+    cj.process = process
+    body = marshal(cj, cj_fields)
+    return body, 200
+
+
+class Cj(Resource):
+
+    def get(self, cj_name):
+        return handle_dlvm_request(
+            [cj_name],
+            cj_get_parser,
+            handle_cj_get,
+        )
+
+    # def put(self, cj_name):
+    #     return handle_dlvm_request(
+    #         [cj_name],
+    #         cj_put_parser,
+    #         handle_cj_put,
+    #     )
+
+    # def delete(self, cj_name):
+    #     return handle_dlvm_request(
+    #         [cj_name],
+    #         cj_delete_parser,
+    #         handle_cj_delete,
+    #     )
 
 
 @dlv_delete_register
