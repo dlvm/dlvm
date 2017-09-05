@@ -9,13 +9,15 @@ from dlvm.utils.configure import conf
 from dlvm.utils.error import CjStatusError, \
     SrcStatusError, DstStatusError, \
     SrcFjError, SrcEjError, \
-    DpvError, IhostError
+    DpvError, IhostError, \
+    DependenceCheckError
+from dlvm.utils.helper import chunks
 from modules import db, CloneJob
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, IhostClient, \
     obt_refresh, obt_encode, \
-    dlv_detach_register, dlv_delete_register, \
+    dlv_delete_register, \
     get_dlv_info
 
 
@@ -157,6 +159,12 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
         raise SrcFjError
     if src_dlv.ej:
         raise SrcEjError
+
+    target_id = cj.snapshot.thin_id
+    thin_id_list = []
+    for snapshot in src_dlv.snapshots:
+        thin_id_list.append(snapshot.thin_id)
+
     leg_dict = {}
     for group in src_dlv.groups:
         for leg in group.legs:
@@ -183,6 +191,8 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
                 str(leg.leg_size),
             )
     src_info = get_dlv_info(src_dlv)
+    dst_info = get_dlv_info(dst_dlv)
+    dm_context = get_dm_context()
     ihost_client = IhostClient(src_dlv.ihost_name)
     try:
         ihost_client.dlv_suspend(
@@ -190,6 +200,49 @@ def do_cj_create(cj, src_dlv, dst_dlv, obt):
             obt_encode(obt),
             src_info,
         )
+
+        bm_dict = ihost_client.bm_get(
+            src_dlv.dlv_name,
+            obt_encode(obt),
+            src_info,
+            'all',
+            [],
+        )
+
+        ihost_client.metadata_copy(
+            src_dlv.dlv_name,
+            dst_dlv.dlv_name,
+            obt_encode(obt),
+            target_id,
+            thin_id_list,
+            dst_info,
+        )
+        for group in dst_dlv.groups:
+            leg_list = []
+            for leg in group.legs:
+                ileg = {}
+                ileg['dpv_name'] = leg.dpv_name
+                ileg['leg_id'] = leg.leg_id
+                ileg['idx'] = leg.idx
+                ileg['leg_size'] = leg.leg_size
+                leg_list.append(ileg)
+            leg_list.sort(key=lambda x: x['idx'])
+            for (ileg0, ileg1) in chunks(leg_list, 2):
+                bm_key = '%s-%s' % (ileg0['leg_id'], ileg1['leg_id'])
+                bm = bm_dict[bm_key]
+                for ileg in (ileg0, ileg1):
+                    key = '%s-%s' % (group.idx, ileg['idx'])
+                    dst_client = DpvClient(ileg['dpv_name'])
+                    dst_client.cj_mirror_start(
+                        ileg['leg_id'],
+                        obt_encode(obt),
+                        cj.cj_name,
+                        src_dlv.dlv_name,
+                        leg_dict[key],
+                        str(ileg['leg_size']),
+                        dm_context,
+                        bm,
+                    )
     finally:
         ihost_client.dlv_resume(
             src_dlv.dlv_name,
@@ -281,3 +334,13 @@ class Cjs(Resource):
 
     def post(self):
         return handle_dlvm_request(None, cjs_post_parser, handle_cjs_post)
+
+
+@dlv_delete_register
+def cj_check_for_dlv_delete(dlv):
+    for cj in dlv.src_cjs:
+        msg = 'src_cj: %s' % cj.cj_name
+        raise DependenceCheckError(msg)
+    if dlv.dst_cj_name is not None:
+        msg = 'dst_cj: %s' % dlv.dst_cj_name
+        raise DependenceCheckError(msg)

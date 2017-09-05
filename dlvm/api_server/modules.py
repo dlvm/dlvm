@@ -413,6 +413,7 @@ class CloneJob(db.Model):
         db.String(64),
         db.ForeignKey('snapshot.snap_name'),
     )
+    snapshot = db.relationship('Snapshot')
 
 
 class OwnerBasedTransaction(db.Model):
