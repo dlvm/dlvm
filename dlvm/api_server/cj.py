@@ -393,6 +393,167 @@ def handle_cj_get(params, args):
     return body, 200
 
 
+cj_put_parser = reqparse.RequestParser()
+cj_put_parser.add_argument(
+    'action',
+    type=str,
+    choices=('cancel', 'finish'),
+    required=True,
+    location='json',
+)
+cj_put_parser.add_argument(
+    't_id',
+    type=str,
+    required=True,
+    location='json',
+)
+cj_put_parser.add_argument(
+    't_owner',
+    type=str,
+    required=True,
+    location='json',
+)
+cj_put_parser.add_argument(
+    't_stage',
+    type=int,
+    required=True,
+    location='json',
+)
+
+
+CJ_CAN_CANCEL_STATUS = (
+    'creating',
+    'create_failed',
+    'cancel_failed',
+    'processing',
+)
+
+CJ_CAN_FINISH_STATUS = (
+    'processing',
+    'finishing',
+    'finish_failed',
+)
+
+
+def do_cj_stop(cj, src_dlv, dst_dlv, obt, status):
+    if status == 'cancel':
+        if cj.status not in CJ_CAN_CANCEL_STATUS:
+            raise CjStatusError(cj.status)
+        cj.status = 'canceling'
+    elif status == 'finish':
+        if cj.status not in CJ_CAN_FINISH_STATUS:
+            raise CjStatusError(cj.status)
+        cj.status = 'finishing'
+    cj.timestamp = datetime.datetime.utcnow()
+    db.session.add(cj)
+    obt_refresh(obt)
+    db.session.commit()
+
+    leg_dict1 = {}
+    for group in src_dlv.groups:
+        for leg in group.legs:
+            key = '%s-%s' % (group.idx, leg.idx)
+            leg_dict1[key] = leg.leg_id
+
+    leg_dict2 = {}
+    for group in dst_dlv.groups:
+        for leg in group.legs:
+            key = '%s-%s' % (group.idx, leg.idx)
+            client = DpvClient(leg.dpv_name)
+            client.cj_mirror_stop(
+                leg.leg_id,
+                obt_encode(obt),
+                cj.cj_name,
+                leg_dict1[key],
+                str(leg.leg_size),
+            )
+            leg_dict2[key] = leg.dpv_name
+
+    for group in src_dlv.groups:
+        for leg in group.legs:
+            key = '%s-%s' % (group.idx, leg.idx)
+            client = DpvClient(leg.dpv_name)
+            client.cj_leg_unexport(
+                leg.leg_id,
+                obt_encode(obt),
+                cj.cj_name,
+                leg_dict2[key],
+            )
+
+
+def handle_cj_cancel(params, args):
+    cj_name = params[0]
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    try:
+        cj = CloneJob \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(cj_name=cj_name) \
+            .one()
+        src_dlv, obt = dlv_get(cj.src_dlv_name, t_id, t_owner, t_stage)
+        dst_dlv, obt = dlv_get(cj.dst_dlv_name, t_id, t_owner, t_stage)
+        do_cj_stop(cj, src_dlv, dst_dlv, obt, 'cancel')
+    except CjStatusError as e:
+        return make_body('invalid_cj_status', e.message), 400
+    except DpvError as e:
+        cj.status = 'cancel_failed'
+        cj.timestamp = datetime.datetime.utcnow()
+        db.session.add(cj)
+        obt_refresh(obt)
+        db.session.commit()
+        return make_body('dpv_failed', e.message), 500
+    else:
+        cj.status = 'canceled'
+        cj.timestamp = datetime.datetime.utcnow()
+        db.session.add(cj)
+        obt_refresh(obt)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+def handle_cj_finish(params, args):
+    cj_name = params[0]
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    try:
+        cj = CloneJob \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(cj_name=cj_name) \
+            .one()
+        src_dlv, obt = dlv_get(cj.src_dlv_name, t_id, t_owner, t_stage)
+        dst_dlv, obt = dlv_get(cj.dst_dlv_name, t_id, t_owner, t_stage)
+        do_cj_stop(cj, src_dlv, dst_dlv, obt, 'finish')
+    except CjStatusError as e:
+        return make_body('invalid_cj_status', e.message), 400
+    except DpvError as e:
+        cj.status = 'finish_failed'
+        cj.timestamp = datetime.datetime.utcnow()
+        db.session.add(cj)
+        obt_refresh(obt)
+        db.session.commit()
+        return make_body('dpv_failed', e.message), 500
+    else:
+        cj.status = 'finished'
+        cj.timestamp = datetime.datetime.utcnow()
+        db.session.add(cj)
+        obt_refresh(obt)
+        db.session.commit()
+        return make_body('success'), 200
+
+
+def handle_cj_put(params, args):
+    if args['action'] == 'cancel':
+        return handle_cj_cancel(params, args)
+    elif args['action'] == 'finish':
+        return handle_cj_finish(params, args)
+    else:
+        assert(False)
+
+
 class Cj(Resource):
 
     def get(self, cj_name):
@@ -402,12 +563,12 @@ class Cj(Resource):
             handle_cj_get,
         )
 
-    # def put(self, cj_name):
-    #     return handle_dlvm_request(
-    #         [cj_name],
-    #         cj_put_parser,
-    #         handle_cj_put,
-    #     )
+    def put(self, cj_name):
+        return handle_dlvm_request(
+            [cj_name],
+            cj_put_parser,
+            handle_cj_put,
+        )
 
     # def delete(self, cj_name):
     #     return handle_dlvm_request(
