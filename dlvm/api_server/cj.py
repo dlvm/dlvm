@@ -15,7 +15,7 @@ from dlvm.utils.error import CjStatusError, \
 from dlvm.utils.helper import chunks
 from modules import db, DistributeLogicalVolume, CloneJob
 from handler import handle_dlvm_request, make_body, check_limit, \
-    get_dm_context, dlv_get, \
+    get_dm_context, dlv_get, obt_get, \
     DpvClient, IhostClient, \
     obt_refresh, obt_encode, \
     dlv_delete_register, \
@@ -554,6 +554,57 @@ def handle_cj_put(params, args):
         assert(False)
 
 
+cj_delete_parser = reqparse.RequestParser()
+cj_delete_parser.add_argument(
+    't_id',
+    type=str,
+    required=True,
+    location='json',
+)
+cj_delete_parser.add_argument(
+    't_owner',
+    type=str,
+    required=True,
+    location='json',
+)
+cj_delete_parser.add_argument(
+    't_stage',
+    type=int,
+    required=True,
+    location='json',
+)
+
+
+CJ_CAN_DELETE_STATUS = (
+    'canceled',
+    'finished',
+)
+
+
+def handle_cj_delete(params, args):
+    cj_name = params[0]
+    t_id = args['t_id']
+    t_owner = args['t_owner']
+    t_stage = args['t_stage']
+    try:
+        cj = CloneJob \
+            .query \
+            .with_lockmode('update') \
+            .filter_by(cj_name=cj_name) \
+            .one()
+    except NoResultFound:
+        return make_body('not_exist'), 404
+
+    if cj.status not in CJ_CAN_DELETE_STATUS:
+        return make_body('invalid_cj_status', cj.status), 400
+
+    obt = obt_get(t_id, t_owner, t_stage)
+    db.session.delete(cj)
+    obt_refresh(obt)
+    db.session.commit()
+    return make_body('success'), 200
+
+
 class Cj(Resource):
 
     def get(self, cj_name):
@@ -570,12 +621,12 @@ class Cj(Resource):
             handle_cj_put,
         )
 
-    # def delete(self, cj_name):
-    #     return handle_dlvm_request(
-    #         [cj_name],
-    #         cj_delete_parser,
-    #         handle_cj_delete,
-    #     )
+    def delete(self, cj_name):
+        return handle_dlvm_request(
+            [cj_name],
+            cj_delete_parser,
+            handle_cj_delete,
+        )
 
 
 @dlv_delete_register

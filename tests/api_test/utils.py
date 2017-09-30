@@ -423,3 +423,13 @@ class FixtureManager(object):
             .filter_by(cj_name=cj_name) \
             .one()
         return cj
+
+    @app_context
+    def cj_set_status(self, cj_name, status):
+        cj = CloneJob \
+            .query \
+            .filter_by(cj_name=cj_name) \
+            .one()
+        cj.status = status
+        db.session.add(cj)
+        db.session.commit()

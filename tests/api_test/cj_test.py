@@ -4,7 +4,7 @@ import unittest
 import os
 import json
 import datetime
-from mock import patch
+from mock import Mock, patch
 from dlvm.api_server import create_app
 from dlvm.api_server.modules import db
 from utils import FixtureManager
@@ -172,3 +172,72 @@ class CjTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         cj = self.fm.cj_get('cj0')
         self.assertEqual(cj.status, 'processing')
+
+    @patch('dlvm.api_server.cj.DpvClient')
+    def test_fj_get(self, DpvClient):
+        self._prepare_dlv()
+        self._prepare_cj()
+        client_mock = Mock()
+        DpvClient.return_value = client_mock
+        cj_mirror_status_mock = Mock()
+        client_mock.cj_mirror_status = cj_mirror_status_mock
+        cj_mirror_status_mock.return_value = {}
+        resp = self.client.get('/cjs/cj0?with_process=true')
+        self.assertEqual(resp.status_code, 200)
+
+    @patch('dlvm.api_server.cj.DpvClient')
+    def test_cj_cancel(self, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self._prepare_cj()
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'cancel',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/cjs/cj0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        fj = self.fm.cj_get('cj0')
+        self.assertEqual(fj.status, 'canceled')
+
+    @patch('dlvm.api_server.cj.DpvClient')
+    def test_cj_finish(self, DpvClient):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self._prepare_cj()
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'action': 'finish',
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.put('/cjs/cj0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        fj = self.fm.cj_get('cj0')
+        self.assertEqual(fj.status, 'finished')
+
+    def test_cj_delete(self):
+        self._prepare_dlv()
+        self.fm.obt_create(**fixture_obt)
+        self._prepare_cj()
+        self.fm.cj_set_status('cj0', 'finished')
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            't_id': 't0',
+            't_owner': 't_owner0',
+            't_stage': 0,
+        }
+        data = json.dumps(data)
+        resp = self.client.delete('/cjs/cj0', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
