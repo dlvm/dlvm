@@ -260,24 +260,28 @@ def cj_create(cj, src_dlv, dst_dlv, obt):
         cj.status = 'create_failed'
         cj.timestamp = datetime.datetime.utcnow()
         db.session.add(cj)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('src_status_error', e.message), 400
     except DstStatusError as e:
         cj.status = 'create_failed'
         cj.timestamp = datetime.datetime.utcnow()
         db.session.add(cj)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('dst_status_error', e.message), 400
     except SrcFjError:
         cj.status = 'create_failed'
         cj.timestamp = datetime.datetime.utcnow()
         db.session.add(cj)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('src_has_fj'), 400
     except SrcEjError:
         cj.status = 'create_failed'
         cj.timestamp = datetime.datetime.utcnow()
         db.session.add(cj)
+        obt_refresh(obt)
         db.session.commit()
         return make_body('src_has_ej'), 400
     except IhostError as e:
