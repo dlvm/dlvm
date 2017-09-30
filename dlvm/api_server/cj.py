@@ -3,6 +3,7 @@
 from collections import OrderedDict
 import logging
 import datetime
+import json
 from flask_restful import reqparse, Resource, fields, marshal
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
@@ -12,7 +13,7 @@ from dlvm.utils.error import CjStatusError, \
     DpvError, IhostError, \
     DependenceCheckError
 from dlvm.utils.helper import chunks
-from modules import db, CloneJob
+from modules import db, DistributeLogicalVolume, CloneJob
 from handler import handle_dlvm_request, make_body, check_limit, \
     get_dm_context, dlv_get, \
     DpvClient, IhostClient, \
@@ -358,7 +359,19 @@ cj_fields['snap_name'] = SnapName(attribute='snap_name')
 
 
 def get_process_status(cj):
-    pass
+    dst_dlv_name = cj.dst_dlv_name
+    dst_dlv = DistributeLogicalVolume \
+        .query \
+        .filter_by(dlv_name=dst_dlv_name) \
+        .one()
+    status_dict = {}
+    for group in dst_dlv.groups:
+        for leg in group.legs:
+            key = '%s-%s' % (group.idx, leg.idx)
+            client = DpvClient(leg.dpv_name)
+            value = client.cj_mirror_status(leg.leg_id)
+            status_dict[key] = value
+    return json.dumps(status_dict)
 
 
 def handle_cj_get(params, args):
