@@ -18,16 +18,8 @@ class DistributePhysicalVolume(db.Model):
         db.BigInteger,
         nullable=False,
     )
-    in_sync = db.Column(
-        db.Boolean,
-        nullable=False,
-    )
     status = db.Column(
         db.Enum('available', 'unavailable', name='dpv_status'),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
         nullable=False,
     )
     dvg_name = db.Column(
@@ -42,8 +34,12 @@ class DistributePhysicalVolume(db.Model):
         'Leg',
         back_populates='dpv',
     )
-    annotation = db.Column(
-        db.Text,
+    lock_id = db.Column(
+        db.String(32),
+        db.ForeignKey('lock.lock_id'),
+    )
+    lock = db.relationship(
+        'Lock',
     )
 
 
@@ -91,17 +87,11 @@ class DistributeLogicalVolume(db.Model):
     )
     status = db.Column(
         db.Enum(
-            'creating', 'create_failed',
-            'deleting', 'delete_failed',
-            'attaching', 'attach_failed',
-            'detaching', 'detach_failed',
-            'detached', 'attached',
+            'creating', 'available',
+            'attaching', 'attached',
+            'detaching', 'deleting',
             name='dlv_status',
         ),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
         nullable=False,
     )
     dvg_name = db.Column(
@@ -133,29 +123,12 @@ class DistributeLogicalVolume(db.Model):
         'Group',
         back_populates='dlv',
     )
-    fjs = db.relationship(
-        'FailoverJob',
-        back_populates='dlv',
-    )
-    ej = db.relationship(
-        'ExtendJob',
-        back_populates='dlv',
-        uselist=False,
-    )
-    t_id = db.Column(
+    lock_id = db.Column(
         db.String(32),
-        db.ForeignKey('owner_based_transaction.t_id'),
+        db.ForeignKey('lock.lock_id'),
     )
-    obt = db.relationship(
-        'OwnerBasedTransaction',
-        back_populates='dlvs',
-    )
-    src_cjs = db.relationship(
-        'CloneJob',
-        back_populates='src_dlv',
-    )
-    dst_cj_name = db.Column(
-        db.String(32),
+    lock = db.relationship(
+        'Lock',
     )
 
 
@@ -164,24 +137,20 @@ class InitiatorHost(db.Model):
         db.String(32),
         primary_key=True,
     )
-    in_sync = db.Column(
-        db.Boolean,
-        nullable=False,
-    )
     status = db.Column(
         db.Enum('available', 'unavailable', name='ihost_status'),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
         nullable=False,
     )
     dlvs = db.relationship(
         'DistributeLogicalVolume',
         back_populates='ihost',
     )
-    annotation = db.Column(
-        db.Text,
+    lock_id = db.Column(
+        db.String(32),
+        db.ForeignKey('lock.lock_id'),
+    )
+    lock = db.relationship(
+        'Lock',
     )
 
 
@@ -189,10 +158,6 @@ class Snapshot(db.Model):
     snap_name = db.Column(
         db.String(64),
         primary_key=True,
-    )
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
     )
     thin_id = db.Column(
         db.Integer,
@@ -204,9 +169,8 @@ class Snapshot(db.Model):
     )
     status = db.Column(
         db.Enum(
-            'creating', 'create_failed',
-            'available',
-            'deleting', 'delete_failed',
+            'creating', 'deleting',
+            'available', 'failed',
             name='snap_status',
         ),
         nullable=False,
@@ -243,14 +207,6 @@ class Group(db.Model):
         'DistributeLogicalVolume',
         back_populates='groups',
     )
-    ej_name = db.Column(
-        db.String(32),
-        db.ForeignKey('extend_job.ej_name'),
-    )
-    ej = db.relationship(
-        'ExtendJob',
-        back_populates='group',
-    )
     legs = db.relationship(
         'Leg',
         back_populates='group',
@@ -285,149 +241,12 @@ class Leg(db.Model):
         'DistributePhysicalVolume',
         back_populates='legs',
     )
-    fj_role = db.Column(
-        db.Enum('ori', 'src', 'dst', name='leg_role'),
-    )
-    fj_name = db.Column(
-        db.String(32),
-        db.ForeignKey('failover_job.fj_name'),
-    )
-    fj = db.relationship(
-        'FailoverJob',
-        back_populates='legs',
-    )
 
 
-class FailoverJob(db.Model):
-    fj_name = db.Column(
+class Lock(db.Model):
+    lock_id = db.Column(
         db.String(32),
         primary_key=True,
-    )
-    legs = db.relationship(
-        'Leg',
-        back_populates='fj',
-    )
-    status = db.Column(
-        db.Enum(
-            'creating', 'create_failed',
-            'canceling', 'cancel_failed',
-            'canceled',
-            'processing',
-            'finishing', 'finish_failed',
-            'finished',
-            name='fj_status',
-        ),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-    )
-    dlv_name = db.Column(
-        db.String(32),
-        db.ForeignKey('distribute_logical_volume.dlv_name'),
-        nullable=False,
-    )
-    dlv = db.relationship(
-        'DistributeLogicalVolume',
-        back_populates='fjs',
-    )
-
-
-class ExtendJob(db.Model):
-    ej_name = db.Column(
-        db.String(32),
-        primary_key=True,
-    )
-    status = db.Column(
-        db.Enum(
-            'creating', 'create_failed',
-            'canceling', 'cancel_failed',
-            'canceled',
-            'created',
-            'finishing', 'finish_failed',
-            'finished',
-            name='ej_status',
-        ),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-    )
-    ej_size = db.Column(
-        db.BigInteger,
-        nullable=False,
-    )
-    dlv_name = db.Column(
-        db.String(32),
-        db.ForeignKey('distribute_logical_volume.dlv_name'),
-        nullable=False,
-    )
-    dlv = db.relationship(
-        'DistributeLogicalVolume',
-        back_populates='ej',
-    )
-    group = db.relationship(
-        'Group',
-        back_populates='ej',
-        uselist=False,
-    )
-
-
-class CloneJob(db.Model):
-    cj_name = db.Column(
-        db.String(32),
-        primary_key=True,
-    )
-    status = db.Column(
-        db.Enum(
-            'creating', 'create_failed',
-            'canceling', 'cancel_failed',
-            'canceled',
-            'processing',
-            'finishing', 'finish_failed',
-            'finished',
-            name='fj_status',
-        ),
-        nullable=False,
-    )
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-    )
-    src_dlv_name = db.Column(
-        db.String(32),
-        db.ForeignKey('distribute_logical_volume.dlv_name'),
-        nullable=False,
-    )
-    src_dlv = db.relationship(
-        'DistributeLogicalVolume',
-        back_populates='src_cjs',
-    )
-    dst_dlv_name = db.Column(
-        db.String(32),
-        nullable=False,
-    )
-    snap_name = db.Column(
-        db.String(64),
-        db.ForeignKey('snapshot.snap_name'),
-    )
-    snapshot = db.relationship('Snapshot')
-
-
-class OwnerBasedTransaction(db.Model):
-    t_id = db.Column(
-        db.String(32),
-        primary_key=True,
-    )
-    t_owner = db.Column(
-        db.String(32),
-        nullable=False,
-    )
-    t_stage = db.Column(
-        db.Integer,
-        nullable=False,
     )
     timestamp = db.Column(
         db.DateTime,
@@ -435,29 +254,4 @@ class OwnerBasedTransaction(db.Model):
     )
     annotation = db.Column(
         db.Text,
-    )
-    count = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
-        db.ForeignKey('counter.count'),
-        nullable=False,
-    )
-    counter = db.relationship(
-        'Counter',
-        back_populates='transaction'
-    )
-    dlvs = db.relationship(
-        'DistributeLogicalVolume',
-        back_populates='obt',
-    )
-
-
-class Counter(db.Model):
-    count = db.Column(
-        db.BigInteger().with_variant(db.Integer, "sqlite"),
-        primary_key=True,
-    )
-    transaction = db.relationship(
-        'OwnerBasedTransaction',
-        back_populates='counter',
-        uselist=False,
     )

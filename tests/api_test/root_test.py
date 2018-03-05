@@ -10,7 +10,8 @@ from dlvm.api_server.modules import db
 class RootTest(unittest.TestCase):
 
     db_path = '/tmp/dlvm_test.db'
-    db_uri = 'sqlite:////tmp/dlvm_test.db'
+    # db_uri = 'sqlite:////tmp/dlvm_test.db'
+    db_uri = 'sqlite:///' + db_path
 
     @patch('dlvm.api_server.loginit')
     @patch('dlvm.api_server.conf')
