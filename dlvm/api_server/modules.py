@@ -36,10 +36,9 @@ class DistributePhysicalVolume(db.Model):
     )
     lock_id = db.Column(
         db.String(32),
-        db.ForeignKey('lock.lock_id'),
     )
-    lock = db.relationship(
-        'Lock',
+    lock_timestamp = db.Column(
+        db.BigInteger,
     )
 
 
@@ -125,10 +124,9 @@ class DistributeLogicalVolume(db.Model):
     )
     lock_id = db.Column(
         db.String(32),
-        db.ForeignKey('lock.lock_id'),
     )
-    lock = db.relationship(
-        'Lock',
+    lock_timestamp = db.Column(
+        db.BigInteger,
     )
 
 
@@ -147,10 +145,9 @@ class InitiatorHost(db.Model):
     )
     lock_id = db.Column(
         db.String(32),
-        db.ForeignKey('lock.lock_id'),
     )
-    lock = db.relationship(
-        'Lock',
+    lock_timestamp = db.Column(
+        db.BigInteger,
     )
 
 
@@ -240,18 +237,4 @@ class Leg(db.Model):
     dpv = db.relationship(
         'DistributePhysicalVolume',
         back_populates='legs',
-    )
-
-
-class Lock(db.Model):
-    lock_id = db.Column(
-        db.String(32),
-        primary_key=True,
-    )
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-    )
-    annotation = db.Column(
-        db.Text,
     )
