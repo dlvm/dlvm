@@ -3,7 +3,7 @@
 import os
 import unittest
 from mock import patch
-from dlvm.api_server import create_app
+from dlvm.api_server.routing import create_app
 from dlvm.api_server.modules import db
 
 
@@ -13,8 +13,8 @@ class RootTest(unittest.TestCase):
     # db_uri = 'sqlite:////tmp/dlvm_test.db'
     db_uri = 'sqlite:///' + db_path
 
-    @patch('dlvm.api_server.loginit')
-    @patch('dlvm.api_server.conf')
+    @patch('dlvm.api_server.routing.loginit')
+    @patch('dlvm.api_server.routing.conf')
     def setUp(self, conf, loginit):
         conf.db_uri = self.db_uri
         app = create_app()

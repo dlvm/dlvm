@@ -61,6 +61,7 @@ DEFAULT_CONF = {
     'broker_url':
     'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
     'db_uri':  'sqlite:////tmp/dlvm.db',
+    'rpc_expiry': 5,
 }
 
 
