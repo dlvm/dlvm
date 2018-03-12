@@ -34,3 +34,22 @@ def handle_dlvm_request(handler, parser, params):
         logger.info('response:<%s>, return_code=%d',
                     response, return_code)
         return response, return_code
+
+
+def general_query(obj, args, filter_list):
+    order_field = getattr(obj, args['order_by'])
+    prev = args['prev']
+    if args['reverse'] == 'true':
+        query = obj.query.order_by(order_field.desc())
+        if prev:
+            query = query.filter(order_field < prev)
+    else:
+        query = obj.query.order_by(order_field)
+        if prev:
+            query = query.filter(order_field > prev)
+    for filter_name in filter_list:
+        if args[filter_name]:
+            kwarg = {filter_name: args[filter_name]}
+            query = query.filter_by(**kwarg)
+    query = query.limit(args['limit'])
+    return query.all()

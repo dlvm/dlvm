@@ -7,7 +7,17 @@ from dlvm.utils.configure import conf
 from dlvm.utils.loginit import loginit
 from modules import db
 from handler import handle_dlvm_request
-# from dpv import handle_dpvs_get, handle_dpvs_post
+from dpv import handle_dpvs_get, handle_dpvs_post
+
+
+dpv_fields = OrderedDict()
+dpv_fields['dpv_name'] = fields.String
+dpv_fields['total_size'] = fields.Integer
+dpv_fields['free_size'] = fields.Integer
+dpv_fields['status'] = fields.String
+dpv_fields['dvg_name'] = fields.String
+dpv_fields['lock_id'] = fields.String
+dpv_fields['lock_timestamp'] = fields.Integer
 
 
 def handle_root_get(params, args):
@@ -35,6 +45,69 @@ class Root(Resource):
             handle_root_get, None, None)
 
 
+dpvs_get_parser = reqparse.RequestParser()
+dpvs_get_parser.add_argument(
+    'prev',
+    type=str,
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'limit',
+    type=int,
+    default=conf.dpv_list_limit,
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'order_by',
+    type=str,
+    choices=(
+        'dpv_name',
+        'total_size',
+        'free_size',
+        'lock_timestamp',
+    ),
+    default='dpv_name',
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'reverse',
+    type=str,
+    choices=('true', 'false'),
+    default='false',
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'status',
+    type=str,
+    choices=('available', 'unavailable'),
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'locked',
+    type=str,
+    choices=('true', 'false'),
+    location='args',
+)
+dpvs_get_parser.add_argument(
+    'dvg_name',
+    type=str,
+    location='args',
+)
+
+dpvs_get_fields = OrderedDict()
+dpvs_get_fields['request_id'] = fields.String
+dpvs_get_fields['message'] = fields.String
+dpvs_get_fields['body'] = fields.List(fields.Nested(dpv_fields))
+
+
+class Dpvs(Resource):
+
+    @marshal_with(dpvs_get_fields)
+    def get(self):
+        return handle_dlvm_request(
+            handle_dpvs_get, dpvs_get_parser, None)
+
+
 def create_app():
     loginit()
     app = Flask(__name__)
@@ -43,6 +116,7 @@ def create_app():
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
     db.init_app(app)
     api.add_resource(Root, '/')
+    api.add_resource(Dpvs, '/dpvs')
     return app
 
 

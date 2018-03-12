@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+SUCCESS = 'SUCCESS'
+EXCEED_LIMIT = 'EXCEED_LIMIT'
+
 
 class NoEnoughDpvError(Exception):
     pass
