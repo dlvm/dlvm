@@ -11,6 +11,8 @@ from dlvm.utils.modules import db
 from dlvm.api_server.handler import handle_dlvm_request
 from dlvm.api_server.dpv import handle_dpvs_get, handle_dpvs_post, \
     handle_dpv_get, handle_dpv_delete
+from dlvm.api_server.dvg import handle_dvgs_get, handle_dvgs_post, \
+    handle_dvg_get, handle_dvg_delete
 
 
 dpv_fields = OrderedDict()
@@ -21,6 +23,11 @@ dpv_fields['status'] = fields.String
 dpv_fields['dvg_name'] = fields.String
 dpv_fields['lock_id'] = fields.String
 dpv_fields['lock_timestamp'] = fields.Integer
+
+dvg_fields = OrderedDict()
+dvg_fields['dvg_name'] = fields.String
+dvg_fields['total_size'] = fields.Integer
+dvg_fields['free_size'] = fields.Integer
 
 group_fields = OrderedDict()
 group_fields['group_id'] = fields.String
@@ -135,6 +142,73 @@ class Dpv(Resource):
             handle_dpv_delete, None, [dpv_name], 200, None)
 
 
+dvgs_get_parser = reqparse.RequestParser()
+dvgs_get_parser.add_argument(
+    'prev',
+    type=str,
+    location='args',
+)
+dvgs_get_parser.add_argument(
+    'limit',
+    type=int,
+    default=conf.dvg_list_limit,
+    location='args',
+)
+dvgs_get_parser.add_argument(
+    'order_by',
+    type=str,
+    choices=(
+        'dvg_name',
+        'total_size',
+        'free_size',
+    ),
+    default='dvg_name',
+    location='args',
+)
+dvgs_get_parser.add_argument(
+    'reverse',
+    type=str,
+    choices=('true', 'false'),
+    default='false',
+    location='args',
+)
+
+dvg_summary_fields = copy.deepcopy(dvg_fields)
+
+dvgs_post_parser = reqparse.RequestParser()
+dvgs_post_parser.add_argument(
+    'dvg_name',
+    type=str,
+    required=True,
+    location='json'
+)
+
+
+class Dvgs(Resource):
+
+    def get(self):
+        return handle_dlvm_request(
+            handle_dvgs_get, dvgs_get_parser, None, 200, dvg_summary_fields)
+
+    def post(self):
+        return handle_dlvm_request(
+            handle_dvgs_post, dvgs_post_parser, None, 200, None)
+
+
+dvg_detail_fields = copy.deepcopy(dvg_fields)
+
+
+class Dvg(Resource):
+
+    def get(self, dvg_name):
+        return handle_dlvm_request(
+            handle_dvg_get, None, [dvg_name], 200, dvg_detail_fields)
+
+    def delete(self, dvg_name):
+        return handle_dlvm_request(
+            handle_dvg_delete, None, [dvg_name], 200, None)
+
+
 def create_app():
     loginit()
     app = Flask(__name__)
@@ -145,6 +219,8 @@ def create_app():
     api.add_resource(Root, '/')
     api.add_resource(Dpvs, '/dpvs')
     api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
+    api.add_resource(Dvgs, '/dvgs')
+    api.add_resource(Dvg, '/dvgs/<string:dvg_name>')
     return app
 
 

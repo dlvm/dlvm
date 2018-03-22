@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dlvm.utils.modules import db, \
-    DistributePhysicalVolume
+    DistributePhysicalVolume, DistributeVolumeGroup
 
 
 def app_context(func):
@@ -31,9 +31,35 @@ class FixtureManager(object):
         db.session.commit()
 
     @app_context
-    def dpvs_get(self, dpv_name):
+    def dpv_get(self, dpv_name):
         dpvs = DistributePhysicalVolume \
               .query \
               .filter_by(dpv_name=dpv_name) \
+              .limit(1) \
               .all()
-        return dpvs
+        if len(dpvs) == 0:
+            return None
+        else:
+            return dpvs[0]
+
+    @app_context
+    def dvg_create(self, dvg_name):
+        dvg = DistributeVolumeGroup(
+            dvg_name=dvg_name,
+            total_size=0,
+            free_size=0,
+        )
+        db.session.add(dvg)
+        db.session.commit()
+
+    @app_context
+    def dvg_get(self, dvg_name):
+        dvgs = DistributeVolumeGroup \
+               .query \
+               .filter_by(dvg_name=dvg_name) \
+               .limit(1) \
+               .all()
+        if len(dvgs) == 0:
+            return None
+        else:
+            return dvgs[0]

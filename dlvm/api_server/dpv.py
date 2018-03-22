@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import logging
+import traceback
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
+
 from dlvm.utils.configure import conf
 from dlvm.utils.error import DpvError, LimitExceedError, \
     ResourceDuplicateError, ResourceNotFoundError, ResourceBusyError
@@ -32,8 +34,7 @@ def handle_dpvs_post(request_id, args, path_args):
         total_size = dpv_info['total_size']
         free_size = dpv_info['free_size']
     except Exception:
-        logger.error('request_id=%s failed', exc_info=True)
-        raise DpvError(dpv_name)
+        raise DpvError(dpv_name, traceback.format_exc())
     dpv = DistributePhysicalVolume(
         dpv_name=args['dpv_name'],
         total_size=total_size,
@@ -44,7 +45,7 @@ def handle_dpvs_post(request_id, args, path_args):
     try:
         db.session.commit()
     except IntegrityError:
-        raise ResourceDuplicateError('dpv', dpv_name)
+        raise ResourceDuplicateError('dpv', dpv_name, traceback.format_exc())
     return None
 
 
@@ -56,7 +57,8 @@ def handle_dpv_get(request_id, args, path_args):
               .filter_by(dpv_name=dpv_name) \
               .one()
     except NoResultFound:
-        raise ResourceNotFoundError('dpv', dpv_name)
+        raise ResourceNotFoundError(
+            'dpv', dpv_name, traceback.format_exc())
     return dpv
 
 

@@ -39,8 +39,8 @@ def handle_dlvm_request(
             body = None
             return_code = e.return_code
             logger.warning(
-                'request_id=%s error_message=<%s>',
-                request_id, e.message)
+                'request_id=%s error_message=<%s>\n%s',
+                request_id, e.message, e.exc_info)
         else:
             logger.error(
                 'request_id=%s internal_error',

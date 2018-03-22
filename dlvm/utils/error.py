@@ -2,7 +2,10 @@
 
 
 class DlvmError(Exception):
-    pass
+
+    def __init__(self, message, exc_info=None):
+        self.exc_info = exc_info
+        super(DlvmError, self).__init__(message)
 
 
 class LimitExceedError(DlvmError):
@@ -18,48 +21,48 @@ class DpvError(DlvmError):
 
     ret_code = 500
 
-    def __init__(self, dpv_name):
+    def __init__(self, dpv_name, exc_info):
         message = 'dpv_error dpv_name={dpv_name}'.format(
             dpv_name=dpv_name)
-        super(DpvError, self).__init__(message)
+        super(DpvError, self).__init__(message, exc_info)
 
 
 class IhostError(DlvmError):
 
     ret_code = 500
 
-    def __init__(self, ihost_name):
+    def __init__(self, ihost_name, exc_info):
         message = 'ihost_error ihost_name={ihost_name}'.fomrat(
             ihost_name=ihost_name)
-        super(IhostError, self).__init__(message)
+        super(IhostError, self).__init__(message, exc_info)
 
 
 class ResourceDuplicateError(DlvmError):
 
     ret_code = 400
 
-    def __init__(self, res_type, res_name):
+    def __init__(self, res_type, res_name, exc_info):
         message = (
             'resource_duplicate '
             'res_type={res_type} '
             'res_name={res_name}'
         ).format(
             res_type=res_type, res_name=res_name)
-        super(ResourceDuplicateError, self).__init__(message)
+        super(ResourceDuplicateError, self).__init__(message, exc_info)
 
 
 class ResourceNotFoundError(DlvmError):
 
     ret_code = 404
 
-    def __init__(self, res_type, res_name):
+    def __init__(self, res_type, res_name, exc_info):
         message = (
             'resource_not_found '
             'res_type={res_type} '
             'res_name={res_name}'
         ).format(
             res_type=res_type, res_name=res_name)
-        super(ResourceNotFoundError, self).__init__(message)
+        super(ResourceNotFoundError, self).__init__(message, exc_info)
 
 
 class ResourceBusyError(DlvmError):

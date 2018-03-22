@@ -84,7 +84,7 @@ class DpvTest(unittest.TestCase):
         data = json.dumps(data)
         resp = self.client.post('/dpvs', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
-        dpv = self.fm.dpvs_get(dpv_name)[0]
+        dpv = self.fm.dpv_get(dpv_name)
         self.assertEqual(dpv.status, 'available')
         self.assertEqual(dpv.total_size, total_size)
         self.assertEqual(get_size_mock.call_count, 1)
@@ -108,5 +108,5 @@ class DpvTest(unittest.TestCase):
         dpv_name = dpv['dpv_name']
         resp = self.client.delete('/dpvs/%s' % dpv_name)
         self.assertEqual(resp.status_code, 200)
-        dpvs = self.fm.dpvs_get(dpv_name)
-        self.assertEqual(len(dpvs), 0)
+        dpv = self.fm.dpv_get(dpv_name)
+        self.assertEqual(dpv, None)
