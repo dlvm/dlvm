@@ -4,8 +4,14 @@ from types import MethodType
 import time
 import rpyc
 from rpyc.utils.server import ThreadedServer
-from configure import conf
-from error import RpcTimeout
+
+
+class RpcExpireError(Exception):
+
+    def __init__(self, curr_time, expire_time):
+        msg = 'curr_time=%d, expire_time=%d' % (
+            curr_time, expire_time)
+        super(RpcExpireError, self).__init__(msg)
 
 
 class MyService(rpyc.Service):
@@ -15,27 +21,29 @@ class MyService(rpyc.Service):
 def rpc(func):
     name = 'exposed_' + func.__name__
 
-    def wrap(self, timestamp, *args, **kwargs):
+    def wrap(self, request_id, expire_time, *args, **kwargs):
         self.logger.debug(
-            'rpc call: %s %d %s %s',
+            'request_id=%s rpc call %s %d %s %s',
+            request_id,
             func.__name__,
-            timestamp,
+            expire_time,
             args,
             kwargs,
         )
-        if timestamp != 0 and int(time.time()) > timestamp:
-            raise RpcTimeout
         try:
-            ret = func(*args, **kwargs)
-        except:
+            curr_time = int(time.time())
+            if expire_time != 0 and curr_time > expire_time:
+                raise RpcExpireError(curr_time, expire_time)
+            ret = func(request_id, *args, **kwargs)
+        except Exception:
             self.logger.error(
-                'rpc failed: %s', func.__name__,
+                'request_id=%s rpc failed: %s', func.__name__,
                 exc_info=True,
             )
             raise
         else:
             self.logger.debug(
-                'rpc reply: %s %s',
+                'request_id=%s rpc reply: %s %s',
                 func.__name__,
                 ret,
             )
@@ -51,21 +59,22 @@ def start_server(hostname, port, logger):
 
 class RpcClient(object):
 
-    def __init__(self, addr, port, timestamp, logger):
+    def __init__(self, addr, port, expire_time, timeout, logger):
         self.conn = rpyc.connect(addr, port)
         self.addr = addr
         self.port = port
-        self.timestamp = timestamp
+        self.expire_time = expire_time
+        self.timeout = timeout
         self.logger = logger
 
     def __getattr__(self, key):
         def func(self, *args, **kwargs):
             remote_func = rpyc.async(getattr(self.conn.root, key))
-            ret = remote_func(self.timestamp, *args, **kwargs)
-            ret.set_expiry(conf.rpc_expiry)
+            ret = remote_func(self.expire_time, *args, **kwargs)
+            ret.set_expiry(self.timeout)
             self.logger.debug(
                 'rpc call: %s %s %s %s %s',
-                key, self.timestamp, args, kwargs, ret,
+                key, self.expire_time, args, kwargs, ret,
             )
             return ret
         return MethodType(func, self)

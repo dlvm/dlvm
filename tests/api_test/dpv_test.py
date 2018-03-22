@@ -5,9 +5,9 @@ import json
 import unittest
 from mock import Mock, patch
 from dlvm.api_server.routing import create_app
-from dlvm.api_server.modules import db, \
+from dlvm.utils.modules import db, \
     DistributePhysicalVolume
-from utils import FixtureManager
+from ..utils import FixtureManager
 
 fixture_dpvs = [
     {
@@ -57,6 +57,7 @@ class DpvTest(unittest.TestCase):
             self.fm.dpv_create(**dpv)
         resp = self.client.get('/dpvs')
         self.assertEqual(resp.status_code, 200)
-        data = json.loads(resp.data)
-        self.assertEqual(data['message'], 'SUCCESS')
+        print(resp.data)
+        data = json.loads(resp.data.decode('utf-8'))
+        self.assertEqual(data['message'], 'succeed')
         self.assertEqual(len(data['body']), len(fixture_dpvs))

@@ -2,7 +2,8 @@
 
 import os
 import yaml
-from constant import lc_path
+
+from dlvm.utils.constant import lc_path
 
 
 DEFAULT_CONF = {

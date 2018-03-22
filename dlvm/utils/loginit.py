@@ -3,7 +3,8 @@
 import os
 import logging.config
 import yaml
-from constant import lc_path
+
+from dlvm.utils.constant import lc_path
 
 logger_conf_path = os.path.join(lc_path, 'logger.yml')
 

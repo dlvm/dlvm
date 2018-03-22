@@ -1,84 +1,44 @@
 #!/usr/bin/env python
 
-SUCCESS = 'SUCCESS'
-EXCEED_LIMIT = 'EXCEED_LIMIT'
 
-
-class NoEnoughDpvError(Exception):
+class DlvmError(Exception):
     pass
 
 
-class DpvError(Exception):
-    pass
+class ExceedLimitError(DlvmError):
+
+    def __init__(self, curr_val, max_val):
+        self.ret_code = 400
+        message = 'exceed limit, curr_val=%d, max_val=%d' % (
+            curr_val, max_val)
+        super(ExceedLimitError, self).__init__(message)
 
 
-class IhostError(Exception):
-    pass
+class DpvError(DlvmError):
+
+    ret_code = 500
+
+    def __init__(self, dpv_name):
+        message = 'dpv_error: {dpv_name}'.format(
+            dpv_name=dpv_name)
+        super(DpvError, self).__init__(message)
 
 
-class DlvStatusError(Exception):
-    pass
+class IhostError(DlvmError):
+
+    ret_code = 500
+
+    def __init__(self, ihost_name):
+        message = 'ihost_error: {ihost_name}'.fomrat(
+            ihost_name=ihost_name)
+        super(IhostError, self).__init__(message)
 
 
-class FjStatusError(Exception):
-    pass
+class ResourceDuplicateError(DlvmError):
 
+    ret_code = 400
 
-class EjStatusError(Exception):
-    pass
-
-
-class DependenceCheckError(Exception):
-    pass
-
-
-class ThinMaxRetryError(Exception):
-    pass
-
-
-class SnapshotStatusError(Exception):
-    pass
-
-
-class DeleteActiveSnapshotError(Exception):
-    pass
-
-
-class SnapNameError(Exception):
-    pass
-
-
-class ApiError(Exception):
-    pass
-
-
-class FsmFailed(Exception):
-    pass
-
-
-class DlvIhostMisMatchError(Exception):
-    pass
-
-
-class SrcFjError(Exception):
-    pass
-
-
-class SrcEjError(Exception):
-    pass
-
-
-class CjStatusError(Exception):
-    pass
-
-
-class SrcStatusError(Exception):
-    pass
-
-
-class DstStatusError(Exception):
-    pass
-
-
-class RpcTimeout(Exception):
-    pass
+    def __init__(self, res_type, res_name):
+        message = '{res_type} {res_name} duplicate'.format(
+            res_type=res_type, res_name=res_name)
+        super(ResourceDuplicateError, self).__init__(message)

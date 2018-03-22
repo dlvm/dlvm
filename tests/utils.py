@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import uuid
-from dlvm.api_server.modules import db, \
+from dlvm.utils.modules import db, \
     DistributePhysicalVolume
 
 

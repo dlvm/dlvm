@@ -4,7 +4,7 @@ import os
 import unittest
 from mock import patch
 from dlvm.api_server.routing import create_app
-from dlvm.api_server.modules import db
+from dlvm.utils.modules import db
 
 
 class RootTest(unittest.TestCase):
