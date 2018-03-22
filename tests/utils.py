@@ -29,3 +29,11 @@ class FixtureManager(object):
         )
         db.session.add(dpv)
         db.session.commit()
+
+    @app_context
+    def dpv_get(self, dpv_name):
+        dpv = DistributePhysicalVolume \
+              .query \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+        return dpv

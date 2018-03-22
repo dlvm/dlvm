@@ -5,8 +5,7 @@ import json
 import unittest
 from mock import Mock, patch
 from dlvm.api_server.routing import create_app
-from dlvm.utils.modules import db, \
-    DistributePhysicalVolume
+from dlvm.utils.modules import db
 from ..utils import FixtureManager
 
 fixture_dpvs = [
@@ -86,11 +85,7 @@ class DpvTest(unittest.TestCase):
         data = json.dumps(data)
         resp = self.client.post('/dpvs', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
-        with self.app.app_context():
-            dpv = DistributePhysicalVolume \
-                  .query \
-                  .filter_by(dpv_name=dpv_name) \
-                  .one()
+        dpv = self.fm.dpv_get(dpv_name)
         self.assertEqual(dpv.status, 'available')
         self.assertEqual(dpv.total_size, total_size)
         self.assertEqual(get_size_mock.call_count, 1)
