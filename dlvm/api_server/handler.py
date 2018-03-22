@@ -3,7 +3,7 @@
 from collections import OrderedDict
 import uuid
 import logging
-
+from flask_restful import marshal
 from dlvm.utils.modules import db
 from dlvm.utils.error import DlvmError
 from dlvm.utils.rpc_wrapper import RpcClient
@@ -13,7 +13,8 @@ from dlvm.utils.configure import conf
 logger = logging.getLogger('dlvm_api')
 
 
-def handle_dlvm_request(handler, parser, path_args, success_code):
+def handle_dlvm_request(
+        handler, parser, path_args, success_code, marshal_fields):
     request_id = uuid.uuid4().hex
     response = OrderedDict()
     response['request_id'] = request_id
@@ -24,7 +25,13 @@ def handle_dlvm_request(handler, parser, path_args, success_code):
     logger.info('request_id=%s handler=%s args=<%s> path_args=<%s>',
                 request_id, handler.__name__, args, path_args)
     try:
-        body = handler(request_id, args, path_args)
+        raw_body = handler(request_id, args, path_args)
+        if marshal_fields is None:
+            body = None
+        else:
+            body = marshal(raw_body, marshal_fields)
+        message = 'succeed'
+        return_code = success_code
     except Exception as e:
         db.session.rollback()
         if isinstance(e, DlvmError):
@@ -41,10 +48,6 @@ def handle_dlvm_request(handler, parser, path_args, success_code):
             message = 'internal_error'
             body = None
             return_code = 500
-    else:
-        message = 'succeed'
-        response['body'] = body
-        return_code = success_code
     finally:
         db.session.close()
         response['message'] = message
