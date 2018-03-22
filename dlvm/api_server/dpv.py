@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 import logging
-import time
 from sqlalchemy.exc import IntegrityError
 from dlvm.utils.configure import conf
 from dlvm.utils.error import DpvError, \
     ResourceDuplicateError, ExceedLimitError
 from dlvm.utils.modules import db, \
-    DistributePhysicalVolume, DistributeVolumeGroup
+    DistributePhysicalVolume
 from dlvm.api_server.handler import general_query, DpvClient
 
 
@@ -26,9 +25,11 @@ def handle_dpvs_post(request_id, args, path_args):
     dpv_name = args['dpv_name']
     client = DpvClient(dpv_name, 0)
     try:
-        ret = client.get_info()
+        ret = client.get_size()
         ret.wait()
-        total_size, free_size = ret.value
+        dpv_info = ret.value
+        total_size = dpv_info['total_size']
+        free_size = dpv_info['free_size']
     except Exception:
         logger.error('request_id=%s failed', exc_info=True)
         raise DpvError(dpv_name)

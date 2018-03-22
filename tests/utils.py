@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import uuid
 from dlvm.utils.modules import db, \
     DistributePhysicalVolume
 

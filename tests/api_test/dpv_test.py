@@ -61,3 +61,36 @@ class DpvTest(unittest.TestCase):
         data = json.loads(resp.data.decode('utf-8'))
         self.assertEqual(data['message'], 'succeed')
         self.assertEqual(len(data['body']), len(fixture_dpvs))
+
+    @patch('dlvm.api_server.dpv.DpvClient')
+    def test_dpvs_post(self, DpvClient):
+        dpv_name = 'dpv0'
+        total_size = 512*1024*1024*1024
+        free_size = 512*1024*1024*1024
+        client_mock = Mock()
+        DpvClient.return_value = client_mock
+        get_size_mock = Mock()
+        client_mock.get_size = get_size_mock
+        get_size_ret_mock = Mock()
+        get_size_mock.return_value = get_size_ret_mock
+        get_size_ret_mock.value = {
+            'total_size': total_size,
+            'free_size': free_size,
+        }
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        data = {
+            'dpv_name': dpv_name,
+        }
+        data = json.dumps(data)
+        resp = self.client.post('/dpvs', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        with self.app.app_context():
+            dpv = DistributePhysicalVolume \
+                  .query \
+                  .filter_by(dpv_name=dpv_name) \
+                  .one()
+        self.assertEqual(dpv.status, 'available')
+        self.assertEqual(dpv.total_size, total_size)
+        self.assertEqual(get_size_mock.call_count, 1)

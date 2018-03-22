@@ -98,12 +98,30 @@ dpvs_get_fields['message'] = fields.String
 dpvs_get_fields['body'] = fields.List(fields.Nested(dpv_fields))
 
 
+dpvs_post_parser = reqparse.RequestParser()
+dpvs_post_parser.add_argument(
+    'dpv_name',
+    type=str,
+    required=True,
+    location='json'
+)
+
+dpvs_post_fields = OrderedDict()
+dpvs_post_fields['request_id'] = fields.String
+dpvs_post_fields['message'] = fields.String
+
+
 class Dpvs(Resource):
 
     @marshal_with(dpvs_get_fields)
     def get(self):
         return handle_dlvm_request(
             handle_dpvs_get, dpvs_get_parser, None, 200)
+
+    @marshal_with(dpvs_post_fields)
+    def post(self):
+        return handle_dlvm_request(
+            handle_dpvs_post, dpvs_post_parser, None, 200)
 
 
 def create_app():
