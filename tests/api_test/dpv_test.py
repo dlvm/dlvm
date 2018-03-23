@@ -94,7 +94,9 @@ class DpvTest(unittest.TestCase):
         self.fm.dpv_create(**dpv)
         dpv_name = dpv['dpv_name']
         total_size = dpv['total_size']
-        resp = self.client.get('/dpvs/%s' % dpv_name)
+        path = '/dpvs/{dpv_name}'.format(
+            dpv_name=dpv_name)
+        resp = self.client.get(path)
         self.assertEqual(resp.status_code, 200)
         data = json.loads(resp.data.decode('utf-8'))
         self.assertEqual(data['message'], 'succeed')
@@ -106,7 +108,35 @@ class DpvTest(unittest.TestCase):
         dpv = fixture_dpvs[0]
         self.fm.dpv_create(**dpv)
         dpv_name = dpv['dpv_name']
-        resp = self.client.delete('/dpvs/%s' % dpv_name)
+        path = '/dpvs/{dpv_name}'.format(
+            dpv_name=dpv_name)
+        resp = self.client.delete(path)
         self.assertEqual(resp.status_code, 200)
         dpv = self.fm.dpv_get(dpv_name)
         self.assertEqual(dpv, None)
+
+    @patch('dlvm.api_server.dpv.DpvClient')
+    def test_dpv_resize(self, DpvClient):
+        dpv = fixture_dpvs[0]
+        self.fm.dpv_create(**dpv)
+        dpv_name = dpv['dpv_name']
+        total_size = dpv['total_size']
+        free_size = dpv['free_size']
+        delta_size = 128*1024*1024*1024
+        client_mock = Mock()
+        DpvClient.return_value = client_mock
+        get_size_mock = Mock()
+        client_mock.get_size = get_size_mock
+        get_size_ret_mock = Mock()
+        get_size_mock.return_value = get_size_ret_mock
+        get_size_ret_mock.value = {
+            'total_size': total_size+delta_size,
+            'free_size': free_size+delta_size,
+        }
+        path = '/dpvs/{dpv_name}/resize'.format(
+            dpv_name=dpv_name)
+        resp = self.client.put(path)
+        self.assertEqual(resp.status_code, 200)
+        dpv_obj = self.fm.dpv_get(dpv_name)
+        self.assertEqual(dpv_obj.total_size, total_size+delta_size)
+        self.assertEqual(dpv_obj.free_size, free_size+delta_size)

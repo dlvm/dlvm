@@ -9,7 +9,7 @@ from dlvm.utils.configure import conf
 from dlvm.utils.error import DpvError, LimitExceedError, \
     ResourceDuplicateError, ResourceNotFoundError, ResourceBusyError
 from dlvm.utils.modules import db, \
-    DistributePhysicalVolume
+    DistributePhysicalVolume, DistributeVolumeGroup
 from dlvm.api_server.handler import general_query, DpvClient
 
 
@@ -76,5 +76,47 @@ def handle_dpv_delete(request_id, args, path_args):
         raise ResourceBusyError(
             'dpv', dpv_name, 'dvg', dpv.dvg_name)
     db.session.delete(dpv)
+    db.session.commit()
+    return None
+
+
+def handle_dpv_resize(request_id, args, path_args):
+    dpv_name = path_args[0]
+    client = DpvClient(dpv_name, 0)
+    try:
+        dpv = DistributePhysicalVolume \
+              .query \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dpv', dpv_name, traceback.format_exc())
+
+    try:
+        ret = client.get_size()
+        ret.wait()
+        dpv_info = ret.value
+        total_size = dpv_info['total_size']
+        free_size = dpv_info['free_size']
+        total_delta = total_size - dpv.total_size
+        free_delta = free_size - dpv.free_size
+        assert(total_delta == free_delta)
+    except Exception:
+        raise DpvError(dpv_name, traceback.format_exc())
+
+    dpv.total_size = total_size
+    dpv.free_size = free_size
+    db.session.add(dpv)
+
+    if dpv.dvg_name is not None:
+        dvg = DistributeVolumeGroup \
+              .query \
+              .with_lockmode('update') \
+              .filter_by(dvg_name=dpv.dvg_name) \
+              .one()
+        dvg.total_size += total_delta
+        dvg.free_size += free_delta
+        db.session.add(dvg)
+
     db.session.commit()
     return None

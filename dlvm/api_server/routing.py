@@ -10,7 +10,7 @@ from dlvm.utils.loginit import loginit
 from dlvm.utils.modules import db
 from dlvm.api_server.handler import handle_dlvm_request
 from dlvm.api_server.dpv import handle_dpvs_get, handle_dpvs_post, \
-    handle_dpv_get, handle_dpv_delete
+    handle_dpv_get, handle_dpv_delete, handle_dpv_resize
 from dlvm.api_server.dvg import handle_dvgs_get, handle_dvgs_post, \
     handle_dvg_get, handle_dvg_delete, \
     handle_dvg_extend, handle_dvg_reduce
@@ -143,6 +143,13 @@ class Dpv(Resource):
             handle_dpv_delete, None, [dpv_name], 200, None)
 
 
+class DpvResize(Resource):
+
+    def put(self, dpv_name):
+        return handle_dlvm_request(
+            handle_dpv_resize, None, [dpv_name], 200, None)
+
+
 dvgs_get_parser = reqparse.RequestParser()
 dvgs_get_parser.add_argument(
     'prev',
@@ -252,6 +259,7 @@ def create_app():
     api.add_resource(Root, '/')
     api.add_resource(Dpvs, '/dpvs')
     api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
+    api.add_resource(DpvResize, '/dpvs/<string:dpv_name>/resize')
     api.add_resource(Dvgs, '/dvgs')
     api.add_resource(Dvg, '/dvgs/<string:dvg_name>')
     api.add_resource(DvgExtend, '/dvgs/<string:dvg_name>/extend')
