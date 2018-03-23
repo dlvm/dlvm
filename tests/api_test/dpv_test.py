@@ -3,7 +3,7 @@
 import os
 import json
 import unittest
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 from dlvm.api_server.routing import create_app
 from dlvm.utils.modules import db
 from ..utils import FixtureManager

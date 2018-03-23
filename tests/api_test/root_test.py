@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from mock import patch
+from unittest.mock import patch
 from dlvm.api_server.routing import create_app
 from dlvm.utils.modules import db
 
