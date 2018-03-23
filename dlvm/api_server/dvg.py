@@ -6,7 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from dlvm.utils.configure import conf
 from dlvm.utils.error import LimitExceedError, \
-    ResourceDuplicateError, ResourceNotFoundError, ResourceBusyError
+    ResourceDuplicateError, ResourceNotFoundError, ResourceBusyError, \
+    ResourceInvalidError
 from dlvm.utils.modules import db, \
     DistributePhysicalVolume, DistributeVolumeGroup, DistributeLogicalVolume
 from dlvm.api_server.handler import general_query
@@ -84,5 +85,91 @@ def handle_dvg_delete(request_id, args, path_args):
     assert(dvg.free_size == 0)
 
     db.session.delete(dvg)
+    db.session.commit()
+    return None
+
+
+def handle_dvg_extend(request_id, args, path_args):
+    dvg_name = path_args[0]
+    dpv_name = args['dpv_name']
+    try:
+        dvg = DistributeVolumeGroup \
+              .query \
+              .filter_by(dvg_name=dvg_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dvg', dvg_name, traceback.format_exc())
+
+    try:
+        dpv = DistributePhysicalVolume \
+              .query \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dpv', dpv_name, traceback.format_exc())
+
+    if dpv.dvg_name is not None:
+        if dpv.dvg_name == dvg_name:
+            return None
+        else:
+            raise ResourceBusyError(
+                'dpv', dpv_name, 'dvg', dpv.dvg_name)
+
+    if dpv.status != 'available':
+        raise ResourceInvalidError(
+            'dpv', dpv_name, 'status', dpv.status)
+
+    assert(len(dpv.legs) == 0)
+    assert(dpv.total_size == dpv.free_size)
+
+    dpv.dvg_name = dvg_name
+    dvg.total_size += dpv.total_size
+    dvg.free_size += dpv.free_size
+    db.session.add(dpv)
+    db.session.add(dvg)
+    db.session.commit()
+    return None
+
+
+def handle_dvg_reduce(request_id, args, path_args):
+    dvg_name = path_args[0]
+    dpv_name = args['dpv_name']
+
+    try:
+        dvg = DistributeVolumeGroup \
+              .query \
+              .filter_by(dvg_name=dvg_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dvg', dvg_name, traceback.format_exc())
+
+    try:
+        dpv = DistributePhysicalVolume \
+              .query \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dpv', dpv_name, traceback.format_exc())
+
+    if dpv.dvg_name is None:
+        return None
+    if dpv.dvg_name != dvg_name:
+        raise ResourceInvalidError(
+            'dpv', dpv_name, 'dvg', dpv.dvg_name)
+
+    if (len(dpv.legs) != 0):
+        raise ResourceBusyError(
+            'dpv', dpv_name, 'leg', dpv.legs[0].leg_id)
+
+    assert(dpv.total_size == dpv.free_size)
+    dpv.dvg_name = None
+    dvg.total_size -= dpv.total_size
+    dvg.free_size -= dpv.free_size
+    db.session.add(dpv)
+    db.session.add(dvg)
     db.session.commit()
     return None

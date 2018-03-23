@@ -83,3 +83,23 @@ class ResourceBusyError(DlvmError):
             busy_id=busy_id,
         )
         super(ResourceBusyError, self).__init__(message)
+
+
+class ResourceInvalidError(DlvmError):
+
+    ret_code = 400
+
+    def __init__(self, res_type, res_name, field_name, field_value):
+        message = (
+            'resource_invalid '
+            'res_type={res_type} '
+            'res_name={res_name} '
+            'field_name={field_name} '
+            'field_value={field_value}'
+        ).format(
+            res_type=res_type,
+            res_name=res_name,
+            field_name=field_name,
+            field_value=field_value,
+        )
+        super(ResourceInvalidError, self).__init__(message)

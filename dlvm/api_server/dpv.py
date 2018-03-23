@@ -33,6 +33,7 @@ def handle_dpvs_post(request_id, args, path_args):
         dpv_info = ret.value
         total_size = dpv_info['total_size']
         free_size = dpv_info['free_size']
+        assert(total_size == free_size)
     except Exception:
         raise DpvError(dpv_name, traceback.format_exc())
     dpv = DistributePhysicalVolume(

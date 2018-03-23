@@ -43,6 +43,16 @@ class FixtureManager(object):
             return dpvs[0]
 
     @app_context
+    def dpv_set(self, dpv_name, name, value):
+        dpv = DistributePhysicalVolume \
+              .query \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+        setattr(dpv, name, value)
+        db.session.add(dpv)
+        db.session.commit()
+
+    @app_context
     def dvg_create(self, dvg_name):
         dvg = DistributeVolumeGroup(
             dvg_name=dvg_name,
@@ -63,3 +73,13 @@ class FixtureManager(object):
             return None
         else:
             return dvgs[0]
+
+    @app_context
+    def dvg_set(self, dvg_name, name, value):
+        dvg = DistributeVolumeGroup \
+               .query \
+               .filter_by(dvg_name=dvg_name) \
+               .one()
+        setattr(dvg, name, value)
+        db.session.add(dvg)
+        db.session.commit()

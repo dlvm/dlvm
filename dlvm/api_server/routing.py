@@ -12,7 +12,8 @@ from dlvm.api_server.handler import handle_dlvm_request
 from dlvm.api_server.dpv import handle_dpvs_get, handle_dpvs_post, \
     handle_dpv_get, handle_dpv_delete
 from dlvm.api_server.dvg import handle_dvgs_get, handle_dvgs_post, \
-    handle_dvg_get, handle_dvg_delete
+    handle_dvg_get, handle_dvg_delete, \
+    handle_dvg_extend, handle_dvg_reduce
 
 
 dpv_fields = OrderedDict()
@@ -180,7 +181,7 @@ dvgs_post_parser.add_argument(
     'dvg_name',
     type=str,
     required=True,
-    location='json'
+    location='json',
 )
 
 
@@ -209,6 +210,38 @@ class Dvg(Resource):
             handle_dvg_delete, None, [dvg_name], 200, None)
 
 
+dvg_extend_parser = reqparse.RequestParser()
+dvg_extend_parser.add_argument(
+    'dpv_name',
+    type=str,
+    required=True,
+    location='json',
+)
+
+
+class DvgExtend(Resource):
+
+    def put(self, dvg_name):
+        return handle_dlvm_request(
+            handle_dvg_extend, dvg_extend_parser, [dvg_name], 200, None)
+
+
+dvg_reduce_parser = reqparse.RequestParser()
+dvg_reduce_parser.add_argument(
+    'dpv_name',
+    type=str,
+    required=True,
+    location='json',
+)
+
+
+class DvgReduce(Resource):
+
+    def put(self, dvg_name):
+        return handle_dlvm_request(
+            handle_dvg_reduce, dvg_reduce_parser, [dvg_name], 200, None)
+
+
 def create_app():
     loginit()
     app = Flask(__name__)
@@ -221,6 +254,8 @@ def create_app():
     api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
     api.add_resource(Dvgs, '/dvgs')
     api.add_resource(Dvg, '/dvgs/<string:dvg_name>')
+    api.add_resource(DvgExtend, '/dvgs/<string:dvg_name>/extend')
+    api.add_resource(DvgReduce, '/dvgs/<string:dvg_name>/reduce')
     return app
 
 
