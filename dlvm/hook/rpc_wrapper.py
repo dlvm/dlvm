@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from typing import List, Callable, Any, \
     Sequence, Mapping, MutableMapping, Optional, NewType
 import time

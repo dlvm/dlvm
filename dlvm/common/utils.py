@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from typing import NewType, MutableSet, Sequence, Generator
 import os
 from logging.handlers import WatchedFileHandler

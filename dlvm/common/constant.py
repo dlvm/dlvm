@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import os
 
 lc_path = os.environ.get('DLVM_CONF', '/etc/dlvm')

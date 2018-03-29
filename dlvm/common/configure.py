@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from typing import List
 import os
 from configparser import SafeConfigParser

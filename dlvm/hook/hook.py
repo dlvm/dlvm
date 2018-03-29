@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from typing import Type, List, Sequence, Mapping, Any, Union, Optional
 from abc import ABC, abstractmethod
 from importlib import import_module
