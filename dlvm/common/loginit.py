@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 
 import os
+import logging
 import logging.config
+from threading import Lock
 import yaml
 
-from dlvm.utils.constant import lc_path
+from dlvm.common.constant import lc_path
 
 logger_conf_path = os.path.join(lc_path, 'logger.yml')
 
 inited = False
+lock = Lock()
 
 
-def loginit():
+def __loginit():
     global inited
     if inited is True:
         return
@@ -20,3 +23,8 @@ def loginit():
             logger_conf = yaml.safe_load(f)
             logging.config.dictConfig(logger_conf)
             inited = True
+
+
+def loginit():
+    with lock:
+        __loginit()
