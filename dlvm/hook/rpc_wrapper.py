@@ -43,19 +43,19 @@ class RpcServer():
 
         def wrapper(
                 self, req_id: ReqId, expire_time: int,
-                args: Sequence, kwargs: Mapping)-> RpcRet:
+                args: Sequence)-> RpcRet:
             hook_ret_dict: MutableMapping[
                 RpcServerHook, Optional[HookRet]] = {}
             req_ctx = RequestContext(req_id, logger)
             param = RpcServerParam(
-                func.__name__, req_ctx, expire_time, args, kwargs)
+                func.__name__, req_ctx, expire_time, args)
             for hook in rpc_server_hook_list:
                 try:
                     hook_ret = hook.pre_hook(param)
                 except Exception:
                     logger.error(
                         'rpc server pre_hook failed: %s %s',
-                        repr(param), hook.__name__,
+                        repr(param), repr(hook),
                         exc_info=True)
                 else:
                     hook_ret_dict[hook] = hook_ret
@@ -63,7 +63,7 @@ class RpcServer():
                 curr_time = int(time.time())
                 if expire_time != 0 and curr_time > expire_time:
                     raise RpcExpireError(curr_time, expire_time)
-                ret = func(req_ctx, *args, **kwargs)
+                ret = func(req_ctx, *args)
             except Exception as e:
                 calltrace = traceback.format_exc()
                 for hook in rpc_server_hook_list:
@@ -74,7 +74,7 @@ class RpcServer():
                     except Exception:
                         logger.error(
                             'rpc server error_hook failed: %s %s %s %s %s',
-                            hook.__name__, repr(param),
+                            repr(hook), repr(param),
                             hook_ret, e, calltrace,
                             exc_info=True)
                 raise
@@ -87,7 +87,7 @@ class RpcServer():
                     except Exception:
                         logger.error(
                             'rpc server post_hook failed: %s %s %s %s',
-                            hook.__name__, repr(param),
+                            repr(hook), repr(param),
                             ret, hook_ret, exc_info=True)
                 return ret
         setattr(self.service, name, wrapper)
@@ -109,10 +109,10 @@ class RpcResponse():
         self.hook_ret_dict = hook_ret_dict
         self.async_result = async_result
 
-    def get_value(self)-> Any:
+    def get_value(self)-> RpcRet:
         try:
             self.async_result.wait()
-            ret = self.async_result.value
+            ret: RpcRet = self.async_result.value
         except Exception as e:
             calltrace = traceback.format_exc()
             for hook in rpc_client_hook_list:
@@ -123,7 +123,7 @@ class RpcResponse():
                 except Exception:
                     self.req_ctx.logger.error(
                         'rpc client error_hook failed: %s %s %s %s %s',
-                        hook.__name__, repr(self.param),
+                        repr(hook), repr(self.param),
                         hook_ret, e, calltrace,
                         exc_info=True)
             raise
@@ -136,7 +136,7 @@ class RpcResponse():
                 except Exception:
                     self.req_ctx.logger.error(
                         'rpc client post_hook failed: %s %s %s %s',
-                        hook.__name__, repr(self.param), ret, hook_ret,
+                        repr(hook), repr(self.param), ret, hook_ret,
                         exc_info=True)
             return ret
 
@@ -154,9 +154,9 @@ class RpcClient():
 
     def __getattr__(self, key: str)-> Callable[..., Any]:
 
-        def func(self, *args, **kwargs)-> RpcResponse:
+        def func(self, *args)-> RpcResponse:
             param = RpcClientParam(
-                key, self.req_ctx, self.expire_time, args, kwargs)
+                key, self.req_ctx, self.expire_time, args)
             hook_ret_dict: MutableMapping[
                 RpcClientHook, Optional[HookRet]] = {}
             for hook in rpc_client_hook_list:
@@ -165,14 +165,14 @@ class RpcClient():
                 except Exception:
                     self.req_ctx.logger.error(
                         'rpc client pre_hook failed: %s %s',
-                        repr(param), hook.__name__, exc_info=True)
+                        repr(param), repr(hook), exc_info=True)
                 else:
                     hook_ret_dict[hook] = hook_ret
             try:
                 conn = rpyc.connect(self.addr, self.port)
                 remote_func = rpyc.async(getattr(conn.root, key))
                 async_result = remote_func(
-                    self.req_ctx.uuid, self.expire_time, args, kwargs)
+                    self.req_ctx.uuid, self.expire_time, args)
                 async_result.set_expiry(self.timeout)
             except Exception as e:
                 calltrace = traceback.format_exc()
@@ -184,7 +184,7 @@ class RpcClient():
                     except Exception:
                         self.req_ctx.logger.error(
                             'rpc server error_hook failed: %s %s %s %s %s',
-                            hook.__name__, repr(param),
+                            repr(hook), repr(param),
                             hook_ret, e, calltrace,
                             exc_info=True)
             return RpcResponse(

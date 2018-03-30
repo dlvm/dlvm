@@ -54,6 +54,10 @@ DEFAULT_CONF = {
     'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
     'db_uri':  'sqlite:////tmp/dlvm.db',
     'rpc_expiry': '5',
+    'rpc_server_hook': '',
+    'rpc_client_hook': '',
+    'api_hook': '',
+    'mq_hook': '',
 }
 
 

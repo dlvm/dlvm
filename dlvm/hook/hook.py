@@ -1,4 +1,4 @@
-from typing import Type, List, Sequence, Mapping, Any, Union, Optional
+from typing import Type, NewType, List, Sequence, Any, Union, Optional
 from abc import ABC, abstractmethod
 from importlib import import_module
 
@@ -6,13 +6,12 @@ from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext
 
 
-class HookRet(ABC):
-    pass
+HookRet = NewType('HookRet', tuple)
 
 
 class ApiHook(ABC):
 
-    __name__ = 'api_hook'
+    hook_name = 'api_hook'
 
     @abstractmethod
     def pre_hook(self)->None:
@@ -31,25 +30,24 @@ class RpcServerParam():
 
     def __init__(
             self, func_name, req_ctx: RequestContext, expire_time: int,
-            args: Sequence, kwargs: Mapping)-> None:
+            args: Sequence)-> None:
         self.func_name = func_name
         self.req_ctx = req_ctx
         self.expire_time = expire_time
         self.args = args,
-        self.kwargs = kwargs
 
     def __repr__(self):
         return (
             'RpcServerParam('
-            'func_name={0},req_ctx={1},expire_time={2},args={3},kwargs={4})'
+            'func_name={0},req_ctx={1},expire_time={2},args={3})'
         ).format(
             self.func_name, repr(self.req_ctx), self.expire_time,
-            self.args, self.kwargs)
+            self.args)
 
 
 class RpcServerHook(ABC):
 
-    __name__ = 'rpc_server_hook'
+    hook_name = 'rpc_server_hook'
 
     @abstractmethod
     def pre_hook(self, param: RpcServerParam)-> Optional[HookRet]:
@@ -72,25 +70,24 @@ class RpcClientParam():
 
     def __init__(
             self, func_name, req_ctx: RequestContext, expire_time: int,
-            args: Sequence, kwargs: Mapping)-> None:
+            args: Sequence)-> None:
         self.func_name = func_name
         self.req_ctx = req_ctx
         self.expire_time = expire_time
         self.args = args,
-        self.kwargs = kwargs
 
     def __repr__(self):
         return (
             'RpcParam('
-            'func_name={0},req_ctx={1},expire_time={2},args={3},kwargs={4})'
+            'func_name={0},req_ctx={1},expire_time={2},args={3})'
         ).format(
             self.func_name, repr(self.req_ctx), self.expire_time,
-            self.args, self.kwargs)
+            self.args)
 
 
 class RpcClientHook(ABC):
 
-    __name__ = 'rpc_client_hook'
+    hook_name = 'rpc_client_hook'
 
     @abstractmethod
     def pre_hook(self, param: RpcClientParam)-> Optional[HookRet]:
@@ -108,13 +105,16 @@ class RpcClientHook(ABC):
         raise NotImplementedError
 
 
-def build_hook(
-        hook_cls: Union[
-            Type[ApiHook],
-            Type[RpcServerHook],
-            Type[RpcClientHook]])-> List:
+HookType = Union[
+    Type[ApiHook],
+    Type[RpcServerHook],
+    Type[RpcClientHook],
+]
+
+
+def build_hook(hook_cls: HookType)-> List:
     hook_list = []
-    cfg_hook_list = cfg.getliststr('hook', hook_cls.__name__)
+    cfg_hook_list = cfg.getliststr('hook', hook_cls.hook_name)
     for cfg_hook_path in cfg_hook_list:
         spliter = cfg_hook_path.rindex('.')
         mod_name = cfg_hook_path[:spliter]
