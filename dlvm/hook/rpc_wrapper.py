@@ -1,5 +1,6 @@
 from typing import List, Callable, Any, \
     Sequence, Mapping, MutableMapping, Optional, NewType
+from types import MethodType
 import time
 from logging import Logger
 import traceback
@@ -103,10 +104,11 @@ class RpcResponse():
     def __init__(
             self, req_ctx: RequestContext, param: RpcClientParam,
             hook_ret_dict: Mapping[RpcClientHook, Optional[HookRet]],
-            async_result: AsyncResult)-> None:
+            conn, async_result: AsyncResult)-> None:
         self.req_ctx = req_ctx
         self.param = param
         self.hook_ret_dict = hook_ret_dict
+        self.conn = conn
         self.async_result = async_result
 
     def get_value(self)-> RpcRet:
@@ -172,7 +174,7 @@ class RpcClient():
                 conn = rpyc.connect(self.addr, self.port)
                 remote_func = rpyc.async(getattr(conn.root, key))
                 async_result = remote_func(
-                    self.req_ctx.uuid, self.expire_time, args)
+                    self.req_ctx.req_id, self.expire_time, args)
                 async_result.set_expiry(self.timeout)
             except Exception as e:
                 calltrace = traceback.format_exc()
@@ -187,7 +189,8 @@ class RpcClient():
                             repr(hook), repr(param),
                             hook_ret, e, calltrace,
                             exc_info=True)
+                raise
             return RpcResponse(
-                self.req_ctx, param, hook_ret_dict, async_result)
+                self.req_ctx, param, hook_ret_dict, conn, async_result)
 
-        return func
+        return MethodType(func, self)
