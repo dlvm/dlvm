@@ -48,6 +48,15 @@ class RpcWrapperServerTest(unittest.TestCase):
         conn = rpyc.connect('localhost', 9522)
         max_size = 16*1024*1024*1024*1024
         chunk_size = 128 * 1024
-        bm_size = (max_size // chunk_size) // 8
+        bm_size = max_size // chunk_size
         bm = BitMap(bm_size)
+        for i in range(bm_size):
+            if i % 7 != 0:
+                bm.set(i)
         ret, = conn.root.bitmap_operation('0', 0, args=[bm])
+        for i in range(bm_size):
+            test_ret = bm.test(i)
+            if i % 7 == 0:
+                self.assertFalse(test_ret)
+            else:
+                self.assertTrue(test_ret)
