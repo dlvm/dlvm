@@ -38,7 +38,7 @@ class RpcServer():
         self.port = port
         self.service = type(name, (rpyc.Service,), {})
 
-    def rpc(self, func: Callable[..., RpcRet])-> None:
+    def rpc(self, func: Callable[..., RpcRet])-> Callable[..., RpcRet]:
         name = 'exposed_' + func.__name__
         logger = self.logger
 
@@ -92,6 +92,7 @@ class RpcServer():
                             ret, hook_ret, exc_info=True)
                 return ret
         setattr(self.service, name, wrapper)
+        return func
 
     def start(self):
         t = ThreadedServer(
