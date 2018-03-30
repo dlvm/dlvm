@@ -105,7 +105,7 @@ class RpcResponse():
     def __init__(
             self, req_ctx: RequestContext, param: RpcClientParam,
             hook_ret_dict: Mapping[RpcClientHook, Optional[HookRet]],
-            conn, async_result: AsyncResult)-> None:
+            conn: Any, async_result: AsyncResult)-> None:
         self.req_ctx = req_ctx
         self.param = param
         self.hook_ret_dict = hook_ret_dict
