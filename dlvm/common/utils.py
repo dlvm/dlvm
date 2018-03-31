@@ -1,4 +1,4 @@
-from typing import NewType, MutableSet, Sequence, Generator, \
+from typing import NewType, MutableSet, Sequence, Mapping, Generator, \
     Any, Callable, Union
 import os
 from threading import Lock
@@ -18,7 +18,7 @@ class RequestContext():
         self.req_id = req_id
         self.logger = logger
 
-    def __repr__(self):
+    def __repr__(self)-> str:
         return 'RequestContext(req_id={0},logger={1})'.format(
             self.req_id, self.logger)
 
@@ -30,7 +30,7 @@ class WorkContext():
         self.session = session
         self.done_set = done_set
 
-    def __repr__(self):
+    def __repr__(self)-> str:
         return 'WorkContext(session={0},done_set={1}'.format(
             self.session, self.done_set)
 
@@ -45,7 +45,7 @@ def singleton(cls: type)-> Callable:
     instance = None
     lock = Lock()
 
-    def _singleton(*args, **kwargs)-> Any:
+    def _singleton(*args: Sequence, **kwargs: Mapping)-> Any:
         nonlocal instance
         with lock:
             if instance is None:
@@ -57,7 +57,8 @@ def singleton(cls: type)-> Callable:
 
 class PidWatchedFileHandler(WatchedFileHandler):
 
-    def __init__(self, filename: str, *args, **kwargs)-> None:
+    def __init__(
+            self, filename: str, *args: Any, **kwargs: Any)-> None:
         filename_pid = '{filename}-{pid}'.format(
             filename=filename, pid=os.getpid())
         super(PidWatchedFileHandler, self).__init__(

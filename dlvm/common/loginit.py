@@ -12,7 +12,7 @@ inited = False
 lock = Lock()
 
 
-def __loginit():
+def __loginit()-> None:
     global inited
     if inited is True:
         return
@@ -23,6 +23,6 @@ def __loginit():
             inited = True
 
 
-def loginit():
+def loginit()-> None:
     with lock:
         __loginit()

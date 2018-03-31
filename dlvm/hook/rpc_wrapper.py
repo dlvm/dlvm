@@ -1,5 +1,5 @@
 from typing import List, Callable, Any, \
-    Sequence, Mapping, MutableMapping, Optional, NewType
+    Sequence, Mapping, MutableMapping, Optional
 from types import MethodType
 import time
 from logging import Logger
@@ -10,11 +10,8 @@ from rpyc.utils.server import ThreadedServer
 from rpyc import AsyncResult
 
 from dlvm.common.utils import ReqId, RequestContext
-from dlvm.hook.hook import build_hook, HookRet, \
+from dlvm.hook.hook import build_hook, HookRet, RpcRet, \
     RpcServerHook, RpcServerParam, RpcClientHook, RpcClientParam
-
-
-RpcRet = NewType('RpcRet', tuple)
 
 
 rpc_server_hook_list: List[RpcServerHook] = build_hook(RpcServerHook)
@@ -43,7 +40,7 @@ class RpcServer():
         logger = self.logger
 
         def wrapper(
-                self, req_id: ReqId, expire_time: int,
+                self: Any, req_id: ReqId, expire_time: int,
                 args: Sequence)-> RpcRet:
             hook_ret_dict: MutableMapping[
                 RpcServerHook, Optional[HookRet]] = {}
@@ -94,7 +91,7 @@ class RpcServer():
         setattr(self.service, name, wrapper)
         return func
 
-    def start(self):
+    def start(self)-> None:
         t = ThreadedServer(
             self.service, hostname=self.hostname, port=self.port)
         t.start()
@@ -157,7 +154,7 @@ class RpcClient():
 
     def __getattr__(self, key: str)-> Callable[..., Any]:
 
-        def func(self, *args)-> RpcResponse:
+        def func(self: Any, *args: Any)-> RpcResponse:
             param = RpcClientParam(
                 key, self.req_ctx, self.expire_time, args)
             hook_ret_dict: MutableMapping[

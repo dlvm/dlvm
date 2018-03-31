@@ -1,4 +1,4 @@
-from typing import Type, NewType, List, Sequence, Mapping, Any, Union, Optional
+from typing import Type, NewType, List, Sequence, Mapping, Union, Optional
 from abc import ABC, abstractmethod
 from importlib import import_module
 
@@ -7,6 +7,8 @@ from dlvm.common.utils import RequestContext, WorkContext
 
 
 HookRet = NewType('HookRet', tuple)
+
+RpcRet = NewType('RpcRet', tuple)
 
 
 class ApiParam():
@@ -22,6 +24,15 @@ class ApiParam():
         self.work_ctx = work_ctx
         self.params = params
         self.kwargs = kwargs
+
+    def __repr__(self)-> str:
+        return (
+            'ApiParam('
+            'func_name={0},req_ctx={1},work_ctx={2},'
+            'params={4},kwargs={5}'
+        ).format(
+            self.func_name, repr(self.req_ctx), repr(self.work_ctx),
+            self.params, self.kwargs)
 
 
 class ApiHook(ABC):
@@ -54,7 +65,7 @@ class RpcServerParam():
         self.expire_time = expire_time
         self.args = args,
 
-    def __repr__(self):
+    def __repr__(self)-> str:
         return (
             'RpcServerParam('
             'func_name={0},req_ctx={1},expire_time={2},args={3})'
@@ -73,7 +84,7 @@ class RpcServerHook(ABC):
 
     @abstractmethod
     def post_hook(self, param: RpcServerParam,
-                  hook_ret: Optional[HookRet], ret: Any)-> None:
+                  hook_ret: Optional[HookRet], ret: RpcRet)-> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -94,7 +105,7 @@ class RpcClientParam():
         self.expire_time = expire_time
         self.args = args,
 
-    def __repr__(self):
+    def __repr__(self)-> str:
         return (
             'RpcParam('
             'func_name={0},req_ctx={1},expire_time={2},args={3})'
@@ -113,7 +124,7 @@ class RpcClientHook(ABC):
 
     @abstractmethod
     def post_hook(self, param: RpcClientParam,
-                  hook_ret: Optional[HookRet], ret: Any)-> None:
+                  hook_ret: Optional[HookRet], ret: RpcRet)-> None:
         raise NotImplementedError
 
     @abstractmethod

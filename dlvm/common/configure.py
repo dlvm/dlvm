@@ -58,9 +58,15 @@ class DlvmConf():
             = 'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost'
         self.db_uri = 'sqlite://'
         self.rpc_expiry = 5
-        self.api_hook: Sequence[str] = []
-        self.rpc_server_hook: Sequence[str] = []
-        self.rpc_client_hook: Sequence[str] = []
+        self.api_hook: Sequence[str] = [
+            'dlvm.hook.log_hook.LogApiHook',
+        ]
+        self.rpc_server_hook: Sequence[str] = [
+            'dlvm.hook.log_hook.LogRpcServerHook',
+        ]
+        self.rpc_client_hook: Sequence[str] = [
+            'dlvm.hook.log_hook.LogRpcClientHook',
+        ]
         self.mq_hook: Sequence[str] = []
 
     def load_conf(self, conf_path: str)-> None:
