@@ -1,12 +1,27 @@
-from typing import Type, NewType, List, Sequence, Any, Union, Optional
+from typing import Type, NewType, List, Sequence, Mapping, Any, Union, Optional
 from abc import ABC, abstractmethod
 from importlib import import_module
 
 from dlvm.common.configure import cfg
-from dlvm.common.utils import RequestContext
+from dlvm.common.utils import RequestContext, WorkContext
 
 
 HookRet = NewType('HookRet', tuple)
+
+
+class ApiParam():
+
+    def __init__(
+            self, func_name: str,
+            req_ctx: RequestContext,
+            work_ctx: WorkContext,
+            params: Optional[Mapping],
+            kwargs: Optional[Mapping])-> None:
+        self.func_name = func_name
+        self.req_ctx = req_ctx
+        self.work_ctx = work_ctx
+        self.params = params
+        self.kwargs = kwargs
 
 
 class ApiHook(ABC):
@@ -14,22 +29,25 @@ class ApiHook(ABC):
     hook_name = 'api_hook'
 
     @abstractmethod
-    def pre_hook(self)->None:
-        pass
+    def pre_hook(self, param: ApiParam)-> Optional[HookRet]:
+        raise NotImplementedError
 
     @abstractmethod
-    def post_hook(self)->None:
-        pass
+    def post_hook(
+            self, param: ApiParam, hook_ret: Optional[HookRet],
+            body: Mapping)-> None:
+        raise NotImplementedError
 
     @abstractmethod
-    def error_hook(self)->None:
-        pass
+    def error_hook(self, param: ApiParam, hook_ret: Optional[HookRet],
+                   e: Exception, calltrace: str)-> None:
+        raise NotImplementedError
 
 
 class RpcServerParam():
 
     def __init__(
-            self, func_name, req_ctx: RequestContext, expire_time: int,
+            self, func_name: str, req_ctx: RequestContext, expire_time: int,
             args: Sequence)-> None:
         self.func_name = func_name
         self.req_ctx = req_ctx
@@ -69,7 +87,7 @@ class RpcServerHook(ABC):
 class RpcClientParam():
 
     def __init__(
-            self, func_name, req_ctx: RequestContext, expire_time: int,
+            self, func_name: str, req_ctx: RequestContext, expire_time: int,
             args: Sequence)-> None:
         self.func_name = func_name
         self.req_ctx = req_ctx

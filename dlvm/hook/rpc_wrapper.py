@@ -89,7 +89,7 @@ class RpcServer():
                         logger.error(
                             'rpc server post_hook failed: %s %s %s %s',
                             repr(hook), repr(param),
-                            ret, hook_ret, exc_info=True)
+                            hook_ret, ret, exc_info=True)
                 return ret
         setattr(self.service, name, wrapper)
         return func
