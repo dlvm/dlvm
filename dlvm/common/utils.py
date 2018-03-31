@@ -1,8 +1,9 @@
-from typing import NewType, MutableSet, Sequence, Generator, Any, Callable
+from typing import NewType, MutableSet, Sequence, Generator, \
+    Any, Callable, Union
 import os
 from threading import Lock
 from logging.handlers import WatchedFileHandler
-from logging import Logger
+from logging import Logger, LoggerAdapter
 
 from sqlalchemy.orm.session import Session
 
@@ -12,7 +13,8 @@ ReqId = NewType('ReqId', str)
 
 class RequestContext():
 
-    def __init__(self, req_id: ReqId, logger: Logger)-> None:
+    def __init__(
+            self, req_id: ReqId, logger: Union[Logger, LoggerAdapter])-> None:
         self.req_id = req_id
         self.logger = logger
 

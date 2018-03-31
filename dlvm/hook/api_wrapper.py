@@ -14,7 +14,7 @@ from dlvm.common.error import DlvmError
 from dlvm.hook.hook import build_hook, ApiHook, ApiParam, HookRet
 
 
-logger = logging.getLogger('dlvm_api')
+ori_logger = logging.getLogger('dlvm_api')
 
 api_hook_list: List[ApiHook] = build_hook(ApiHook)
 
@@ -28,6 +28,7 @@ def handle_dlvm_api(
     req_id = ReqId(uuid.uuid4().hex)
     response: OrderedDict = OrderedDict()
     response['req_id'] = req_id
+    logger = logging.LoggerAdapter(ori_logger, {'req_id': req_id})
     req_ctx = RequestContext(req_id, logger)
     if parser is None:
         params = None
