@@ -1,87 +1,76 @@
-from typing import List
+from typing import Sequence
 import os
-from configparser import SafeConfigParser
+
+import yaml
 
 from dlvm.common.constant import lc_path
+from dlvm.common.utils import singleton
 
 
-DEFAULT_CONF = {
-    'dpv_port': '9522',
-    'dpv_listener': '127.0.0.1',
-    'ihost_port': '9523',
-    'ihost_listener': '127.0.0.1',
-    'local_vg': 'dlvm_vg',
-    'list_limit': '100',
-    'dpv_timeout': '300',
-    'ihost_timeout': '300',
-    'test_mode': 'no',
-    'init_factor': '4',
-    'init_max': '200G',
-    'init_min': '1G',
-    'lvm_unit': '4M',
-    'thin_meta_factor': '48',
-    'thin_meta_min': '2M',
-    'mirror_meta_size': '2M',
-    'thin_block_size': '2M',
-    'mirror_meta_blocks': '1',
-    'mirror_region_size': '2M',
-    'stripe_chunk_blocks': '1',
-    'low_water_mark': '100',
-    'sudo': 'yes',
-    'tmp_dir': '/tmp',
-    'dpv_prefix': 'dlvmback',
-    'ihost_prefix': 'dlvmfront',
-    'fj_mirror_interval': '10',
-    'cj_mirror_interval': '10',
-    'cj_data_factor': '2',
-    'cj_meta_size': '2M',
-    'cj_block_sectors': '4096',
-    'cj_low_water_mark': '10',
-    'cmd_paths': '',
-    'iscsi_port': '3260',
-    'iscsi_userid': 'dlvm_user',
-    'iscsi_password': 'dlvm_password',
-    'monitor_program': '/opt/dlvm_env/bin/dlvm_monitor_action.py',
-    'fj_meta_size': '4M',
-    'bm_throttle': '0',
-    'target_prefix': 'iqn.2016-12.dlvm.target',
-    'initiator_prefix': 'iqn.2016-12.dlvm.initiator',
-    'initiator_iface': 'default',
-    'iscsi_path_fmt':
-    '/dev/disk/by-path/ip-{address}:{port}-iscsi-{target_name}-lun-0',
-    'work_dir': '/opt/dlvm_work_dir',
-    'broker_url':
-    'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost',
-    'db_uri':  'sqlite:////tmp/dlvm.db',
-    'rpc_expiry': '5',
-    'rpc_server_hook': '',
-    'rpc_client_hook': '',
-    'api_hook': '',
-    'mq_hook': '',
-}
+@singleton
+class DlvmConf():
+
+    def __init__(self)-> None:
+        self.dpv_port = 9522
+        self.dpv_listener = '127.0.0.1'
+        self.ihost_port = 9523
+        self.ihost_listener = '127.0.0.1'
+        self.local_vg = 'dlvm_vg'
+        self.list_limit = 100
+        self.dpv_timeout = 300
+        self.ihost_timeout = 300
+        self.test_mode = False
+        self.init_factor = 4
+        self.init_max = 200*1024*1024*1024
+        self.init_min = 1024*1024*1024*1024
+        self.lvm_unit = 4*1024*1024
+        self.thin_meta_factor = 48
+        self.thin_meta_min = 2*1024*1024
+        self.mirror_meta_size = 2*1024*1024
+        self.thin_block_size = 2*1024*1024
+        self.mirror_meta_blocks = 1
+        self.mirror_region_size = 2*1024*1024
+        self.stripe_chunk_blocks = 1
+        self.low_water_mark = 100
+        self.sudo = True
+        self.tmp_dir = '/tmp'
+        self.dpv_prefix = 'dlvmback'
+        self.ihost_prefix = 'dlvmfront'
+        self.fj_mirror_interval = 10
+        self.cj_mirror_interval = 10
+        self.cj_data_factor = 2
+        self.cj_meta_size = 2*1024*1024
+        self.cj_block_sectors = 4096
+        self.cj_low_water_mark = 10
+        self.cmd_paths: Sequence[str] = []
+        self.iscsi_port = 3260
+        self.iscsi_userid = 'dlvm_user'
+        self.iscsi_password = 'dlvm_password'
+        self.fj_meta_size = 4194304
+        self.bm_throttle = 0
+        self.target_prefix = 'iqn.2016-12.dlvm.target'
+        self.initiator_prefix = 'iqn.2016-12.dlvm.initiator'
+        self.initiator_iface = 'default'
+        self.iscsi_path_fmt \
+            = '/dev/disk/by-path/ip-{address}:{port}-iscsi-{target_name}-lun-0'
+        self.work_dir = '/opt/dlvm_work_dir'
+        self.broker_uri \
+            = 'amqp://dlvm_monitor:dlvm_password@localhost:5672/dlvm_vhost'
+        self.db_uri = 'sqlite://'
+        self.rpc_expiry = 5
+        self.api_hook: Sequence[str] = []
+        self.rpc_server_hook: Sequence[str] = []
+        self.rpc_client_hook: Sequence[str] = []
+        self.mq_hook: Sequence[str] = []
+
+    def load_conf(self, conf_path: str)-> None:
+        if os.path.isfile(conf_path):
+            with open(conf_path) as f:
+                conf_dict = yaml.safe_load(f)
+            for key in conf_dict:
+                setattr(self, key, conf_dict[key])
 
 
-unit_mapping = {
-    'G': 1024*1024*1024,
-    'M': 1024*1024,
-    'K': 1024,
-    'S': 512,
-}
-
-
-class DlvmConfigParser(SafeConfigParser):
-
-    def getliststr(self, section: str, name: str)-> List[str]:
-        return self.get(section, name).split()
-
-    def getsize(self, section: str, name: str)-> int:
-        raw_value = self.get(section, name)
-        value = int(raw_value[:-1])
-        unit = raw_value[-1]
-        return value * unit_mapping[unit]
-
-
-cfg = DlvmConfigParser(DEFAULT_CONF)
-cfg_path = os.path.join(lc_path, 'dlvm.cfg')
-if os.path.isfile(cfg_path):
-    cfg.read(cfg_path)
+conf_path = os.path.join(lc_path, 'dlvm.yml')
+cfg = DlvmConf()
+cfg.load_conf(conf_path)

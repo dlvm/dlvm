@@ -1,5 +1,6 @@
-from typing import NewType, MutableSet, Sequence, Generator
+from typing import NewType, MutableSet, Sequence, Generator, Any, Callable
 import os
+from threading import Lock
 from logging.handlers import WatchedFileHandler
 from logging import Logger
 
@@ -36,6 +37,20 @@ def chunks(array: Sequence, n: int)-> Generator[Sequence, None, None]:
     """Yield successive n-sized chunks from array."""
     for i in range(0, len(array), n):
         yield array[i:i+n]
+
+
+def singleton(cls: type)-> Callable:
+    instance = None
+    lock = Lock()
+
+    def _singleton(*args, **kwargs)-> Any:
+        nonlocal instance
+        with lock:
+            if instance is None:
+                instance = cls(*args, **kwargs)
+        return instance
+
+    return _singleton
 
 
 class PidWatchedFileHandler(WatchedFileHandler):

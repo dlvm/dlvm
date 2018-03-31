@@ -114,7 +114,7 @@ HookType = Union[
 
 def build_hook(hook_cls: HookType)-> List:
     hook_list = []
-    cfg_hook_list = cfg.getliststr('hook', hook_cls.hook_name)
+    cfg_hook_list = getattr(cfg, hook_cls.hook_name)
     for cfg_hook_path in cfg_hook_list:
         spliter = cfg_hook_path.rindex('.')
         mod_name = cfg_hook_path[:spliter]
