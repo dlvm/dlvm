@@ -12,7 +12,6 @@ from dlvm.common.error import LimitExceedError
 from dlvm.common.loginit import loginit
 from dlvm.hook.api_wrapper import handle_dlvm_api
 from dlvm.core.modules import FieldType, DistributeLogicalVolume
-from dlvm.core.helper import create_all
 from dlvm.core.dpv import dpv_list, dpv_create
 
 
@@ -122,21 +121,21 @@ def handle_dpvs_get(
         params: Mapping[str, FieldType],
         kwargs: Mapping[str, str],
 )-> List[DistributeLogicalVolume]:
-    order_by = params['order_by']
+    order_by = cast(str, params['order_by'])
     if params['reverse'] == 'true':
         reverse = True
     else:
         reverse = False
-    offset = params['offset']
-    limit: int = cast(int, params['limit'])
+    offset = cast(int, params['offset'])
+    limit = cast(int, params['limit'])
     if limit > cfg.list_limit:
         raise LimitExceedError(limit, cfg.list_limit)
-    status = params['status']
+    status = cast(str, params['status'])
     if params['locked'] == 'true':
         locked = True
     else:
         locked = False
-    dvg_name = params['dvg_name']
+    dvg_name = cast(str, params['dvg_name'])
     return dpv_list(
         req_ctx, work_ctx,
         order_by, reverse,
@@ -147,11 +146,11 @@ def handle_dpvs_get(
 def handle_dpvs_post(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
-        Params: Mapping[str, FieldType],
+        params: Mapping[str, FieldType],
         kwargs: Mapping[str, str],
 )-> None:
-    dpv_name = kwargs['dpv_name']
-    dpv_create(dpv_name)
+    dpv_name = cast(str, params['dpv_name'])
+    dpv_create(req_ctx, work_ctx, dpv_name)
     return None
 
 
@@ -161,15 +160,13 @@ class Dpvs(Resource):
         return handle_dlvm_api(
             handle_dpvs_get, 200, dpvs_get_parser, dpv_summary_fields, {})
 
-    def post(self, dpv_name: str)-> Tuple[OrderedDict, int]:
-        kwargs = {'dpv_name': dpv_name}
+    def post(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            handle_dpvs_post, 200, dpvs_post_parser, None, kwargs)
+            handle_dpvs_post, 200, dpvs_post_parser, None, {})
 
 
 def create_app()-> Flask:
     loginit()
-    create_all()
     app = Flask(__name__)
     api = Api(app)
     api.add_resource(Root, '/')

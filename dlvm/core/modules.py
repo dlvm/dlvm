@@ -12,7 +12,7 @@ FieldType = Union[int, str, None]
 Base = declarative_base()
 
 
-class DistributePhysicalVolume(Base):
+class DistributePhysicalVolume(Base):  # type: ignore
 
     __tablename__ = 'distribute_physical_volume'
 
@@ -44,7 +44,7 @@ class DistributePhysicalVolume(Base):
     lock_timestamp = Column(BigInteger)
 
 
-class DistributeVolumeGroup(Base):
+class DistributeVolumeGroup(Base):  # type: ignore
 
     __tablename__ = 'distribute_volume_group'
 
@@ -66,7 +66,7 @@ class DistributeVolumeGroup(Base):
         back_populates='dvg', lazy='dynamic')
 
 
-class DistributeLogicalVolume(Base):
+class DistributeLogicalVolume(Base):  # type: ignore
 
     __tablename__ = 'distribute_logical_volume'
 
@@ -118,7 +118,7 @@ class DistributeLogicalVolume(Base):
     lock_timestamp = Column(BigInteger)
 
 
-class InitiatorHost(Base):
+class InitiatorHost(Base):  # type: ignore
 
     __tablename__ = 'initiator_host'
 
@@ -137,7 +137,7 @@ class InitiatorHost(Base):
     lock_timestamp = Column(BigInteger)
 
 
-class Snapshot(Base):
+class Snapshot(Base):  # type: ignore
 
     __tablename__ = 'snapshot'
 
@@ -166,7 +166,7 @@ class Snapshot(Base):
         'DistributeLogicalVolume', back_populates='snapshots')
 
 
-class Group(Base):
+class Group(Base):  # type: ignore
 
     __tablename__ = 'group'
 
@@ -189,7 +189,7 @@ class Group(Base):
         'Leg', back_populates='group')
 
 
-class Leg(Base):
+class Leg(Base):  # type: ignore
 
     __tablename__ = 'leg'
 
