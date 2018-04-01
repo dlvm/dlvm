@@ -56,13 +56,13 @@ class ResourceNotFoundError(DlvmError):
 
     ret_code = 404
 
-    def __init__(self, res_type: str, res_name: str, exc_info: str)-> None:
+    def __init__(self, res_type: str, res_name: str)-> None:
         message = (
             'resource_not_found '
             'res_type={0} '
             'res_name={1}'
         ).format(res_type, res_name)
-        super(ResourceNotFoundError, self).__init__(message, exc_info)
+        super(ResourceNotFoundError, self).__init__(message)
 
 
 class ResourceBusyError(DlvmError):

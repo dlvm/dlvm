@@ -2,13 +2,12 @@ from typing import Optional, List
 import traceback
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import NoResultFound
 
 from dlvm.common.utils import RequestContext, WorkContext
 from dlvm.common.error import DpvError, ResourceDuplicateError, \
-    ResourceNotFoundError
+    ResourceNotFoundError, ResourceBusyError
 from dlvm.core.helper import GeneralQuery, DpvClient
-from dlvm.core.modules import DistributePhysicalVolume
+from dlvm.core.modules import DistributePhysicalVolume, DistributeVolumeGroup
 
 
 def dpv_list(
@@ -69,11 +68,67 @@ def dpv_show(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         dpv_name: str)-> DistributePhysicalVolume:
-    try:
-        dpv = work_ctx.session.query(DistributePhysicalVolume) \
-              .filter_by(dpv_name=dpv_name) \
-              .one()
-    except NoResultFound:
+    dpv = work_ctx.session.query(DistributePhysicalVolume) \
+          .filter_by(dpv_name=dpv_name) \
+          .one_or_none()
+    if dpv is None:
         raise ResourceNotFoundError(
-            'dpv', dpv_name, traceback.format_exc())
+            'dpv', dpv_name)
     return dpv
+
+
+def dpv_delete(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        dpv_name: str)-> None:
+    dpv = work_ctx.session.query(DistributePhysicalVolume) \
+          .filter_by(dpv_name=dpv_name) \
+          .one_or_none()
+    if dpv is None:
+        return None
+    if dpv.dvg_name is not None:
+        raise ResourceBusyError(
+            'dpv', dpv_name, 'dvg', dpv.dvg_name)
+    work_ctx.session.delete(dpv)
+    work_ctx.session.commit()
+    return None
+
+
+def dpv_resize(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        dpv_name: str)-> None:
+    dpv = work_ctx.session.query(DistributePhysicalVolume) \
+          .filter_by(dpv_name=dpv_name) \
+          .one_or_none()
+    if dpv is None:
+        raise ResourceNotFoundError(
+            'dpv', dpv_name)
+
+    client = DpvClient(req_ctx, dpv_name, 0)
+    try:
+        ret = client.get_size()
+        dpv_info, = ret.get_value()
+        total_size = dpv_info['total_size']
+        free_size = dpv_info['free_size']
+        total_delta = total_size - dpv.total_size
+        free_delta = free_size - dpv.free_size
+        assert(total_delta == free_delta)
+    except Exception:
+        raise DpvError(dpv_name)
+
+    dpv.total_size = total_size
+    dpv.free_size = free_size
+    work_ctx.session.add(dpv)
+
+    if dpv.dvg_name is not None:
+        dvg = work_ctx.session.query(DistributeVolumeGroup) \
+              .with_lockmode('update') \
+              .filter_by(dvg_name=dpv.dvg_name) \
+              .one()
+        dvg.total_size += total_delta
+        dvg.free_size += free_delta
+        work_ctx.session.add(dvg)
+
+    work_ctx.session.commit()
+    return None

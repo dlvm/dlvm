@@ -12,7 +12,8 @@ from dlvm.common.error import LimitExceedError
 from dlvm.common.loginit import loginit
 from dlvm.hook.api_wrapper import handle_dlvm_api
 from dlvm.core.modules import FieldType, DistributeLogicalVolume
-from dlvm.core.dpv import dpv_list, dpv_create, dpv_show
+from dlvm.core.dpv import dpv_list, dpv_create, \
+    dpv_show, dpv_delete, dpv_resize
 
 
 dpv_fields: MutableMapping = OrderedDict()
@@ -42,7 +43,7 @@ leg_fields['leg_size'] = fields.Integer
 leg_fields['dpv_name'] = fields.String
 
 
-def root_get(
+def handle_root_get(
         req_ctx: RequestContext, wrok_ctx: WorkContext,
         params: Optional[Mapping], kwargs: Optional[Mapping])-> str:
     return 'dlvm_api'
@@ -52,7 +53,7 @@ class Root(Resource):
 
     def get(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            root_get, 200, None, None, {})
+            handle_root_get, 200, None, None, {})
 
 
 dpvs_get_parser = reqparse.RequestParser()
@@ -115,7 +116,7 @@ dpvs_post_parser.add_argument(
 )
 
 
-def dpvs_get(
+def handle_dpvs_get(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         params: Mapping[str, FieldType],
@@ -143,7 +144,7 @@ def dpvs_get(
         status, locked, dvg_name)
 
 
-def dpvs_post(
+def handle_dpvs_post(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         params: Mapping[str, FieldType],
@@ -158,11 +159,11 @@ class Dpvs(Resource):
 
     def get(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            dpvs_get, 200, dpvs_get_parser, dpv_summary_fields, {})
+            handle_dpvs_get, 200, dpvs_get_parser, dpv_summary_fields, {})
 
     def post(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            dpvs_post, 200, dpvs_post_parser, None, {})
+            handle_dpvs_post, 200, dpvs_post_parser, None, {})
 
 
 dpv_leg_group_fields = copy.deepcopy(group_fields)
@@ -172,14 +173,24 @@ dpv_detail_fields = copy.deepcopy(dpv_fields)
 dpv_detail_fields['legs'] = fields.List(fields.Nested(dpv_leg_fields))
 
 
-def dpv_get(
+def handle_dpv_get(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         params: Mapping[str, FieldType],
         kwargs: Mapping[str, str],
-)->DistributeLogicalVolume:
+)-> DistributeLogicalVolume:
     dpv_name = kwargs['dpv_name']
     return dpv_show(req_ctx, work_ctx, dpv_name)
+
+
+def handle_dpv_delete(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        params: Mapping[str, FieldType],
+        kwargs: Mapping[str, str],
+)-> None:
+    dpv_name = kwargs['dpv_name']
+    return dpv_delete(req_ctx, work_ctx, dpv_name)
 
 
 class Dpv(Resource):
@@ -187,7 +198,30 @@ class Dpv(Resource):
     def get(self, dpv_name: str)-> Tuple[OrderedDict, int]:
         kwargs = {'dpv_name': dpv_name}
         return handle_dlvm_api(
-            dpv_get, 200, None, dpv_summary_fields, kwargs)
+            handle_dpv_get, 200, None, dpv_summary_fields, kwargs)
+
+    def delete(self, dpv_name: str)-> Tuple[OrderedDict, int]:
+        kwargs = {'dpv_name': dpv_name}
+        return handle_dlvm_api(
+            handle_dpv_delete, 200, None, None, kwargs)
+
+
+def handle_dpv_resize(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        params: Mapping[str, FieldType],
+        kwargs: Mapping[str, str],
+)-> None:
+    dpv_name = kwargs['dpv_name']
+    return dpv_resize(req_ctx, work_ctx, dpv_name)
+
+
+class DpvResize(Resource):
+
+    def put(self, dpv_name: str)-> Tuple[OrderedDict, int]:
+        kwargs = {'dpv_name': dpv_name}
+        return handle_dlvm_api(
+            handle_dpv_resize, 200, None, None, kwargs)
 
 
 def create_app()-> Flask:
@@ -197,6 +231,7 @@ def create_app()-> Flask:
     api.add_resource(Root, '/')
     api.add_resource(Dpvs, '/dpvs')
     api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
+    api.add_resource(DpvResize, '/dpvs/<string:dpv_name>/resize')
     return app
 
 
