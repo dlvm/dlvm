@@ -12,6 +12,7 @@ from dlvm.common.error import LimitExceedError
 from dlvm.common.loginit import loginit
 from dlvm.hook.api_wrapper import handle_dlvm_api
 from dlvm.core.modules import FieldType, DistributeLogicalVolume
+from dlvm.core.helper import create_all
 from dlvm.core.dpv import dpv_list, dpv_create
 
 
@@ -168,9 +169,11 @@ class Dpvs(Resource):
 
 def create_app()-> Flask:
     loginit()
+    create_all()
     app = Flask(__name__)
     api = Api(app)
     api.add_resource(Root, '/')
+    api.add_resource(Dpvs, '/dpvs')
     return app
 
 

@@ -96,8 +96,7 @@ def handle_dlvm_api(
                     'api post_hook failed: %s %s %s %s',
                     repr(hook), repr(hook_param), hook_ret, body)
     finally:
-        if 'session' in locals():
-            session.close()
+        session.close()
         response['message'] = message
         response['body'] = body
         return response, return_code

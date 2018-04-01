@@ -40,9 +40,13 @@ def fake_get(req_ctx, work_ctx, params, kwargs):
 
 class FakeResource(Resource):
 
-    def get(self, *args, **kwargs):
+    def get(self, name1, name2):
+        kwargs = {
+            'name1': name1,
+            'name2': name2,
+        }
         return handle_dlvm_api(
-            fake_get, 200, fake_get_parser, fake_get_fields, args, kwargs)
+            fake_get, 200, fake_get_parser, fake_get_fields, kwargs)
 
 
 class ApiWrapperTest(unittest.TestCase):

@@ -5,6 +5,7 @@ from sqlalchemy.orm.session import Session
 
 from dlvm.common.utils import RequestContext
 from dlvm.common.configure import cfg
+from dlvm.common.database import engine
 from dlvm.hook.rpc_wrapper import RpcClient
 from dlvm.core.modules import Base, FieldType
 
@@ -79,3 +80,7 @@ class IhostClient(RpcClient):
         super(IhostClient, self).__init__(
             req_ctx, ihost_name, cfg.ihost_port,
             expire_time, cfg.ihost_timeout)
+
+
+def create_all()-> None:
+    Base.metadata.create_all(engine)

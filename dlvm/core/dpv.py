@@ -22,8 +22,8 @@ def dpv_list(
 )-> List[DistributePhysicalVolume]:
     query = GeneralQuery(work_ctx.session, DistributePhysicalVolume)
     query.add_order_field(order_by, reverse)
-    query.add_offset(offset)
-    query.add_limit(limit)
+    query.set_offset(offset)
+    query.set_limit(limit)
     if status is not None:
         query.add_is_field('status', status)
     if locked is not None:

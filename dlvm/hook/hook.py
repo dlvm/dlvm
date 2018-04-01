@@ -29,7 +29,7 @@ class ApiParam():
         return (
             'ApiParam('
             'func_name={0},req_ctx={1},work_ctx={2},'
-            'params={4},kwargs={5}'
+            'params={3},kwargs={4}'
         ).format(
             self.func_name, repr(self.req_ctx), repr(self.work_ctx),
             self.params, self.kwargs)
