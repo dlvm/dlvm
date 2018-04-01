@@ -1,5 +1,5 @@
 from typing import List, Tuple, Mapping, MutableMapping, \
-    Sequence, Callable, Any, Optional
+    Callable, Any, Optional
 from collections import OrderedDict
 import uuid
 import logging
@@ -12,6 +12,7 @@ from dlvm.common.utils import ReqId, RequestContext, WorkContext
 from dlvm.common.database import Session
 from dlvm.common.error import DlvmError
 from dlvm.hook.hook import build_hook, ApiHook, ApiParam, HookRet
+from dlvm.core.modules import FieldType
 
 
 ori_logger = logging.getLogger('dlvm_api')
@@ -22,16 +23,19 @@ api_hook_list: List[ApiHook] = build_hook(ApiHook)
 def handle_dlvm_api(
         handler: Callable[
             [RequestContext, WorkContext,
-             Optional[Mapping], Optional[Mapping]], Any],
-        success_code: int, parser: RequestParser, marshal_fields: Mapping,
-        args: Sequence, kwargs: MutableMapping)-> Tuple[OrderedDict, int]:
+             Mapping[str, FieldType],
+             Mapping[str, str]], Any],
+        success_code: int,
+        parser: Optional[RequestParser],
+        marshal_fields: Optional[Mapping],
+        kwargs: Mapping)-> Tuple[OrderedDict, int]:
     req_id = ReqId(uuid.uuid4().hex)
     response: OrderedDict = OrderedDict()
     response['req_id'] = req_id
     logger = logging.LoggerAdapter(ori_logger, {'req_id': req_id})
     req_ctx = RequestContext(req_id, logger)
     if parser is None:
-        params = None
+        params: Mapping[str, FieldType] = {}
     else:
         params = parser.parse_args()
 
@@ -52,7 +56,6 @@ def handle_dlvm_api(
         else:
             hook_ret_dict[hook] = hook_ret
     try:
-        kwargs.update(zip(handler.__code__.co_varnames, args))
         raw_body = handler(req_ctx, work_ctx, params, kwargs)
         if marshal_fields is None:
             body = raw_body
