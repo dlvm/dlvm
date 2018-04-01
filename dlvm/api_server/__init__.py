@@ -12,7 +12,7 @@ from dlvm.common.error import LimitExceedError
 from dlvm.common.loginit import loginit
 from dlvm.hook.api_wrapper import handle_dlvm_api
 from dlvm.core.modules import FieldType, DistributeLogicalVolume
-from dlvm.core.dpv import dpv_list, dpv_create
+from dlvm.core.dpv import dpv_list, dpv_create, dpv_show
 
 
 dpv_fields: MutableMapping = OrderedDict()
@@ -115,7 +115,7 @@ dpvs_post_parser.add_argument(
 )
 
 
-def handle_dpvs_get(
+def dpvs_get(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         params: Mapping[str, FieldType],
@@ -143,7 +143,7 @@ def handle_dpvs_get(
         status, locked, dvg_name)
 
 
-def handle_dpvs_post(
+def dpvs_post(
         req_ctx: RequestContext,
         work_ctx: WorkContext,
         params: Mapping[str, FieldType],
@@ -158,11 +158,36 @@ class Dpvs(Resource):
 
     def get(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            handle_dpvs_get, 200, dpvs_get_parser, dpv_summary_fields, {})
+            dpvs_get, 200, dpvs_get_parser, dpv_summary_fields, {})
 
     def post(self)-> Tuple[OrderedDict, int]:
         return handle_dlvm_api(
-            handle_dpvs_post, 200, dpvs_post_parser, None, {})
+            dpvs_post, 200, dpvs_post_parser, None, {})
+
+
+dpv_leg_group_fields = copy.deepcopy(group_fields)
+dpv_leg_fields = copy.deepcopy(leg_fields)
+dpv_leg_fields['group'] = fields.Nested(dpv_leg_group_fields)
+dpv_detail_fields = copy.deepcopy(dpv_fields)
+dpv_detail_fields['legs'] = fields.List(fields.Nested(dpv_leg_fields))
+
+
+def dpv_get(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        params: Mapping[str, FieldType],
+        kwargs: Mapping[str, str],
+)->DistributeLogicalVolume:
+    dpv_name = kwargs['dpv_name']
+    return dpv_show(req_ctx, work_ctx, dpv_name)
+
+
+class Dpv(Resource):
+
+    def get(self, dpv_name: str)-> Tuple[OrderedDict, int]:
+        kwargs = {'dpv_name': dpv_name}
+        return handle_dlvm_api(
+            dpv_get, 200, None, dpv_summary_fields, kwargs)
 
 
 def create_app()-> Flask:
@@ -171,6 +196,7 @@ def create_app()-> Flask:
     api = Api(app)
     api.add_resource(Root, '/')
     api.add_resource(Dpvs, '/dpvs')
+    api.add_resource(Dpv, '/dpvs/<string:dpv_name>')
     return app
 
 

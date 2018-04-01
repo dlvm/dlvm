@@ -2,9 +2,11 @@ from typing import Optional, List
 import traceback
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
 
 from dlvm.common.utils import RequestContext, WorkContext
-from dlvm.common.error import DpvError, ResourceDuplicateError
+from dlvm.common.error import DpvError, ResourceDuplicateError, \
+    ResourceNotFoundError
 from dlvm.core.helper import GeneralQuery, DpvClient
 from dlvm.core.modules import DistributePhysicalVolume
 
@@ -61,3 +63,17 @@ def dpv_create(
     except IntegrityError:
         raise ResourceDuplicateError('dpv', dpv_name, traceback.format_exc())
     return None
+
+
+def dpv_show(
+        req_ctx: RequestContext,
+        work_ctx: WorkContext,
+        dpv_name: str)-> DistributePhysicalVolume:
+    try:
+        dpv = work_ctx.session.query(DistributePhysicalVolume) \
+              .filter_by(dpv_name=dpv_name) \
+              .one()
+    except NoResultFound:
+        raise ResourceNotFoundError(
+            'dpv', dpv_name, traceback.format_exc())
+    return dpv
