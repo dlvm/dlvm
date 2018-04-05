@@ -1,4 +1,5 @@
-from typing import Type, NewType, List, Sequence, Mapping, Union, Optional
+from typing import TypeVar, Generic, List, NamedTuple, NewType, Mapping
+
 from abc import ABC, abstractmethod
 from importlib import import_module
 
@@ -6,33 +7,16 @@ from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, WorkContext
 
 
-HookRet = NewType('HookRet', tuple)
+HookRet = NewType('HookRet', object)
 
-RpcRet = NewType('RpcRet', tuple)
+RpcArg = NewType('RpcArg', Mapping)
+RpcRet = NewType('RpcRet', Mapping)
 
 
-class ApiParam():
-
-    def __init__(
-            self, func_name: str,
-            req_ctx: RequestContext,
-            work_ctx: WorkContext,
-            params: Optional[Mapping],
-            kwargs: Optional[Mapping])-> None:
-        self.func_name = func_name
-        self.req_ctx = req_ctx
-        self.work_ctx = work_ctx
-        self.params = params
-        self.kwargs = kwargs
-
-    def __repr__(self)-> str:
-        return (
-            'ApiParam('
-            'func_name={0},req_ctx={1},work_ctx={2},'
-            'params={3},kwargs={4}'
-        ).format(
-            self.func_name, repr(self.req_ctx), repr(self.work_ctx),
-            self.params, self.kwargs)
+class ApiContext(NamedTuple):
+    req_ctx: RequestContext
+    work_ctx: WorkContext
+    func_name: str
 
 
 class ApiHook(ABC):
@@ -40,38 +24,23 @@ class ApiHook(ABC):
     hook_name = 'api_hook'
 
     @abstractmethod
-    def pre_hook(self, param: ApiParam)-> Optional[HookRet]:
+    def pre_hook(self, x: int)-> None:
         raise NotImplementedError
 
     @abstractmethod
-    def post_hook(
-            self, param: ApiParam, hook_ret: Optional[HookRet],
-            body: Mapping)-> None:
+    def post_hook(self)-> None:
         raise NotImplementedError
 
     @abstractmethod
-    def error_hook(self, param: ApiParam, hook_ret: Optional[HookRet],
-                   e: Exception, calltrace: str)-> None:
+    def error_hook(self)-> None:
         raise NotImplementedError
 
 
-class RpcServerParam():
-
-    def __init__(
-            self, func_name: str, req_ctx: RequestContext, expire_time: int,
-            args: Sequence)-> None:
-        self.func_name = func_name
-        self.req_ctx = req_ctx
-        self.expire_time = expire_time
-        self.args = args,
-
-    def __repr__(self)-> str:
-        return (
-            'RpcServerParam('
-            'func_name={0},req_ctx={1},expire_time={2},args={3})'
-        ).format(
-            self.func_name, repr(self.req_ctx), self.expire_time,
-            self.args)
+class RpcServerContext(NamedTuple):
+    req_ctx: RequestContext
+    func_name: str
+    expire_time: int
+    rpc_arg: RpcArg
 
 
 class RpcServerHook(ABC):
@@ -79,39 +48,30 @@ class RpcServerHook(ABC):
     hook_name = 'rpc_server_hook'
 
     @abstractmethod
-    def pre_hook(self, param: RpcServerParam)-> Optional[HookRet]:
+    def pre_hook(self, rpc_server_ctx: RpcServerContext)-> HookRet:
         raise NotImplementedError
 
     @abstractmethod
-    def post_hook(self, param: RpcServerParam,
-                  hook_ret: Optional[HookRet], ret: RpcRet)-> None:
+    def post_hook(
+            self, rpc_server_ctx: RpcServerContext,
+            hook_ret: HookRet, rpc_ret: RpcRet)-> None:
         raise NotImplementedError
 
     @abstractmethod
     def error_hook(
-            self, param: RpcServerParam,
-            hook_ret: Optional[HookRet], e: Exception,
-            calltrace: str)-> None:
+            self, rpc_server_ctx: RpcServerContext, hook_ret: HookRet,
+            e: Exception, calltrace: str)-> None:
         raise NotImplementedError
 
 
-class RpcClientParam():
-
-    def __init__(
-            self, func_name: str, req_ctx: RequestContext, expire_time: int,
-            args: Sequence)-> None:
-        self.func_name = func_name
-        self.req_ctx = req_ctx
-        self.expire_time = expire_time
-        self.args = args,
-
-    def __repr__(self)-> str:
-        return (
-            'RpcParam('
-            'func_name={0},req_ctx={1},expire_time={2},args={3})'
-        ).format(
-            self.func_name, repr(self.req_ctx), self.expire_time,
-            self.args)
+class RpcClientContext(NamedTuple):
+    req_ctx: RequestContext
+    server: str
+    port: int
+    timeout: int
+    rpc_name: str
+    expire_time: int
+    rpc_arg: RpcArg
 
 
 class RpcClientHook(ABC):
@@ -119,37 +79,45 @@ class RpcClientHook(ABC):
     hook_name = 'rpc_client_hook'
 
     @abstractmethod
-    def pre_hook(self, param: RpcClientParam)-> Optional[HookRet]:
+    def pre_hook(self, rpc_client_ctx: RpcClientContext)-> HookRet:
         raise NotImplementedError
 
     @abstractmethod
-    def post_hook(self, param: RpcClientParam,
-                  hook_ret: Optional[HookRet], ret: RpcRet)-> None:
+    def post_hook(
+            self, rpc_client_ctx: RpcClientContext,
+            hook_ret: HookRet, rpc_ret: RpcRet)-> None:
         raise NotImplementedError
 
     @abstractmethod
-    def error_hook(self, param: RpcClientParam,
-                   hook_ret: Optional[HookRet], e: Exception,
-                   calltrace: str)-> None:
+    def error_hook(
+            self, rpc_client_ctx: RpcClientContext, hook_ret: HookRet,
+            e: Exception, calltrace: str)-> None:
         raise NotImplementedError
 
 
-HookType = Union[
-    Type[ApiHook],
-    Type[RpcServerHook],
-    Type[RpcClientHook],
-]
+ApiHookConcrete = NewType('ApiHookConcrete', ApiHook)
+RpcServerHookConcrete = NewType('RpcServerHookConcrete', RpcServerHook)
+RpcClientHookConcrete = NewType('RpcClientHookConcrete', RpcClientHook)
+
+T = TypeVar(
+    'T',
+    ApiHookConcrete,
+    RpcServerHookConcrete,
+    RpcClientHookConcrete,
+)
 
 
-def build_hook(hook_cls: HookType)-> List:
-    hook_list = []
-    cfg_hook_list = getattr(cfg, hook_cls.hook_name)
-    for cfg_hook_path in cfg_hook_list:
-        spliter = cfg_hook_path.rindex('.')
-        mod_name = cfg_hook_path[:spliter]
-        cls_name = cfg_hook_path[spliter+1:]
-        mod = import_module(mod_name)
-        custom_cls = getattr(mod, cls_name)
-        instance = custom_cls()
-        hook_list.append(instance)
-    return hook_list
+class HookBuilder(Generic[T]):
+
+    def __call__(self, hook_name: str)-> List[T]:
+        hook_list = []
+        cfg_hook_list = getattr(cfg.hook, hook_name)
+        for cfg_hook_path in cfg_hook_list:
+            spliter = cfg_hook_path.rindex('.')
+            mod_name = cfg_hook_path[:spliter]
+            cls_name = cfg_hook_path[spliter+1:]
+            mod = import_module(mod_name)
+            custom_cls = getattr(mod, cls_name)
+            instance = custom_cls()
+            hook_list.append(instance)
+        return hook_list

@@ -1,21 +1,23 @@
-from typing import List, Callable, Any, \
-    Sequence, Mapping, MutableMapping, Optional
-from types import MethodType
-import time
-from logging import Logger
-import traceback
+from typing import MutableMapping, Callable, Optional, NamedTuple
 
-import rpyc
-from rpyc.utils.server import ThreadedServer
-from rpyc import AsyncResult
+from xmlrpc.server import SimpleXMLRPCServer
+from socketserver import ThreadingMixIn
+from xmlrpc.client import Transport, ServerProxy
+from threading import Thread
+import traceback
+import time
+from logging import Logger, LoggerAdapter
 
 from dlvm.common.utils import ReqId, RequestContext
-from dlvm.hook.hook import build_hook, HookRet, RpcRet, \
-    RpcServerHook, RpcServerParam, RpcClientHook, RpcClientParam
+from dlvm.hook.hook import HookBuilder, HookRet, RpcArg, RpcRet, \
+    RpcServerHook, RpcServerHookConcrete, RpcServerContext, \
+    RpcClientHook, RpcClientHookConcrete, RpcClientContext
 
 
-rpc_server_hook_list: List[RpcServerHook] = build_hook(RpcServerHook)
-rpc_client_hook_list: List[RpcClientHook] = build_hook(RpcClientHook)
+rpc_server_hook_builder = HookBuilder[RpcServerHookConcrete]()
+rpc_server_hook_list = rpc_server_hook_builder(RpcServerHook.hook_name)
+rpc_client_hook_builder = HookBuilder[RpcClientHookConcrete]()
+rpc_client_hook_list = rpc_client_hook_builder(RpcClientHook.hook_name)
 
 
 class RpcExpireError(Exception):
@@ -26,169 +28,183 @@ class RpcExpireError(Exception):
         super(RpcExpireError, self).__init__(msg)
 
 
-class RpcServer():
+class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
-    def __init__(
-            self, name: str, logger: Logger, hostname: str, port: int)-> None:
+    def __init__(self, listener: str, port: int, logger: Logger)-> None:
         self.logger = logger
-        self.hostname = hostname
-        self.port = port
-        self.service = type(name, (rpyc.Service,), {})
+        return super(DlvmRpcServer, self).__init__(
+            (listener, port), allow_none=True)
 
-    def rpc(self, func: Callable[..., RpcRet])-> Callable[..., RpcRet]:
-        name = 'exposed_' + func.__name__
-        logger = self.logger
+    def register_function(
+            self, func: Callable[[RequestContext, RpcArg], RpcRet])-> None:
 
-        def wrapper(
-                self: Any, req_id: ReqId, expire_time: int,
-                args: Sequence)-> RpcRet:
-            hook_ret_dict: MutableMapping[
-                RpcServerHook, Optional[HookRet]] = {}
+        def wrapper_func(
+                req_id: ReqId, expire_time: int, rpc_arg: RpcArg)-> RpcRet:
+            hook_ret_dict: MutableMapping[RpcServerHookConcrete, HookRet] = {}
+            logger = LoggerAdapter(self.logger, {'req_id': req_id})
             req_ctx = RequestContext(req_id, logger)
-            param = RpcServerParam(
-                func.__name__, req_ctx, expire_time, args)
+            rpc_server_ctx = RpcServerContext(
+                req_ctx, func.__name__, expire_time, rpc_arg)
             for hook in rpc_server_hook_list:
                 try:
-                    hook_ret = hook.pre_hook(param)
+                    hook_ret = hook.pre_hook(rpc_server_ctx)
                 except Exception:
-                    logger.error(
+                    req_ctx.logger.error(
                         'rpc server pre_hook failed: %s %s',
-                        repr(param), repr(hook),
-                        exc_info=True)
+                        hook, rpc_server_ctx, exc_info=True)
+                    hook_ret_dict[hook] = HookRet(None)
                 else:
                     hook_ret_dict[hook] = hook_ret
             try:
                 curr_time = int(time.time())
                 if expire_time != 0 and curr_time > expire_time:
                     raise RpcExpireError(curr_time, expire_time)
-                ret = func(req_ctx, *args)
+                rpc_ret = func(req_ctx, rpc_arg)
             except Exception as e:
                 calltrace = traceback.format_exc()
                 for hook in rpc_server_hook_list:
-                    hook_ret = hook_ret_dict.get(hook)
+                    hook_ret = hook_ret_dict[hook]
                     try:
                         hook.error_hook(
-                            param, hook_ret, e, calltrace)
+                            rpc_server_ctx, hook_ret, e, calltrace)
                     except Exception:
-                        logger.error(
+                        req_ctx.logger.error(
                             'rpc server error_hook failed: %s %s %s %s %s',
-                            repr(hook), repr(param),
-                            hook_ret, e, calltrace,
+                            hook, rpc_server_ctx, hook_ret, e, calltrace,
                             exc_info=True)
                 raise
             else:
                 for hook in rpc_server_hook_list:
-                    hook_ret = hook_ret_dict.get(hook)
+                    hook_ret = hook_ret_dict[hook]
                     try:
                         hook.post_hook(
-                            param, hook_ret, ret)
+                            rpc_server_ctx, hook_ret, rpc_ret)
                     except Exception:
-                        logger.error(
+                        req_ctx.logger.error(
                             'rpc server post_hook failed: %s %s %s %s',
-                            repr(hook), repr(param),
-                            hook_ret, ret, exc_info=True)
-                return ret
-        setattr(self.service, name, wrapper)
-        return func
+                            hook, rpc_server_ctx, hook_ret, rpc_ret,
+                            exc_info=True)
+                return rpc_ret
 
-    def start(self)-> None:
-        t = ThreadedServer(
-            self.service, hostname=self.hostname, port=self.port)
-        t.start()
+        return super(DlvmRpcServer, self).register_function(
+            wrapper_func, func.__name__)
 
 
-class RpcResponse():
+class TimeoutTransport(Transport):
+
+    def __init__(self, timeout: int)-> None:
+        super(TimeoutTransport, self).__init__()
+        self.__timeout = timeout
+
+    def make_connection(self, host: str)-> int:
+        conn = super(TimeoutTransport, self).make_connection(host)
+        conn.timeout = self.__timeout
+        return conn
+
+
+class RpcErrInfo(NamedTuple):
+    e: Exception
+    calltrace: str
+
+
+class RpcError(Exception):
+
+    def __init__(self, err_info: RpcErrInfo)-> None:
+        self.err_info = err_info
+        super(RpcError, self).__init__('rpc error')
+
+
+class RpcClientThread(Thread):
 
     def __init__(
-            self, req_ctx: RequestContext, param: RpcClientParam,
-            hook_ret_dict: Mapping[RpcClientHook, Optional[HookRet]],
-            conn: Any, async_result: AsyncResult)-> None:
-        self.req_ctx = req_ctx
-        self.param = param
+            self, rpc_client_ctx: RpcClientContext,
+            hook_ret_dict: MutableMapping[RpcClientHookConcrete, HookRet],
+    )-> None:
+        self.rpc_client_ctx = rpc_client_ctx
         self.hook_ret_dict = hook_ret_dict
-        self.conn = conn
-        self.async_result = async_result
+        self.rpc_ret: Optional[RpcRet] = None
+        self.err_info: Optional[RpcErrInfo] = None
+        super(RpcClientThread, self).__init__()
 
-    def get_value(self)-> RpcRet:
+    def do_remote_call(self)-> None:
+        transport = TimeoutTransport(timeout=self.rpc_client_ctx.timeout)
+        address = 'http://{0}:{1}'.format(
+            self.rpc_client_ctx.server, self.rpc_client_ctx.port)
+        with ServerProxy(
+                address, transport=transport, allow_none=True) as proxy:
+            rpc_func = getattr(proxy, self.rpc_client_ctx.rpc_name)
+            rpc_ret = rpc_func(self.rpc_client_ctx.rpc_arg)
+            self.rpc_ret = rpc_ret
+
+    def run(self)-> None:
         try:
-            self.async_result.wait()
-            ret: RpcRet = self.async_result.value
+            self.do_remote_call()
         except Exception as e:
             calltrace = traceback.format_exc()
+            self.err_info = RpcErrInfo(e, calltrace)
+
+    def get_value(self)-> RpcRet:
+        self.join()
+        if self.err_info is not None:
             for hook in rpc_client_hook_list:
-                hook_ret = self.hook_ret_dict.get(hook)
+                hook_ret = self.hook_ret_dict[hook]
                 try:
                     hook.error_hook(
-                        self.param, hook_ret, e, calltrace)
+                        self.rpc_client_ctx, hook_ret,
+                        self.err_info.e, self.err_info.calltrace)
                 except Exception:
-                    self.req_ctx.logger.error(
+                    self.rpc_client_ctx.req_ctx.logger.error(
                         'rpc client error_hook failed: %s %s %s %s %s',
-                        repr(hook), repr(self.param),
-                        hook_ret, e, calltrace,
+                        hook, self.rpc_client_ctx, hook_ret,
+                        self.err_info.e, self.err_info.calltrace,
                         exc_info=True)
-            raise
+            raise RpcError(self.err_info)
         else:
+            assert(self.rpc_ret is not None)
             for hook in rpc_client_hook_list:
-                hook_ret = self.hook_ret_dict.get(hook)
+                hook_ret = self.hook_ret_dict[hook]
                 try:
                     hook.post_hook(
-                        self.param, hook_ret, ret)
+                        self.rpc_client_ctx, hook_ret, self.rpc_ret)
                 except Exception:
-                    self.req_ctx.logger.error(
+                    self.rpc_client_ctx.req_ctx.logger.error(
                         'rpc client post_hook failed: %s %s %s %s',
-                        repr(hook), repr(self.param), ret, hook_ret,
+                        hook, self.rpc_client_ctx, hook_ret, self.rpc_ret,
                         exc_info=True)
-            return ret
+            return self.rpc_ret
 
 
-class RpcClient():
-
-    def __init__(
-            self, req_ctx: RequestContext, addr: str, port: int,
-            expire_time: int, timeout: int)-> None:
-        self.req_ctx = req_ctx
-        self.addr = addr
-        self.port = port
-        self.expire_time = expire_time
-        self.timeout = timeout
-
-    def __getattr__(self, key: str)-> Callable[..., Any]:
-
-        def func(self: Any, *args: Any)-> RpcResponse:
-            param = RpcClientParam(
-                key, self.req_ctx, self.expire_time, args)
-            hook_ret_dict: MutableMapping[
-                RpcClientHook, Optional[HookRet]] = {}
-            for hook in rpc_client_hook_list:
-                try:
-                    hook_ret = hook.pre_hook(param)
-                except Exception:
-                    self.req_ctx.logger.error(
-                        'rpc client pre_hook failed: %s %s',
-                        repr(param), repr(hook), exc_info=True)
-                else:
-                    hook_ret_dict[hook] = hook_ret
+def rpc_async_call(
+        req_ctx: RequestContext, server: str, port: int, timeout: int,
+        rpc_name: str, expire_time: int, rpc_arg: RpcArg)-> RpcClientThread:
+    rpc_client_ctx = RpcClientContext(
+        req_ctx, server, port, timeout, rpc_name, expire_time, rpc_arg)
+    hook_ret_dict: MutableMapping[RpcClientHookConcrete, HookRet] = {}
+    for hook in rpc_client_hook_list:
+        try:
+            hook_ret = hook.pre_hook(rpc_client_ctx)
+        except Exception:
+            req_ctx.logger.error(
+                'rpc client pre_hook failed: %s %s',
+                hook, rpc_client_ctx, exc_info=True)
+            hook_ret_dict[hook] = HookRet(None)
+        else:
+            hook_ret_dict[hook] = hook_ret
+    try:
+        t = RpcClientThread(rpc_client_ctx, hook_ret_dict)
+        t.start()
+    except Exception as e:
+        calltrace = traceback.format_exc()
+        for hook in rpc_client_hook_list:
+            hook_ret = hook_ret_dict[hook]
             try:
-                conn = rpyc.connect(self.addr, self.port)
-                remote_func = rpyc.async(getattr(conn.root, key))
-                async_result = remote_func(
-                    self.req_ctx.req_id, self.expire_time, args)
-                async_result.set_expiry(self.timeout)
-            except Exception as e:
-                calltrace = traceback.format_exc()
-                for hook in rpc_client_hook_list:
-                    hook_ret = hook_ret_dict.get(hook)
-                    try:
-                        hook.error_hook(
-                            param, hook_ret, e, calltrace)
-                    except Exception:
-                        self.req_ctx.logger.error(
-                            'rpc server error_hook failed: %s %s %s %s %s',
-                            repr(hook), repr(param),
-                            hook_ret, e, calltrace,
-                            exc_info=True)
-                raise
-            return RpcResponse(
-                self.req_ctx, param, hook_ret_dict, conn, async_result)
-
-        return MethodType(func, self)
+                hook.error_hook(
+                    rpc_client_ctx, hook_ret, e, calltrace)
+            except Exception:
+                req_ctx.logger.error(
+                    'rpc client error_hook failed: %s %s %s %s %s',
+                    hook, rpc_client_ctx, hook_ret, e, calltrace,
+                    exc_info=True)
+        raise
+    else:
+        return t
