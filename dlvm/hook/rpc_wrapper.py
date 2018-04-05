@@ -133,7 +133,10 @@ class RpcClientThread(Thread):
         with ServerProxy(
                 address, transport=transport, allow_none=True) as proxy:
             rpc_func = getattr(proxy, self.rpc_client_ctx.rpc_name)
-            rpc_ret = rpc_func(self.rpc_client_ctx.rpc_arg)
+            rpc_ret = rpc_func(
+                self.rpc_client_ctx.req_ctx.req_id,
+                self.rpc_client_ctx.expire_time,
+                self.rpc_client_ctx.rpc_arg)
             self.rpc_ret = rpc_ret
 
     def run(self)-> None:
