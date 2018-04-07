@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, NamedTuple, NewType, Mapping
+from typing import TypeVar, List, NamedTuple, NewType, Mapping
 
 from abc import ABC, abstractmethod
 from importlib import import_module
@@ -17,6 +17,8 @@ class ApiContext(NamedTuple):
     req_ctx: RequestContext
     work_ctx: WorkContext
     func_name: str
+    arg_dict: Mapping
+    path: object
 
 
 class ApiHook(ABC):
@@ -24,15 +26,17 @@ class ApiHook(ABC):
     hook_name = 'api_hook'
 
     @abstractmethod
-    def pre_hook(self, x: int)-> None:
+    def pre_hook(self, api_ctx: ApiContext)-> HookRet:
         raise NotImplementedError
 
     @abstractmethod
-    def post_hook(self)-> None:
+    def post_hook(
+            self, api_ctx: ApiContext, hook_ret: HookRet, body: object)-> None:
         raise NotImplementedError
 
     @abstractmethod
-    def error_hook(self)-> None:
+    def error_hook(self, api_ctx: ApiContext, hook_ret: HookRet,
+                   e: Exception, calltrace: str)-> None:
         raise NotImplementedError
 
 
@@ -107,17 +111,15 @@ T = TypeVar(
 )
 
 
-class HookBuilder(Generic[T]):
-
-    def __call__(self, hook_name: str)-> List[T]:
-        hook_list = []
-        cfg_hook_list = getattr(cfg.hook, hook_name)
-        for cfg_hook_path in cfg_hook_list:
-            spliter = cfg_hook_path.rindex('.')
-            mod_name = cfg_hook_path[:spliter]
-            cls_name = cfg_hook_path[spliter+1:]
-            mod = import_module(mod_name)
-            custom_cls = getattr(mod, cls_name)
-            instance = custom_cls()
-            hook_list.append(instance)
-        return hook_list
+def hook_builder(hook_name: str)-> List[T]:
+    hook_list = []
+    cfg_hook_list = getattr(cfg.hook, hook_name)
+    for cfg_hook_path in cfg_hook_list:
+        spliter = cfg_hook_path.rindex('.')
+        mod_name = cfg_hook_path[:spliter]
+        cls_name = cfg_hook_path[spliter+1:]
+        mod = import_module(mod_name)
+        custom_cls = getattr(mod, cls_name)
+        instance = custom_cls()
+        hook_list.append(instance)
+    return hook_list

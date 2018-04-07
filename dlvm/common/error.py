@@ -1,9 +1,11 @@
 from typing import Optional, Union
 
+from dlvm.common.utils import HttpStatus
+
 
 class DlvmError(Exception):
 
-    ret_code = 200
+    status_code = HttpStatus.InternalServerError
 
     def __init__(self, message: str, exc_info: Optional[str]=None)-> None:
         self.message = message
@@ -13,7 +15,7 @@ class DlvmError(Exception):
 
 class LimitExceedError(DlvmError):
 
-    ret_code = 400
+    status_code = HttpStatus.BadRequest
 
     def __init__(self, curr_val: int, max_val: int)-> None:
         message = 'limit_exceed curr_val={0} max_val={1}'.format(
@@ -23,7 +25,7 @@ class LimitExceedError(DlvmError):
 
 class DpvError(DlvmError):
 
-    ret_code = 500
+    status_code = HttpStatus.InternalServerError
 
     def __init__(self, dpv_name: str)-> None:
         message = 'dpv_error dpv_name={0}'.format(dpv_name)
@@ -32,7 +34,7 @@ class DpvError(DlvmError):
 
 class IhostError(DlvmError):
 
-    ret_code = 500
+    status_code = HttpStatus.InternalServerError
 
     def __init__(self, ihost_name: str)-> None:
         message = 'ihost_error ihost_name={0}'.format(ihost_name)
@@ -41,7 +43,7 @@ class IhostError(DlvmError):
 
 class ResourceDuplicateError(DlvmError):
 
-    ret_code = 400
+    status_code = HttpStatus.BadRequest
 
     def __init__(self, res_type: str, res_name: str, exc_info: str)-> None:
         message = (
@@ -54,7 +56,7 @@ class ResourceDuplicateError(DlvmError):
 
 class ResourceNotFoundError(DlvmError):
 
-    ret_code = 404
+    status_code = HttpStatus.NotFound
 
     def __init__(self, res_type: str, res_name: str)-> None:
         message = (
@@ -67,7 +69,7 @@ class ResourceNotFoundError(DlvmError):
 
 class ResourceBusyError(DlvmError):
 
-    ret_code = 400
+    status_code = HttpStatus.BadRequest
 
     def __init__(
             self, res_type: str, res_name: str,
@@ -84,7 +86,7 @@ class ResourceBusyError(DlvmError):
 
 class ResourceInvalidError(DlvmError):
 
-    ret_code = 400
+    status_code = HttpStatus.BadRequest
 
     def __init__(
             self, res_type: str, res_name: str,

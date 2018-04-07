@@ -3,6 +3,7 @@ from typing import NewType, MutableSet, Sequence, Generator, NamedTuple
 import os
 from logging.handlers import WatchedFileHandler
 from logging import LoggerAdapter
+from enum import IntEnum
 
 from sqlalchemy.orm.session import Session
 
@@ -15,7 +16,7 @@ class RequestContext(NamedTuple):
     logger: LoggerAdapter
 
 
-class WorkContext():
+class WorkContext(NamedTuple):
     session: Session
     done_set: MutableSet[str]
 
@@ -37,3 +38,11 @@ class PidWatchedFileHandler(WatchedFileHandler):
             filename=filename, pid=os.getpid())
         super(PidWatchedFileHandler, self).__init__(
             filename_pid, mode, encoding, delay)
+
+
+class HttpStatus(IntEnum):
+    OK = 200
+    Created = 201
+    BadRequest = 400
+    NotFound = 404
+    InternalServerError = 500

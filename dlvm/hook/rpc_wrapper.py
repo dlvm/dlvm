@@ -1,4 +1,4 @@
-from typing import MutableMapping, Callable, Optional, NamedTuple
+from typing import MutableMapping, Callable, Optional, NamedTuple, List
 
 from xmlrpc.server import SimpleXMLRPCServer
 from socketserver import ThreadingMixIn
@@ -9,15 +9,15 @@ import time
 from logging import Logger, LoggerAdapter
 
 from dlvm.common.utils import ReqId, RequestContext
-from dlvm.hook.hook import HookBuilder, HookRet, RpcArg, RpcRet, \
+from dlvm.hook.hook import hook_builder, HookRet, RpcArg, RpcRet, \
     RpcServerHook, RpcServerHookConcrete, RpcServerContext, \
     RpcClientHook, RpcClientHookConcrete, RpcClientContext
 
 
-rpc_server_hook_builder = HookBuilder[RpcServerHookConcrete]()
-rpc_server_hook_list = rpc_server_hook_builder(RpcServerHook.hook_name)
-rpc_client_hook_builder = HookBuilder[RpcClientHookConcrete]()
-rpc_client_hook_list = rpc_client_hook_builder(RpcClientHook.hook_name)
+rpc_server_hook_list: List[RpcServerHookConcrete] = hook_builder(
+    RpcServerHook.hook_name)
+rpc_client_hook_list: List[RpcClientHookConcrete] = hook_builder(
+    RpcClientHook.hook_name)
 
 
 class RpcExpireError(Exception):
