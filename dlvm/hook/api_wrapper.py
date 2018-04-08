@@ -51,9 +51,9 @@ class ArgLocation(Enum):
     json = 'json'
 
 
-PathType = TypeVar('PathType')
-ArgSchemaType = TypeVar('ArgSchemaType', bound=Schema)
-ArgType = TypeVar('ArgType')
+Path = TypeVar('Path')
+ArgSchema = TypeVar('ArgSchema', bound=Schema)
+Args = TypeVar('Args')
 
 
 class ArgInfo(NamedTuple):
@@ -61,23 +61,23 @@ class ArgInfo(NamedTuple):
     location: ArgLocation
 
 
-class EmptyPathType(NamedTuple):
+class EmptyPath(NamedTuple):
     pass
 
 
-class EmptyArgType(NamedTuple):
+class EmptyArgs(NamedTuple):
     pass
 
 
 empty_arg_info = ArgInfo(Schema, ArgLocation.args)
 
 
-class ApiMethod(Generic[ArgType, PathType]):
+class ApiMethod(Generic[Args, Path]):
 
     def __init__(
             self,
             func: Callable[
-                [RequestContext, WorkContext, ArgType, PathType], object],
+                [RequestContext, WorkContext, Args, Path], object],
             status_code: HttpStatus,
             BodySchema: Type[Schema],
             arg_info: ArgInfo = empty_arg_info)-> None:
@@ -87,21 +87,21 @@ class ApiMethod(Generic[ArgType, PathType]):
         self.arg_info = arg_info
 
 
-class ApiResource(Generic[ArgType, PathType]):
+class ApiResource(Generic[Args, Path]):
 
     def __init__(
             self,
             path_template: str,
-            path_type: Type[PathType],
-            get: Optional[ApiMethod[ArgType, PathType]] = None,
-            post: Optional[ApiMethod[ArgType, PathType]] = None,
-            put: Optional[ApiMethod[ArgType, PathType]] = None,
-            delete: Optional[ApiMethod[ArgType, PathType]] = None)-> None:
+            path_type: Type[Path],
+            get: Optional[ApiMethod[Args, Path]] = None,
+            post: Optional[ApiMethod[Args, Path]] = None,
+            put: Optional[ApiMethod[Args, Path]] = None,
+            delete: Optional[ApiMethod[Args, Path]] = None)-> None:
         self.path_template = path_template
         self.path_type = path_type
         real_path = self.build_path(path_template, path_type)
         self.real_path = real_path
-        method_dict: MutableMapping[str, ApiMethod[ArgType, PathType]] = {}
+        method_dict: MutableMapping[str, ApiMethod[Args, Path]] = {}
         if get is not None:
             method_dict['GET'] = get
         if post is not None:
@@ -112,7 +112,7 @@ class ApiResource(Generic[ArgType, PathType]):
             method_dict['DELETE'] = delete
         self.method_dict = method_dict
 
-    def build_path(self, path_template: str, path_type: Type[PathType])-> str:
+    def build_path(self, path_template: str, path_type: Type[Path])-> str:
         d: Mapping[str, type] = path_type.__annotations__
         fmt: MutableMapping[str, str] = {}
         for key in d:

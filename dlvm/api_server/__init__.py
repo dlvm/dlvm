@@ -4,7 +4,7 @@ from flask import Flask
 from marshmallow import Schema, fields
 
 from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
-from dlvm.hook.api_wrapper import EmptyPathType, EmptyArgType, \
+from dlvm.hook.api_wrapper import EmptyPath, EmptyArgs, \
     ApiMethod, ApiResource, Api
 
 
@@ -22,17 +22,17 @@ class RootGetBodySchema(Schema):
 
 def api_root_get(
         req_ctx: RequestContext, work_ctx: WorkContext,
-        args: EmptyArgType, path: EmptyPathType)-> RootGetBody:
+        args: EmptyArgs, path: EmptyPath)-> RootGetBody:
     return RootGetBody('v1')
 
 
-root_get_method = ApiMethod[EmptyArgType, EmptyPathType](
+root_get_method = ApiMethod[EmptyArgs, EmptyPath](
     api_root_get, HttpStatus.OK, RootGetBodySchema)
 
 root_path_template = '/'
-root_path_type = EmptyPathType
+root_path_type = EmptyPath
 
-root_res = ApiResource[EmptyArgType, EmptyPathType](
+root_res = ApiResource[EmptyArgs, EmptyPath](
     root_path_template, root_path_type, get=root_get_method)
 
 api.add_resource(root_res)
