@@ -27,9 +27,14 @@ class RpcCfg(NamedTuple):
     ihost_timeout: int = 300
 
 
+class GeneralCfg(NamedTuple):
+    db_uri: str = 'sqlite://'
+
+
 class Cfg(NamedTuple):
     hook: HookCfg
     rpc: RpcCfg
+    general: GeneralCfg
 
 
 def load_cfg()-> Cfg:

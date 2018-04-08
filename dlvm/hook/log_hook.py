@@ -1,5 +1,6 @@
 from dlvm.hook.hook import HookRet, RpcRet, \
-    RpcServerContext, RpcServerHook, RpcClientContext, RpcClientHook
+    RpcServerContext, RpcServerHook, RpcClientContext, RpcClientHook, \
+    ApiContext, ApiHook
 
 
 class LogRpcServerHook(RpcServerHook):
@@ -20,7 +21,7 @@ class LogRpcServerHook(RpcServerHook):
             self, rpc_server_ctx: RpcServerContext, hook_ret: HookRet,
             e: Exception, calltrace: str)-> None:
         rpc_server_ctx.req_ctx.logger.warning(
-            'rpc_server-error %s %s', rpc_server_ctx, calltrace)
+            'rpc_server_error %s %s', rpc_server_ctx, calltrace)
 
 
 class LogRpcClientHook(RpcClientHook):
@@ -41,3 +42,23 @@ class LogRpcClientHook(RpcClientHook):
             e: Exception, calltrace: str)-> None:
         rpc_client_ctx.req_ctx.logger.warning(
             'rpc_client_error: %s %s', rpc_client_ctx, calltrace)
+
+
+class LogApiHook(ApiHook):
+
+    def pre_hook(self, api_ctx: ApiContext)-> HookRet:
+        api_ctx.req_ctx.logger.info(
+            'api_pre: %s', api_ctx)
+        return HookRet(None)
+
+    def post_hook(
+            self, api_ctx: ApiContext,
+            hook_ret: HookRet, body: object)-> None:
+        api_ctx.req_ctx.logger.info(
+            'api_post: %s %s', api_ctx, body)
+
+    def error_hook(
+            self, api_ctx: ApiContext, hook_ret: HookRet,
+            e: Exception, calltrace: str)-> None:
+        api_ctx.req_ctx.logger.warning(
+            'api_error: %s %s', api_ctx, calltrace)

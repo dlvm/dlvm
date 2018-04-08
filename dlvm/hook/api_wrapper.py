@@ -30,7 +30,7 @@ class ApiResponseError(Exception):
 class ApiSchema(Schema):
     req_id: ReqId = fields.String()
     message: str = fields.String()
-    body: object = fields.Method('dump_body')
+    body: Mapping = fields.Method('dump_body')
 
     def dump_body(self, obj: Mapping)-> Mapping:
         try:
@@ -185,22 +185,18 @@ class Api():
                         exc_info=True)
                 if isinstance(e, ValidationError):
                     message = str(e.messages)
-                    body = None
                     status_code = HttpStatus.BadRequest
                 elif isinstance(e, DlvmError):
                     message = e.message
-                    body = None
                     status_code = e.status_code
                 elif isinstance(e, ApiResponseError):
                     message = e.message
-                    body = None
                     status_code = HttpStatus.InternalServerError
                 else:
                     message = 'internal_error'
-                    body = None
                     status_code = HttpStatus.InternalServerError
                 raw_response['message'] = message
-                raw_response['body'] = body
+                raw_response['body'] = None
                 api_schema = ApiSchema()
                 api_schema.context['body_schema'] = method.BodySchema()
                 response = api_schema.dumps(raw_response)
