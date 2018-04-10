@@ -71,3 +71,17 @@ class DpvTest(unittest.TestCase):
         data = json.dumps(raw_data)
         resp = self.client.post('/dpvs', headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+
+    def test_dpv_get(self):
+        dpv = fake_dpvs[0]
+        self.dbm.dpv_create(**dpv)
+        dpv_name = dpv['dpv_name']
+        total_size = dpv['total_size']
+        path = '/dpvs/{0}'.format(dpv_name)
+        resp = self.client.get(path)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertEqual(data['message'], 'succeed')
+        body = data['body']
+        self.assertEqual(body['dpv_name'], dpv_name)
+        self.assertEqual(body['total_size'], total_size)

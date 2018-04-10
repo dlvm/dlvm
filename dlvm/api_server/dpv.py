@@ -21,6 +21,17 @@ from dlvm.core.schema import DpvApiSchema, DpvInfo, DpvInfoSchema
 from dlvm.core.helper import GeneralQuery, dpv_async_call
 
 
+DPV_SUMMARY_FIELDS = (
+    'dpv_name',
+    'total_size',
+    'free_size',
+    'status',
+    'dvg_name',
+    'lock_id',
+    'lock_timestamp',
+)
+
+
 class DpvOrderFields(enum.Enum):
     dpv_name = 'dpv_name'
     total_size = 'total_size'
@@ -71,16 +82,7 @@ def api_dpvs_get(
     if args.dvg_name is not None:
         query.add_is_field('dvg_name', args.dvg_name)
     dpvs = query.query()
-    summary_fields = (
-        'dpv_name',
-        'total_size',
-        'free_size',
-        'status',
-        'dvg_name',
-        'lock_id',
-        'lock_timestamp',
-    )
-    schema = DpvApiSchema(only=summary_fields, many=True)
+    schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=True)
     return ApiRet(dpvs, schema)
 
 
@@ -100,7 +102,7 @@ class DpvsPostArgsSchema(Schema):
         return DpvsPostArgs(**data)
 
 
-dpvs_post_args_info = ArgInfo(DpvsPostArgsSchema, ArgLocation.json)
+dpvs_post_arg_info = ArgInfo(DpvsPostArgsSchema, ArgLocation.json)
 
 
 def api_dpvs_post(
@@ -128,7 +130,7 @@ def api_dpvs_post(
 
 
 dpvs_post_method = ApiMethod[DpvsPostArgs, EmptyPath](
-    api_dpvs_post, HttpStatus.OK, arg_info=dpvs_post_args_info)
+    api_dpvs_post, HttpStatus.OK, arg_info=dpvs_post_arg_info)
 
 
 dpvs_path_template = '/dpvs'
@@ -138,4 +140,56 @@ dpvs_res = ApiResource[EmptyPath](
     dpvs_path_template, dpvs_path_type,
     get=dpvs_get_method,
     post=dpvs_post_method,
+)
+
+
+class DpvGetArgs(NamedTuple):
+    summary: bool = True
+
+
+class DpvGetArgsSchema(Schema):
+    summary = fields.Boolean()
+
+    @post_load
+    def make_dpv_get_args(self, data: Mapping)-> DpvGetArgs:
+        return DpvGetArgs(**data)
+
+
+dpv_get_arg_info = ArgInfo(DpvGetArgsSchema, ArgLocation.args)
+
+
+class DpvPath(NamedTuple):
+    dpv_name: str
+
+
+class DpvPathSchema(Schema):
+    dpv_name = fields.String()
+
+
+def api_dpv_get(
+        req_ctx: RequestContext, work_ctx: WorkContext,
+        args: DpvGetArgs, path: DpvPath)-> ApiRet:
+    dpv = work_ctx.session.query(DistributePhysicalVolume) \
+        .filter_by(dpv_name=path.dpv_name) \
+        .one_or_none()
+    if dpv is None:
+        raise ResourceNotFoundError(
+            'dpv', path.dpv_name)
+    if args.summary is True:
+        schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=False)
+    else:
+        schema = DpvApiSchema(many=False)
+    return ApiRet(dpv, schema)
+
+
+dpv_get_method = ApiMethod[DpvGetArgs, DpvPath](
+    api_dpv_get, HttpStatus.OK, arg_info=dpv_get_arg_info)
+
+
+dpv_path_template = '/dpvs/{dpv_name}'
+dpv_path_type = DpvPath
+
+dpv_res = ApiResource[DpvPath](
+    dpv_path_template, dpv_path_type,
+    get=dpv_get_method,
 )
