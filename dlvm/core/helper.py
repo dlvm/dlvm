@@ -3,7 +3,11 @@ from typing import Type, MutableSequence, MutableMapping, Tuple, Optional, \
 
 from sqlalchemy.orm.session import Session
 
+from dlvm.common.configure import cfg
+from dlvm.common.utils import RequestContext
 from dlvm.common.database import engine
+from dlvm.hook.hook import RpcArg
+from dlvm.hook.rpc_wrapper import rpc_async_call, RpcClientThread
 from dlvm.core.modules import FieldType, Base
 
 
@@ -65,3 +69,19 @@ def create_all()-> None:
 
 def drop_all()-> None:
     Base.metadata.drop_all(engine)
+
+
+def dpv_async_call(
+        req_ctx: RequestContext, dpv_name: str,
+        rpc_name: str, expire_time: int, rpc_arg: RpcArg)-> RpcClientThread:
+    return rpc_async_call(
+        req_ctx, dpv_name, cfg.rpc.dpv_port, cfg.rpc.dpv_timeout,
+        rpc_name, expire_time, rpc_arg)
+
+
+def ihost_async_call(
+        req_ctx: RequestContext, ihost_name: str,
+        rpc_name: str, expire_time: int, rpc_arg: RpcArg)-> RpcClientThread:
+    return rpc_async_call(
+        req_ctx, ihost_name, cfg.rpc.ihost_port, cfg.rpc.ihost_timeout,
+        rpc_name, expire_time, rpc_arg)

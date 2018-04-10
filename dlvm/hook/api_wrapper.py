@@ -55,7 +55,6 @@ class ArgLocation(Enum):
 
 
 Path = TypeVar('Path')
-# ArgSchema = TypeVar('ArgSchema', bound=Schema)
 Args = TypeVar('Args')
 
 
@@ -82,7 +81,7 @@ class ApiMethod(Generic[Args, Path]):
             func: Callable[
                 [RequestContext, WorkContext, Args, Path], ApiRet],
             status_code: HttpStatus,
-            arg_info: ArgInfo = empty_arg_info)-> None:
+            arg_info: ArgInfo)-> None:
         self.func = func
         self.status_code = status_code
         self.arg_info = arg_info

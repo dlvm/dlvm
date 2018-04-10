@@ -1,4 +1,4 @@
-from typing import MutableMapping, Mapping
+from typing import MutableMapping, Mapping, NamedTuple
 
 from marshmallow import Schema, fields, post_load, post_dump
 from marshmallow_enum import EnumField
@@ -102,7 +102,12 @@ class DpvApiSchema(Schema):
     legs = fields.Nested(LegApiSchema, many=True)
 
 
-class DpvRpcSchema(Schema):
+class DpvInfo(NamedTuple):
+    total_size: int
+    free_size: int
+
+
+class DpvInfoSchema(Schema):
     total_size = fields.Integer()
     free_size = fields.Integer()
 
