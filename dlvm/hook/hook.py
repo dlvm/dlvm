@@ -3,6 +3,8 @@ from typing import TypeVar, List, NamedTuple, NewType, Mapping
 from abc import ABC, abstractmethod
 from importlib import import_module
 
+from marshmallow import Schema
+
 from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, WorkContext
 
@@ -11,6 +13,11 @@ HookRet = NewType('HookRet', object)
 
 RpcArg = NewType('RpcArg', Mapping)
 RpcRet = NewType('RpcRet', Mapping)
+
+
+class ApiRet(NamedTuple):
+    data: object
+    schema: Schema
 
 
 class ApiContext(NamedTuple):

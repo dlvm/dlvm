@@ -31,9 +31,14 @@ class GeneralCfg(NamedTuple):
     db_uri: str = 'sqlite://'
 
 
+class ApiCfg(NamedTuple):
+    list_limit: int = 100
+
+
 class Cfg(NamedTuple):
     hook: HookCfg
     rpc: RpcCfg
+    api: ApiCfg
     general: GeneralCfg
 
 

@@ -4,15 +4,13 @@ import os
 from logging.handlers import WatchedFileHandler
 from logging import LoggerAdapter
 from enum import IntEnum
+import uuid
 
 from sqlalchemy.orm.session import Session
 
 
-ReqId = NewType('ReqId', str)
-
-
 class RequestContext(NamedTuple):
-    req_id: ReqId
+    req_id: uuid.UUID
     logger: LoggerAdapter
 
 

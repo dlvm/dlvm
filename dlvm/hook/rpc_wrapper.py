@@ -6,9 +6,10 @@ from xmlrpc.client import Transport, ServerProxy
 from threading import Thread
 import traceback
 import time
+import uuid
 from logging import Logger, LoggerAdapter
 
-from dlvm.common.utils import ReqId, RequestContext
+from dlvm.common.utils import RequestContext
 from dlvm.hook.hook import hook_builder, HookRet, RpcArg, RpcRet, \
     RpcServerHook, RpcServerHookConcrete, RpcServerContext, \
     RpcClientHook, RpcClientHookConcrete, RpcClientContext
@@ -39,7 +40,7 @@ class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
             self, func: Callable[[RequestContext, RpcArg], RpcRet])-> None:
 
         def wrapper_func(
-                req_id: ReqId, expire_time: int, rpc_arg: RpcArg)-> RpcRet:
+                req_id: uuid.UUID, expire_time: int, rpc_arg: RpcArg)-> RpcRet:
             hook_ret_dict: MutableMapping[RpcServerHookConcrete, HookRet] = {}
             logger = LoggerAdapter(self.logger, {'req_id': req_id})
             req_ctx = RequestContext(req_id, logger)

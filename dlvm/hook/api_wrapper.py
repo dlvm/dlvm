@@ -9,11 +9,11 @@ import traceback
 from flask import Flask, request
 from marshmallow import Schema, fields, ValidationError
 
-from dlvm.common.utils import RequestContext, WorkContext, HttpStatus, ReqId
+from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
 from dlvm.common.database import Session
 from dlvm.common.error import DlvmError
 from dlvm.hook.hook import hook_builder, HookRet, ApiHook, \
-    ApiHookConcrete, ApiContext
+    ApiHookConcrete, ApiContext, ApiRet
 
 
 api_hook_list: List[ApiHookConcrete] = hook_builder(ApiHook.hook_name)
@@ -28,14 +28,17 @@ class ApiResponseError(Exception):
 
 
 class ApiSchema(Schema):
-    req_id: ReqId = fields.String()
-    message: str = fields.String()
-    body: Mapping = fields.Method('dump_body')
+    req_id = fields.UUID()
+    message = fields.String()
+    body = fields.Method('dump_body')
 
     def dump_body(self, obj: Mapping)-> Mapping:
         try:
-            schema = self.context['body_schema']
-            return schema.dump(obj['body'])
+            if obj['body'] is None:
+                return {}
+            else:
+                schema = self.context['body_schema']
+                return schema.dump(obj['body'])
         except ValidationError as e:
             raise ApiResponseError(str(e.messages))
 
@@ -52,7 +55,7 @@ class ArgLocation(Enum):
 
 
 Path = TypeVar('Path')
-ArgSchema = TypeVar('ArgSchema', bound=Schema)
+# ArgSchema = TypeVar('ArgSchema', bound=Schema)
 Args = TypeVar('Args')
 
 
@@ -77,31 +80,29 @@ class ApiMethod(Generic[Args, Path]):
     def __init__(
             self,
             func: Callable[
-                [RequestContext, WorkContext, Args, Path], object],
+                [RequestContext, WorkContext, Args, Path], ApiRet],
             status_code: HttpStatus,
-            BodySchema: Type[Schema],
             arg_info: ArgInfo = empty_arg_info)-> None:
         self.func = func
         self.status_code = status_code
-        self.BodySchema = BodySchema
         self.arg_info = arg_info
 
 
-class ApiResource(Generic[Args, Path]):
+class ApiResource(Generic[Path]):
 
     def __init__(
             self,
             path_template: str,
             path_type: Type[Path],
-            get: Optional[ApiMethod[Args, Path]] = None,
-            post: Optional[ApiMethod[Args, Path]] = None,
-            put: Optional[ApiMethod[Args, Path]] = None,
-            delete: Optional[ApiMethod[Args, Path]] = None)-> None:
+            get: Optional[ApiMethod] = None,
+            post: Optional[ApiMethod] = None,
+            put: Optional[ApiMethod] = None,
+            delete: Optional[ApiMethod] = None)-> None:
         self.path_template = path_template
         self.path_type = path_type
         real_path = self.build_path(path_template, path_type)
         self.real_path = real_path
-        method_dict: MutableMapping[str, ApiMethod[Args, Path]] = {}
+        method_dict: MutableMapping[str, ApiMethod] = {}
         if get is not None:
             method_dict['GET'] = get
         if post is not None:
@@ -142,7 +143,7 @@ class Api():
         path = res.path_type(*args, **kwargs)
 
         raw_response: MutableMapping[str, object] = {}
-        req_id = ReqId(uuid.uuid4().hex)
+        req_id = uuid.uuid4()
         raw_response['req_id'] = req_id
         logger = logging.LoggerAdapter(ori_logger, {'req_id': req_id})
         req_ctx = RequestContext(req_id, logger)
@@ -163,11 +164,11 @@ class Api():
                 hook_ret_dict[hook] = hook_ret
         try:
             args = method.arg_info.ArgSchema().load(arg_dict)
-            body = method.func(req_ctx, work_ctx, args, path)
+            api_ret = method.func(req_ctx, work_ctx, args, path)
             raw_response['message'] = 'succeed'
-            raw_response['body'] = body
+            raw_response['body'] = api_ret.data
             api_schema = ApiSchema()
-            api_schema.context['body_schema'] = method.BodySchema()
+            api_schema.context['body_schema'] = api_ret.schema
             response = api_schema.dumps(raw_response)
             api_response = ApiResponse(response, method.status_code)
         except Exception as e:
@@ -198,7 +199,6 @@ class Api():
                 raw_response['message'] = message
                 raw_response['body'] = None
                 api_schema = ApiSchema()
-                api_schema.context['body_schema'] = method.BodySchema()
                 response = api_schema.dumps(raw_response)
                 api_response = ApiResponse(response, status_code)
         else:
@@ -206,11 +206,11 @@ class Api():
                 hook_ret = hook_ret_dict[hook]
                 try:
                     hook.post_hook(
-                        api_ctx, hook_ret, body)
+                        api_ctx, hook_ret, api_ret)
                 except Exception:
                     logger.error(
                         'api post_hook failed: %s %s %s %s',
-                        hook, api_ctx, hook_ret, body)
+                        hook, api_ctx, hook_ret, api_ret)
         finally:
             session.close()
             return api_response
