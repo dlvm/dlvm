@@ -1,64 +1,18 @@
-from dlvm.hook.hook import HookRet, RpcRet, \
-    RpcServerContext, RpcServerHook, RpcClientContext, RpcClientHook, \
-    ApiContext, ApiHook
+import traceback
+
+from dlvm.hook.hook import DlvmHook
 
 
-class LogRpcServerHook(RpcServerHook):
+class LogHook(DlvmHook):
 
-    def pre_hook(self, rpc_server_ctx: RpcServerContext)-> HookRet:
-        rpc_server_ctx.req_ctx.logger.info(
-            'rpc_server_pre %s', rpc_server_ctx)
-        return HookRet(None)
+    def pre_hook(self, hook_ctx):
+        hook_ctx.req_ctx.logger.info('pre_hook: %s', hook_ctx)
 
-    def post_hook(
-            self, rpc_server_ctx: RpcServerContext,
-            hook_ret: HookRet, rpc_ret: RpcRet)-> None:
-        rpc_server_ctx.req_ctx.logger.info(
-            'rpc_server_post %s %s',
-            rpc_server_ctx, rpc_ret)
+    def post_hook(self, hook_ctx, hook_ret, func_ret):
+        hook_ctx.req_ctx.logger.info('post_hook: %s %s', hook_ctx, func_ret)
 
-    def error_hook(
-            self, rpc_server_ctx: RpcServerContext, hook_ret: HookRet,
-            e: Exception, calltrace: str)-> None:
-        rpc_server_ctx.req_ctx.logger.warning(
-            'rpc_server_error %s %s', rpc_server_ctx, calltrace)
-
-
-class LogRpcClientHook(RpcClientHook):
-
-    def pre_hook(self, rpc_client_ctx: RpcClientContext)-> HookRet:
-        rpc_client_ctx.req_ctx.logger.info(
-            'rpc_client_pre %s', rpc_client_ctx)
-        return HookRet(None)
-
-    def post_hook(
-            self, rpc_client_ctx: RpcClientContext,
-            hook_ret: HookRet, rpc_ret: RpcRet)-> None:
-        rpc_client_ctx.req_ctx.logger.info(
-            'rpc_client_post: %s %s', rpc_client_ctx, rpc_ret)
-
-    def error_hook(
-            self, rpc_client_ctx: RpcClientContext, hook_ret: HookRet,
-            e: Exception, calltrace: str)-> None:
-        rpc_client_ctx.req_ctx.logger.warning(
-            'rpc_client_error: %s %s', rpc_client_ctx, calltrace)
-
-
-class LogApiHook(ApiHook):
-
-    def pre_hook(self, api_ctx: ApiContext)-> HookRet:
-        api_ctx.req_ctx.logger.info(
-            'api_pre: %s', api_ctx)
-        return HookRet(None)
-
-    def post_hook(
-            self, api_ctx: ApiContext,
-            hook_ret: HookRet, body: object)-> None:
-        api_ctx.req_ctx.logger.info(
-            'api_post: %s %s', api_ctx, body)
-
-    def error_hook(
-            self, api_ctx: ApiContext, hook_ret: HookRet,
-            e: Exception, calltrace: str)-> None:
-        api_ctx.req_ctx.logger.warning(
-            'api_error: %s %s', api_ctx, calltrace)
+    def error_hook(self, hook_ctx, hook_ret, err_info):
+        calltrace = ''.join(traceback.format_exception(
+            err_info.etype, err_info.value, err_info.tb))
+        hook_ctx.req_ctx.logger.warning(
+            'error_hook: %s\n%s', hook_ctx, calltrace)

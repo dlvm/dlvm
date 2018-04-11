@@ -1,61 +1,25 @@
-from typing import NamedTuple, Sequence
 import os
-
-import yaml
+from configparser import ConfigParser
 
 from dlvm.common.constant import lc_path
+from dlvm.common.utils import run_once
 
 
-class HookCfg(NamedTuple):
-    api_hook: Sequence[str] = [
-        'dlvm.hook.log_hook.LogApiHook',
-    ]
-    rpc_server_hook: Sequence[str] = [
-        'dlvm.hook.log_hook.LogRpcServerHook',
-    ]
-    rpc_client_hook: Sequence[str] = [
-        'dlvm.hook.log_hook.LogRpcClientHook',
-    ]
+class DlvmConfigParser(ConfigParser):
+
+    def getlist(self, section, option):
+        return self.get(section, option).split()
 
 
-class RpcCfg(NamedTuple):
-    dpv_port: int = 9522
-    dpv_listener: str = 'localhost'
-    dpv_timeout: int = 300
-    ihost_port: int = 9523
-    ihost_listener: str = 'localhost'
-    ihost_timeout: int = 300
-
-
-class GeneralCfg(NamedTuple):
-    db_uri: str = 'sqlite://'
-
-
-class ApiCfg(NamedTuple):
-    list_limit: int = 100
-
-
-class Cfg(NamedTuple):
-    hook: HookCfg
-    rpc: RpcCfg
-    api: ApiCfg
-    general: GeneralCfg
-
-
-def load_cfg()-> Cfg:
-    cfg_path = os.path.join(lc_path, 'dlvm.yml')
-    cfg_args = {}
+@run_once
+def load_cfg():
+    cfg = DlvmConfigParser()
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    default_path = os.path.join(curr_dir, 'dlvm.cfg')
+    cfg.read(default_path)
+    cfg_path = os.path.join(lc_path, 'dlvm.cfg')
     if os.path.isfile(cfg_path):
-        with open(cfg_path) as f:
-            cfg_dict = yaml.safe_load(f)
-    else:
-        cfg_dict = {}
-    for key in Cfg._fields:
-        sub_cfg_dict = cfg_dict.get(key, {})
-        sub_cfg_type = Cfg.__annotations__[key]
-        sub_cfg = sub_cfg_type(**sub_cfg_dict)
-        cfg_args[key] = sub_cfg
-    cfg = Cfg(**cfg_args)
+        cfg.read(cfg_path)
     return cfg
 
 

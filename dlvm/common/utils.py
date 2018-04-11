@@ -1,46 +1,22 @@
-from typing import NewType, MutableSet, Sequence, Generator, NamedTuple
+from threading import Lock
+from collections import namedtuple
 
-import os
-from logging.handlers import WatchedFileHandler
-from logging import LoggerAdapter
-from enum import IntEnum
-import uuid
+RequestContext = namedtuple('RequestContext', [
+    'req_id', 'logger'])
 
-from sqlalchemy.orm.session import Session
-
-
-class RequestContext(NamedTuple):
-    req_id: uuid.UUID
-    logger: LoggerAdapter
+WorkContext = namedtuple('WorkContext', [
+    'session', 'done_set'])
 
 
-class WorkContext(NamedTuple):
-    session: Session
-    done_set: MutableSet[str]
+def run_once(func):
+    has_run = False
+    lock = Lock()
 
+    def wrapper(*args, **kwargs):
+        nonlocal has_run
+        with lock:
+            if has_run is False:
+                has_run = True
+                return func(*args, **kwargs)
 
-def chunks(array: Sequence, n: int)-> Generator[Sequence, None, None]:
-    """Yield successive n-sized chunks from array."""
-    for i in range(0, len(array), n):
-        yield array[i:i+n]
-
-
-class PidWatchedFileHandler(WatchedFileHandler):
-
-    def __init__(
-            self, filename: str,
-            mode: str = 'a',
-            encoding: str = None,
-            delay: bool = False)-> None:
-        filename_pid = '{filename}-{pid}'.format(
-            filename=filename, pid=os.getpid())
-        super(PidWatchedFileHandler, self).__init__(
-            filename_pid, mode, encoding, delay)
-
-
-class HttpStatus(IntEnum):
-    OK = 200
-    Created = 201
-    BadRequest = 400
-    NotFound = 404
-    InternalServerError = 500
+    return wrapper

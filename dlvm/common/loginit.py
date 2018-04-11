@@ -1,29 +1,19 @@
 import os
 import logging
 import logging.config
-from threading import Lock
-
-import yaml
+import json
 
 from dlvm.common.constant import lc_path
+from dlvm.common.utils import run_once
 
 logger_cfg_path = os.path.join(lc_path, 'logger.yml')
 
 inited = False
-lock = Lock()
 
 
-def __loginit()-> None:
-    global inited
-    if inited is True:
-        return
+@run_once
+def loginit():
     if os.path.isfile(logger_cfg_path):
         with open(logger_cfg_path) as f:
-            logger_cfg = yaml.safe_load(f)
+            logger_cfg = json.load(f)
             logging.config.dictConfig(logger_cfg)
-            inited = True
-
-
-def loginit()-> None:
-    with lock:
-        __loginit()
