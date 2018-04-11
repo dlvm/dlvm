@@ -15,7 +15,7 @@ class DlvmConfigParser(ConfigParser):
 def load_cfg():
     cfg = DlvmConfigParser()
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    default_path = os.path.join(curr_dir, 'dlvm.cfg')
+    default_path = os.path.join(curr_dir, 'default.cfg')
     cfg.read(default_path)
     cfg_path = os.path.join(lc_path, 'dlvm.cfg')
     if os.path.isfile(cfg_path):

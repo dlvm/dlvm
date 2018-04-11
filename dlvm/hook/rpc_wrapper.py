@@ -1,5 +1,6 @@
 import sys
 import time
+import uuid
 from xmlrpc.server import SimpleXMLRPCServer
 from socketserver import ThreadingMixIn
 from xmlrpc.client import Transport, ServerProxy
@@ -42,8 +43,7 @@ class RpcError(Exception):
 
 class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
-    def __init__(self, listener, port, logger):
-        self.logger = logger
+    def __init__(self, listener, port):
         super(DlvmRpcServer, self).__init__(
             (listener, port), allow_none=True)
 
@@ -76,10 +76,10 @@ class RpcClientThread(Thread):
             self.rpc_client_ctx.server, self.rpc_client_ctx.port)
         with ServerProxy(
                 address, transport=transport, allow_none=True) as proxy:
-            rpc_func = getattr(proxy, self.rpc_client_ctx.rpc_name)
+            rpc_func = getattr(proxy, self.rpc_client_ctx.func_name)
             rpc_ret_s = rpc_func(
-                self.rpc_client_ctx.req_ctx.req_id,
-                self.rpc_clinet_ctx.expire_time,
+                self.rpc_client_ctx.req_ctx.req_id.hex,
+                self.rpc_client_ctx.expire_time,
                 self.rpc_client_ctx.rpc_arg)
             rpc_ret = self.ret_schema_cls().load(rpc_ret_s)
             self.rpc_ret = rpc_ret
@@ -109,7 +109,8 @@ class RpcClientThread(Thread):
 class Rpc():
 
     def __init__(self, listener, port, logger):
-        self.server = DlvmRpcServer(listener, port, logger)
+        self.server = DlvmRpcServer(listener, port)
+        self.logger = logger
         self.func_dict = {}
 
     def rpc(self, arg_schema_cls, ret_schema_cls):
@@ -118,7 +119,8 @@ class Rpc():
 
             func_name = func.__name__
 
-            def rpc_wrapper(req_id, expire_time, rpc_arg_s):
+            def rpc_wrapper(req_id_hex, expire_time, rpc_arg_s):
+                req_id = uuid.UUID(req_id_hex)
                 logger = LoggerAdapter(self.logger, {'req_id': req_id})
                 req_ctx = RequestContext(req_id, logger)
                 hook_ctx = RpcServerContext(
@@ -145,20 +147,23 @@ class Rpc():
                         hook_ctx, hook_ret_dict, rpc_ret_s)
                     return rpc_ret_s
 
-            self.server.register(rpc_wrapper, func_name)
+            self.server.register_function(rpc_wrapper, func_name)
             self.func_dict[func_name] = RpcSchema(
                 arg_schema_cls, ret_schema_cls)
             return func
 
         return wrapper
 
+    def start_server(self):
+        self.server.serve_forever()
+
     def async_call(
-            self, rpc_ctx, server, port, timeout,
+            self, req_ctx, server, port, timeout,
             func_name, expire_time, rpc_arg):
         rpc_schema = self.func_dict[func_name]
         rpc_arg_s = rpc_schema.arg_schema_cls().dump(rpc_arg)
         hook_ctx = RpcClientContext(
-            rpc_ctx, server, port, timeout,
+            req_ctx, server, port, timeout,
             func_name, expire_time, rpc_arg_s)
         hook_ret_dict = run_pre_hook(
             'rpc_client', rpc_client_hook_list, hook_ctx)
