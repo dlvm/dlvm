@@ -120,7 +120,7 @@ class Rpc():
             func_name = func.__name__
 
             def rpc_wrapper(req_id_hex, expire_time, rpc_arg_s):
-                req_id = uuid.UUID(req_id_hex)
+                req_id = uuid.UUID(hex=req_id_hex)
                 logger = LoggerAdapter(self.logger, {'req_id': req_id})
                 req_ctx = RequestContext(req_id, logger)
                 hook_ctx = RpcServerContext(
