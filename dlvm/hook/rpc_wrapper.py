@@ -18,10 +18,10 @@ rpc_client_hook_list = build_hook_list('rpc_client_hook')
 
 
 RpcServerContext = namedtuple('RpcServerContext', [
-    'req_ctx', 'func_name', 'expire_time', 'rpc_arg'])
+    'req_ctx', 'func_name', 'expire_time_str', 'rpc_arg_s'])
 RpcClientContext = namedtuple('RpcClientContext', [
     'req_ctx', 'server', 'port', 'timeout',
-    'func_name', 'expire_time', 'rpc_arg'])
+    'func_name', 'expire_time_str', 'rpc_arg_s'])
 RpcSchema = namedtuple('RpcSchema', [
     'arg_schema_cls', 'ret_schema_cls'])
 
@@ -79,8 +79,8 @@ class RpcClientThread(Thread):
             rpc_func = getattr(proxy, self.rpc_client_ctx.func_name)
             rpc_ret_s = rpc_func(
                 self.rpc_client_ctx.req_ctx.req_id.hex,
-                self.rpc_client_ctx.expire_time,
-                self.rpc_client_ctx.rpc_arg)
+                self.rpc_client_ctx.expire_time_str,
+                self.rpc_client_ctx.rpc_arg_s)
             rpc_ret = self.ret_schema_cls().load(rpc_ret_s)
             self.rpc_ret = rpc_ret
 
@@ -119,16 +119,17 @@ class Rpc():
 
             func_name = func.__name__
 
-            def rpc_wrapper(req_id_hex, expire_time, rpc_arg_s):
+            def rpc_wrapper(req_id_hex, expire_time_str, rpc_arg_s):
                 req_id = uuid.UUID(hex=req_id_hex)
                 logger = LoggerAdapter(self.logger, {'req_id': req_id})
                 req_ctx = RequestContext(req_id, logger)
                 hook_ctx = RpcServerContext(
-                    req_ctx, func_name, expire_time, rpc_arg_s)
+                    req_ctx, func_name, expire_time_str, rpc_arg_s)
                 hook_ret_dict = run_pre_hook(
                     'rpc_server', rpc_server_hook_list, hook_ctx)
                 try:
                     curr_time = int(time.time())
+                    expire_time = int(expire_time_str)
                     if expire_time != 0 and curr_time > expire_time:
                         raise RpcExpireError(curr_time, expire_time)
                     rpc_arg = arg_schema_cls().load(rpc_arg_s)
@@ -162,9 +163,10 @@ class Rpc():
             func_name, expire_time, rpc_arg):
         rpc_schema = self.func_dict[func_name]
         rpc_arg_s = rpc_schema.arg_schema_cls().dump(rpc_arg)
+        expire_time_str = str(expire_time)
         hook_ctx = RpcClientContext(
             req_ctx, server, port, timeout,
-            func_name, expire_time, rpc_arg_s)
+            func_name, expire_time_str, rpc_arg_s)
         hook_ret_dict = run_pre_hook(
             'rpc_client', rpc_client_hook_list, hook_ctx)
         t = RpcClientThread(
