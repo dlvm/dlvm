@@ -87,7 +87,7 @@ class Api():
         self.app = app
         self.res_info_dict = {}
 
-    def handler(self, *args, **kwargs):
+    def handler(self, *path_args, **path_kwargs):
         res_info = self.res_info_dict[request.endpoint]
         method = res_info.method_dict[request.method]
         if method.arg_info.location == ArgLocation.args:
@@ -102,13 +102,16 @@ class Api():
         session = Session()
         work_ctx = WorkContext(session, set())
         hook_ctx = ApiContext(
-            req_ctx, work_ctx, method.func.__name__, arg_dict, args, kwargs)
+            req_ctx, work_ctx, method.func.__name__,
+            arg_dict, path_args, path_kwargs)
 
         hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
         try:
             args = method.arg_info.arg_schema_cls().load(arg_dict)
             g.args = args
-            api_ret = method.func(*args, **kwargs)
+            g.req_ctx = req_ctx
+            g.work_ctx = work_ctx
+            api_ret = method.func(*path_args, **path_kwargs)
             raw_response['message'] = 'succeed'
             raw_response['data'] = api_ret.data
             api_response_schema = ApiResponseSchema()
