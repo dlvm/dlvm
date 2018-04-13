@@ -1,12 +1,17 @@
+import sys
+
+from sqlalchemy.exc import IntegrityError
 from marshmallow import Schema, fields
 from marshmallow.validate import Range, OneOf
 from marshmallow_enum import EnumField
 
 from dlvm.common.configure import cfg
-from dlvm.common.utils import HttpStatus
+from dlvm.common.utils import HttpStatus, ExcInfo
+from dlvm.common.error import DpvError, ResourceDuplicateError
 from dlvm.hook.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
 from dlvm.hook.local_ctx import frontend_local
+from dlvm.hook.rpc_wrapper import DpvClient
 from dlvm.core.modules import DistributePhysicalVolume, DpvStatus
 from dlvm.core.schema import DpvApiSchema
 from dlvm.core.helper import GeneralQuery
@@ -42,9 +47,9 @@ dpvs_get_args_info = ArgInfo(DpvsGetArgSchema, ArgLocation.args)
 
 
 def dpvs_get():
-    work_ctx = frontend_local.work_ctx
+    session = frontend_local.session
     args = frontend_local.args
-    query = GeneralQuery(work_ctx.session, DistributePhysicalVolume)
+    query = GeneralQuery(session, DistributePhysicalVolume)
     query.add_order_field(args['order_by'], args['reverse'])
     query.set_offset(args['offset'])
     query.set_limit(args['limit'])
@@ -64,4 +69,45 @@ def dpvs_get():
 
 dpvs_get_method = ApiMethod(dpvs_get, HttpStatus.OK, dpvs_get_args_info)
 
-dpvs_res = ApiResource('/dpvs', get=dpvs_get_method)
+
+class DpvsPostArgSchema(Schema):
+    dpv_name = fields.String(required=True)
+
+
+dpvs_post_args_info = ArgInfo(DpvsPostArgSchema, ArgLocation.json)
+
+
+def dpvs_post():
+    session = frontend_local.session
+    args = frontend_local.args
+    dpv_name = args['dpv_name']
+    client = DpvClient(dpv_name)
+    try:
+        dpv_info = client.dpv_get_info()
+        total_size = dpv_info['total_size']
+        free_size = dpv_info['free_size']
+        assert(total_size == free_size)
+    except Exception:
+        raise DpvError(dpv_name)
+    dpv = DistributePhysicalVolume(
+        dpv_name=dpv_name,
+        total_size=total_size,
+        free_size=free_size,
+        status=DpvStatus.available,
+    )
+    session.add(dpv)
+    try:
+        session.commit()
+    except IntegrityError:
+        etype, value, tb = sys.exc_info()
+        exc_info = ExcInfo(etype, value, tb)
+        raise ResourceDuplicateError('dpv', dpv_name, exc_info)
+    return None
+
+
+dpvs_post_method = ApiMethod(dpvs_post, HttpStatus.OK, dpvs_post_args_info)
+
+
+dpvs_res = ApiResource(
+    '/dpvs',
+    get=dpvs_get_method, post=dpvs_post_method)

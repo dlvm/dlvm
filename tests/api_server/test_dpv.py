@@ -1,5 +1,5 @@
 import unittest
-# from unittest.mock import patch
+from unittest.mock import patch
 import json
 
 from dlvm.core.helper import create_all, drop_all
@@ -49,3 +49,29 @@ class DpvTest(unittest.TestCase):
         data = json.loads(resp.data)
         self.assertEqual(data['message'], 'succeed')
         self.assertEqual(len(data['data']), len(fake_dpvs))
+
+    @patch('dlvm.api_server.dpv.DpvClient')
+    def test_dpvs_post(self, DpvClient):
+        dpv_name = 'dpv0'
+        total_size = 512*1024*1024*1024
+        free_size = 512*1024*1024*1024
+        DpvClient \
+            .return_value \
+            .dpv_get_info \
+            .return_value = {
+                'total_size': total_size,
+                'free_size': free_size,
+            }
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        raw_data = {
+            'dpv_name': dpv_name,
+        }
+        data = json.dumps(raw_data)
+        resp = self.client.post('/dpvs', headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        dpv = self.dbm.dpv_get(dpv_name)
+        self.assertEqual(dpv.dpv_name, dpv_name)
+        self.assertEqual(dpv.total_size, total_size)
+        

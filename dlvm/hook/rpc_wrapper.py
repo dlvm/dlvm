@@ -9,11 +9,11 @@ from logging import LoggerAdapter, getLogger
 from datetime import datetime
 from types import MethodType
 
-from dlvm.common.utils import RequestContext
+from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
-    run_post_hook, run_error_hook, ExcInfo
+    run_post_hook, run_error_hook
 from dlvm.hook.local_ctx import backend_local, frontend_local
 
 

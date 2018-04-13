@@ -3,10 +3,10 @@ import sys
 import os
 import subprocess
 
-from dlvm.common.utils import RequestContext
+from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.configure import cfg
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
-    run_post_hook, run_error_hook, ExcInfo
+    run_post_hook, run_error_hook
 from dlvm.hook.local_ctx import backend_local
 
 

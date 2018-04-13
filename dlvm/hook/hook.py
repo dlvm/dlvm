@@ -1,15 +1,7 @@
 from abc import ABC, abstractmethod
 from importlib import import_module
-from collections import namedtuple
 
 from dlvm.common.configure import cfg
-
-
-ExcInfo = namedtuple('ExcInfo', [
-    'etype', 'value', 'tb'])
-
-ApiContext = namedtuple('ApiContext', [
-    'req_ctx', 'work_ctx', 'func_name', 'arg_dict', 'path'])
 
 
 class DlvmHook(ABC):

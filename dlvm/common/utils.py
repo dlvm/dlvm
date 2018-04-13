@@ -1,10 +1,9 @@
-from typing import NamedTuple, Set
+from typing import NamedTuple, Type
+from types import TracebackType
 from threading import Lock
 import enum
 import uuid
 from logging import LoggerAdapter
-
-from sqlalchemy.orm.session import Session
 
 
 class RequestContext(NamedTuple):
@@ -12,9 +11,10 @@ class RequestContext(NamedTuple):
     logger: LoggerAdapter
 
 
-class WorkContext(NamedTuple):
-    session: Session
-    done_set: Set
+class ExcInfo(NamedTuple):
+    etype: Type[BaseException]
+    value: BaseException
+    tb: TracebackType
 
 
 def run_once(func):

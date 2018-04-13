@@ -7,18 +7,17 @@ from logging import getLogger, LoggerAdapter
 from flask import request, make_response
 from marshmallow import Schema, fields, ValidationError
 
-from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
+from dlvm.common.utils import RequestContext, HttpStatus, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
-    run_post_hook, run_error_hook, ExcInfo
+    run_post_hook, run_error_hook
 from dlvm.hook.local_ctx import frontend_local
 
 
 class ApiContext(NamedTuple):
     req_ctx: RequestContext
-    work_ctx: WorkContext
     func_name: str
     arg_dict: Mapping
     path_args: Sequence
@@ -27,8 +26,9 @@ class ApiContext(NamedTuple):
 
 class ApiResponseSchemaError(Exception):
 
-    def __init__(self, message):
+    def __init__(self, message, exc_info):
         self.message = message
+        self.exc_info = exc_info
         super(ApiResponseSchemaError, self).__init__(message)
 
 
@@ -48,7 +48,9 @@ class ApiResponseSchema(Schema):
                 schema = self.context['data_schema']
                 return schema.dump(obj['data'])
         except ValidationError as e:
-            raise ApiResponseSchemaError(str(e.messages))
+            etype, value, tb = sys.exc_info()
+            exc_info = ExcInfo(etype, value, tb)
+            raise ApiResponseSchemaError(str(e.messages), exc_info)
 
 
 class ArgLocation(enum.Enum):
@@ -113,9 +115,8 @@ class Api():
         logger = LoggerAdapter(ori_logger, {'req_id': req_id})
         req_ctx = RequestContext(req_id, logger)
         session = Session()
-        work_ctx = WorkContext(session, set())
         hook_ctx = ApiContext(
-            req_ctx, work_ctx, method.func.__name__,
+            req_ctx, method.func.__name__,
             arg_dict, path_args, path_kwargs)
 
         hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
@@ -123,33 +124,47 @@ class Api():
             args = method.arg_info.arg_schema_cls().load(arg_dict)
             frontend_local.args = args
             frontend_local.req_ctx = req_ctx
-            frontend_local.work_ctx = work_ctx
+            frontend_local.session = session
             api_ret = method.func(*path_args, **path_kwargs)
             raw_response['message'] = 'succeed'
-            raw_response['data'] = api_ret.data
-            api_response_schema = ApiResponseSchema()
-            api_response_schema.context['data_schema'] = api_ret.schema
+            if api_ret is None:
+                raw_response['data'] = None
+                api_response_schema = ApiResponseSchema()
+                api_response_schema.context['data_schema'] = None
+            else:
+                raw_response['data'] = api_ret.data
+                api_response_schema = ApiResponseSchema()
+                api_response_schema.context['data_schema'] = api_ret.schema
             response = api_response_schema.dumps(raw_response)
             full_response = make_response(
                 response, method.status_code, api_headers)
         except Exception as e:
-            etype, value, tb = sys.exc_info()
-            exc_info = ExcInfo(etype, value, tb)
-            run_error_hook(
-                'api', api_hook_list, hook_ctx, hook_ret_dict, exc_info)
-            session.rollback()
             if isinstance(e, ValidationError):
                 message = str(e.messages)
                 status_code = HttpStatus.BadRequest
+                etype, value, tb = sys.exc_info()
+                exc_info = ExcInfo(etype, value, tb)
             elif isinstance(e, DlvmError):
                 message = e.message
                 status_code = e.status_code
+                if e.exc_info is not None:
+                    exc_info = e.exc_info
+                else:
+                    etype, value, tb = sys.exc_info()
+                    exc_info = ExcInfo(etype, value, tb)
             elif isinstance(e, ApiResponseSchemaError):
                 message = e.message
                 status_code = HttpStatus.InternalServerError
+                exc_info = e.exc_info
             else:
                 message = 'internal_error'
                 status_code = HttpStatus.InternalServerError
+                etype, value, tb = sys.exc_info()
+                exc_info = ExcInfo(etype, value, tb)
+
+            session.rollback()
+            run_error_hook(
+                'api', api_hook_list, hook_ctx, hook_ret_dict, exc_info)
             raw_response['message'] = message
             raw_response['data'] = None
             api_response_schema = ApiResponseSchema()
