@@ -10,6 +10,19 @@ class DlvmConfigParser(ConfigParser):
     def getlist(self, section, option):
         return self.get(section, option).split()
 
+    def getsize(self, section, option):
+        val = self.get(section, option)
+        count = int(val[:-1])
+        unit = val[-1:]
+        if unit == 'G':
+            return count*1024*1024*1024
+        elif unit == 'M':
+            return count*1024*1024
+        elif unit == 'K':
+            return count*1024
+        else:
+            raise TypeError('invalid unit: %s %s' % (val, unit))
+
 
 @run_once
 def load_cfg():
