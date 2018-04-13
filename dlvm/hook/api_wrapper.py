@@ -4,7 +4,7 @@ import uuid
 import enum
 import logging
 
-from flask import request, g, make_response
+from flask import request, make_response
 from marshmallow import Schema, fields, ValidationError
 
 from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
@@ -12,6 +12,7 @@ from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook, ExcInfo
+from dlvm.hook.local_ctx import frontend_local
 
 
 class ApiContext(NamedTuple):
@@ -118,9 +119,9 @@ class Api():
         hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
         try:
             args = method.arg_info.arg_schema_cls().load(arg_dict)
-            g.args = args
-            g.req_ctx = req_ctx
-            g.work_ctx = work_ctx
+            frontend_local.args = args
+            frontend_local.req_ctx = req_ctx
+            frontend_local.work_ctx = work_ctx
             api_ret = method.func(*path_args, **path_kwargs)
             raw_response['message'] = 'succeed'
             raw_response['data'] = api_ret.data

@@ -4,15 +4,16 @@ import uuid
 from xmlrpc.server import SimpleXMLRPCServer
 from socketserver import ThreadingMixIn
 import xmlrpc.client
-from threading import Thread, local
-from logging import LoggerAdapter
+from threading import Thread
+from logging import LoggerAdapter, getLogger
 from datetime import datetime
 from types import MethodType
 
 from dlvm.common.utils import RequestContext
+from dlvm.common.configure import cfg
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook, ExcInfo
-
+from dlvm.hook.local_ctx import backend_local, frontend_local
 
 xmlrpc.client.MAXINT = 2**63-1
 xmlrpc.client.MININT = -2**63
@@ -53,9 +54,6 @@ class RpcError(Exception):
         super(RpcError, self).__init__('rpc error')
 
 
-rpc_local = local()
-
-
 class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
     def __init__(self, listener, port, logger):
@@ -79,7 +77,7 @@ class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
                 curr_dt = datetime.utcnow()
                 if expire_dt is not None and curr_dt > expire_dt:
                     raise RpcExpireError(curr_dt, expire_dt)
-                rpc_local.req_ctx = req_ctx
+                backend_local.req_ctx = req_ctx
                 rpc_ret = func(*args, **kwargs)
             except Exception:
                 etype, value, tb = sys.exc_info()
@@ -184,3 +182,43 @@ class DlvmRpcClient():
                     hook_ctx, hook_ret_dict, rpc_ret)
                 return rpc_ret
         return MethodType(remote_func, self)
+
+
+class DpvServer(DlvmRpcServer):
+
+    def __init__(self):
+        logger = getLogger('dpv_agent')
+        listener = cfg.get('rpc', 'dpv_listener')
+        port = cfg.getint('rpc', 'dpv_port')
+        super(DpvServer, self).__init__(listener, port, logger)
+
+
+class IhostServer(DlvmRpcServer):
+
+    def __init__(self):
+        logger = getLogger('ihost_agent')
+        listener = cfg.get('rpc', 'ihost_listener')
+        port = cfg.getint('rpc', 'ihost_port')
+        super(DpvServer, self).__init__(listener, port, logger)
+
+
+class DpvClient(DlvmRpcClient):
+
+    def __init__(self, dpv_name, expire_time=None):
+        req_ctx = frontend_local.req_ctx
+        server = dpv_name
+        port = cfg.getint('rpc', 'dpv_port')
+        timeout = cfg.getint('rpc', 'dpv_timeout')
+        super(DpvClient, self).__init__(
+            req_ctx, server, port, timeout, expire_time)
+
+
+class IhostClient(DlvmRpcClient):
+
+    def __init__(self, dpv_name, expire_time=None):
+        req_ctx = frontend_local.req_ctx
+        server = dpv_name
+        port = cfg.getint('rpc', 'ihost_port')
+        timeout = cfg.getint('rpc', 'ihost_timeout')
+        super(DpvClient, self).__init__(
+            req_ctx, server, port, timeout, expire_time)

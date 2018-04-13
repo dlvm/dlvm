@@ -1,4 +1,3 @@
-from flask import g
 from marshmallow import Schema, fields
 from marshmallow.validate import Range, OneOf
 from marshmallow_enum import EnumField
@@ -7,6 +6,7 @@ from dlvm.common.configure import cfg
 from dlvm.common.utils import HttpStatus
 from dlvm.hook.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
+from dlvm.hook.local_ctx import frontend_local
 from dlvm.core.modules import DistributePhysicalVolume, DpvStatus
 from dlvm.core.schema import DpvApiSchema
 from dlvm.core.helper import GeneralQuery
@@ -42,8 +42,8 @@ dpvs_get_args_info = ArgInfo(DpvsGetArgSchema, ArgLocation.args)
 
 
 def dpvs_get():
-    work_ctx = g.work_ctx
-    args = g.args
+    work_ctx = frontend_local.work_ctx
+    args = frontend_local.args
     query = GeneralQuery(work_ctx.session, DistributePhysicalVolume)
     query.add_order_field(args['order_by'], args['reverse'])
     query.set_offset(args['offset'])
