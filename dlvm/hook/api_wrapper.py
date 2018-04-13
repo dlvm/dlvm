@@ -1,23 +1,26 @@
+from typing import NamedTuple, Mapping, Sequence, Callable, Optional, Type
 import sys
 import uuid
 import enum
-from collections import namedtuple
 import logging
 
 from flask import request, g, make_response
 from marshmallow import Schema, fields, ValidationError
 
-from dlvm.common.utils import RequestContext, WorkContext, \
-    namedtuple_with_default, HttpStatus
+from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
 from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook, ExcInfo
 
 
-ApiContext = namedtuple('ApiContext', [
-    'req_ctx', 'work_ctx', 'func_name',
-    'arg_dict', 'path_args', 'path_kwargs'])
+class ApiContext(NamedTuple):
+    req_ctx: RequestContext
+    work_ctx: WorkContext
+    func_name: str
+    arg_dict: Mapping
+    path_args: Sequence
+    path_kwargs: Mapping
 
 
 class ApiResponseSchemaError(Exception):
@@ -51,29 +54,36 @@ class ArgLocation(enum.Enum):
     json = 'json'
 
 
-ArgInfo = namedtuple('ArgInfo', [
-        'arg_schema_cls', 'location'])
+class ArgInfo(NamedTuple):
+    arg_schema_cls: Type[Schema]
+    location: ArgLocation
 
 
 empty_arg_info = ArgInfo(Schema, ArgLocation.args)
 
 
-ApiMethod = namedtuple_with_default(
-    'ApiMethod',
-    ['func', 'status_code', 'arg_info'],
-    (empty_arg_info,))
-
-ApiResource = namedtuple_with_default(
-    'ApiResource',
-    ['path', 'get', 'post', 'put', 'delete'],
-    (None, None, None, None))
+class ApiMethod(NamedTuple):
+    func: Callable
+    status_code: HttpStatus
+    arg_info: ArgInfo = empty_arg_info
 
 
-ResInfo = namedtuple('ResInfo', [
-        'res', 'method_dict'])
+class ApiResource(NamedTuple):
+    path: str
+    get: Optional[ApiMethod] = None
+    post: Optional[ApiMethod] = None
+    put: Optional[ApiMethod] = None
+    delete: Optional[ApiMethod] = None
 
 
-ApiRet = namedtuple('ApiRet', ['data', 'schema'])
+class ResInfo(NamedTuple):
+    res: ApiResource
+    method_dict: Mapping[str, ApiMethod]
+
+
+class ApiRet(NamedTuple):
+    data: object
+    schema: Schema
 
 
 api_hook_list = build_hook_list('api_hook')

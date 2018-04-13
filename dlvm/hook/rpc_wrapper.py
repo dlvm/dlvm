@@ -1,36 +1,48 @@
+from typing import NamedTuple, Sequence, Mapping
 import sys
-import time
 import uuid
 from xmlrpc.server import SimpleXMLRPCServer
 from socketserver import ThreadingMixIn
-from xmlrpc.client import Transport, ServerProxy
-from threading import Thread
+import xmlrpc.client
+from threading import Thread, local
 from logging import LoggerAdapter
-from collections import namedtuple
+from datetime import datetime
+from types import MethodType
 
 from dlvm.common.utils import RequestContext
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook, ExcInfo
 
 
+xmlrpc.client.MAXINT = 2**63-1
+xmlrpc.client.MININT = -2**63
+
 rpc_server_hook_list = build_hook_list('rpc_server_hook')
 rpc_client_hook_list = build_hook_list('rpc_client_hook')
 
 
-RpcServerContext = namedtuple('RpcServerContext', [
-    'req_ctx', 'func_name', 'expire_time_str', 'rpc_arg_s'])
-RpcClientContext = namedtuple('RpcClientContext', [
-    'req_ctx', 'server', 'port', 'timeout',
-    'func_name', 'expire_time_str', 'rpc_arg_s'])
-RpcSchema = namedtuple('RpcSchema', [
-    'arg_schema_cls', 'ret_schema_cls'])
+class RpcServerContext(NamedTuple):
+    req_ctx: RequestContext
+    func_name: str
+    expire_time: datetime
+    args: Sequence
+    kwargs: Mapping
+
+
+class RpcClientContext(NamedTuple):
+    req_ctx: RequestContext
+    address: str
+    expire_time: datetime
+    func_name: str
+    rpc_args: Sequence
+    rpc_kwargs: Mapping
 
 
 class RpcExpireError(Exception):
 
-    def __init__(self, curr_time, expire_time):
-        msg = 'curr_time={0}, expire_time={1}'.format(
-            curr_time, expire_time)
+    def __init__(self, curr_dt, expire_dt):
+        msg = 'curr_dt={0}, expire_dt={1}'.format(
+            curr_dt, expire_dt)
         super(RpcExpireError, self).__init__(msg)
 
 
@@ -41,17 +53,55 @@ class RpcError(Exception):
         super(RpcError, self).__init__('rpc error')
 
 
+rpc_local = local()
+
+
 class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
-    def __init__(self, listener, port):
+    def __init__(self, listener, port, logger):
+        self.logger = logger
         super(DlvmRpcServer, self).__init__(
-            (listener, port), allow_none=True)
+            (listener, port), allow_none=True, use_builtin_types=True)
+
+    def register(self, func):
+
+        func_name = func.__name__
+
+        def wrapper(req_id_hex, expire_dt, *args, **kwargs):
+            req_id = uuid.UUID(hex=req_id_hex)
+            logger = LoggerAdapter(self.logger, {'req_id': req_id})
+            req_ctx = RequestContext(req_id, logger)
+            hook_ctx = RpcServerContext(
+                req_ctx, func_name, expire_dt, args, kwargs)
+            hook_ret_dict = run_pre_hook(
+                'rpc_server', rpc_server_hook_list, hook_ctx)
+            try:
+                curr_dt = datetime.utcnow()
+                if expire_dt is not None and curr_dt > expire_dt:
+                    raise RpcExpireError(curr_dt, expire_dt)
+                rpc_local.req_ctx = req_ctx
+                rpc_ret = func(*args, **kwargs)
+            except Exception:
+                etype, value, tb = sys.exc_info()
+                exc_info = ExcInfo(etype, value, tb)
+                run_error_hook(
+                    'rpc_server', rpc_server_hook_list,
+                    hook_ctx, hook_ret_dict, exc_info)
+                raise
+            else:
+                run_post_hook(
+                    'rpc_server', rpc_server_hook_list,
+                    hook_ctx, hook_ret_dict, rpc_ret)
+                return rpc_ret
+
+        self.register_function(wrapper, func_name)
+        return func
 
 
-class TimeoutTransport(Transport):
+class TimeoutTransport(xmlrpc.client.Transport):
 
     def __init__(self, timeout: int)-> None:
-        super(TimeoutTransport, self).__init__()
+        super(TimeoutTransport, self).__init__(use_builtin_types=True)
         self.__timeout = timeout
 
     def make_connection(self, host: str)-> int:
@@ -62,114 +112,75 @@ class TimeoutTransport(Transport):
 
 class RpcClientThread(Thread):
 
-    def __init__(self, rpc_client_ctx, hook_ret_dict, ret_schema_cls):
-        self.rpc_client_ctx = rpc_client_ctx
-        self.hook_ret_dict = hook_ret_dict
-        self.ret_schema_cls = ret_schema_cls
-        self.real_ret = None
-        self.exc_info = None
+    def __init__(self, remote_func, args, kwargs):
+        self.remote_func = remote_func
+        self.args = args
+        self.kwargs = kwargs
+        self.ret_or_err = None
         super(RpcClientThread, self).__init__()
-
-    def do_remote_call(self):
-        transport = TimeoutTransport(timeout=self.rpc_client_ctx.timeout)
-        address = 'http://{0}:{1}'.format(
-            self.rpc_client_ctx.server, self.rpc_client_ctx.port)
-        with ServerProxy(
-                address, transport=transport, allow_none=True) as proxy:
-            rpc_func = getattr(proxy, self.rpc_client_ctx.func_name)
-            rpc_ret_s = rpc_func(
-                self.rpc_client_ctx.req_ctx.req_id.hex,
-                self.rpc_client_ctx.expire_time_str,
-                self.rpc_client_ctx.rpc_arg_s)
-            rpc_ret = self.ret_schema_cls().load(rpc_ret_s)
-            self.rpc_ret = rpc_ret
 
     def run(self):
         try:
-            self.do_remote_call()
-        except Exception:
-            etype, value, tb = sys.exc_info()
-            exc_info = ExcInfo(etype, value, tb)
-            self.exc_info = exc_info
+            ret = self.remote_func(*self.args, **self.kwargs)
+        except Exception as e:
+            self.ret_or_err = e
+        else:
+            self.ret_or_err = ret
 
     def get_value(self):
         self.join()
-        if self.exc_info is not None:
-            run_error_hook(
-                'rpc_client', rpc_client_hook_list,
-                self.rpc_client_ctx, self.hook_ret_dict, self.exc_info)
-            raise RpcError(self.exc_info)
+        if isinstance(self.ret_or_err, Exception):
+            raise self.ret_or_err
         else:
-            run_post_hook(
-                'rpc_client', rpc_client_hook_list,
-                self.rpc_client_ctx, self.hook_ret_dict, self.rpc_ret)
-            return self.rpc_ret
+            return self.ret_or_err
 
 
-class Rpc():
+class DlvmRpcClient():
 
-    def __init__(self, listener, port, logger):
-        self.server = DlvmRpcServer(listener, port)
-        self.logger = logger
-        self.func_dict = {}
+    def __init__(self, req_ctx, server, port, timeout, expire_time):
+        self.req_ctx = req_ctx
+        self.expire_time = expire_time
+        self.address = 'http://{0}:{1}'.format(server, port)
+        self.transport = TimeoutTransport(timeout)
 
-    def rpc(self, arg_schema_cls, ret_schema_cls):
+    def async(self, func_name):
+        remote_func = getattr(self, func_name)
 
-        def wrapper(func):
+        def async_func(self, *args, **kwargs):
+            t = RpcClientThread(
+                remote_func=remote_func, args=args, kwargs=kwargs)
+            t.start()
+            return t
 
-            func_name = func.__name__
+        return MethodType(async_func, self)
 
-            def rpc_wrapper(req_id_hex, expire_time_str, rpc_arg_s):
-                req_id = uuid.UUID(hex=req_id_hex)
-                logger = LoggerAdapter(self.logger, {'req_id': req_id})
-                req_ctx = RequestContext(req_id, logger)
-                hook_ctx = RpcServerContext(
-                    req_ctx, func_name, expire_time_str, rpc_arg_s)
-                hook_ret_dict = run_pre_hook(
-                    'rpc_server', rpc_server_hook_list, hook_ctx)
-                try:
-                    curr_time = int(time.time())
-                    expire_time = int(expire_time_str)
-                    if expire_time != 0 and curr_time > expire_time:
-                        raise RpcExpireError(curr_time, expire_time)
-                    rpc_arg = arg_schema_cls().load(rpc_arg_s)
-                    rpc_ret = func(req_ctx, rpc_arg)
-                    rpc_ret_s = ret_schema_cls().dump(rpc_ret)
-                except Exception:
-                    etype, value, tb = sys.exc_info()
-                    exc_info = ExcInfo(etype, value, tb)
-                    run_error_hook(
-                        'rpc_server', rpc_server_hook_list,
-                        hook_ctx, hook_ret_dict, exc_info)
-                    raise
-                else:
-                    run_post_hook(
-                        'rpc_server', rpc_server_hook_list,
-                        hook_ctx, hook_ret_dict, rpc_ret_s)
-                    return rpc_ret_s
+    def __getattr__(self, func_name):
 
-            self.server.register_function(rpc_wrapper, func_name)
-            self.func_dict[func_name] = RpcSchema(
-                arg_schema_cls, ret_schema_cls)
-            return func
-
-        return wrapper
-
-    def start_server(self):
-        self.server.serve_forever()
-
-    def async_call(
-            self, req_ctx, server, port, timeout,
-            func_name, expire_time, rpc_arg):
-        rpc_schema = self.func_dict[func_name]
-        rpc_arg_s = rpc_schema.arg_schema_cls().dump(rpc_arg)
-        expire_time_str = str(expire_time)
-        hook_ctx = RpcClientContext(
-            req_ctx, server, port, timeout,
-            func_name, expire_time_str, rpc_arg_s)
-        hook_ret_dict = run_pre_hook(
-            'rpc_client', rpc_client_hook_list, hook_ctx)
-        t = RpcClientThread(
-            hook_ctx, hook_ret_dict, rpc_schema.ret_schema_cls)
-        t.start()
-        return t
+        def remote_func(self, *args, **kwargs):
+            hook_ctx = RpcClientContext(
+                self.req_ctx, self.address, self.expire_time,
+                func_name, args, kwargs)
+            hook_ret_dict = run_pre_hook(
+                'rpc_client', rpc_client_hook_list, hook_ctx)
+            try:
+                with xmlrpc.client.ServerProxy(
+                        self.address,
+                        transport=self.transport,
+                        allow_none=True) as proxy:
+                    rpc_func = getattr(proxy, func_name)
+                    rpc_ret = rpc_func(
+                        self.req_ctx.req_id.hex, self.expire_time,
+                        *args, **kwargs)
+            except Exception:
+                etype, value, tb = sys.exc_info()
+                exc_info = ExcInfo(etype, value, tb)
+                run_error_hook(
+                    'rpc_client', rpc_client_hook_list,
+                    hook_ctx, hook_ret_dict, exc_info)
+                raise
+            else:
+                run_post_hook(
+                    'rpc_client', rpc_client_hook_list,
+                    hook_ctx, hook_ret_dict, rpc_ret)
+                return rpc_ret
+        return MethodType(remote_func, self)

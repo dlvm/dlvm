@@ -1,12 +1,20 @@
+from typing import NamedTuple, Set
 from threading import Lock
 import enum
-from collections import namedtuple
+import uuid
+from logging import LoggerAdapter
 
-RequestContext = namedtuple('RequestContext', [
-    'req_id', 'logger'])
+from sqlalchemy.orm.session import Session
 
-WorkContext = namedtuple('WorkContext', [
-    'session', 'done_set'])
+
+class RequestContext(NamedTuple):
+    req_id: uuid.UUID
+    logger: LoggerAdapter
+
+
+class WorkContext(NamedTuple):
+    session: Session
+    done_set: Set
 
 
 def run_once(func):
@@ -21,12 +29,6 @@ def run_once(func):
                 return func(*args, **kwargs)
 
     return wrapper
-
-
-def namedtuple_with_default(name, arg_list, default_tuple=()):
-    cls = namedtuple(name, arg_list)
-    cls.__new__.__defaults__ = default_tuple
-    return cls
 
 
 class HttpStatus(enum.IntEnum):

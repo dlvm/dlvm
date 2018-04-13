@@ -3,55 +3,26 @@ import logging
 import time
 from multiprocessing import Process
 import uuid
-
-from marshmallow import Schema, fields
+from xmlrpc.server import SimpleXMLRPCServer
+import xmlrpc.client
 
 from dlvm.common.utils import RequestContext
-from dlvm.hook.rpc_wrapper import Rpc
+from dlvm.hook.rpc_wrapper import DlvmRpcServer, DlvmRpcClient
 
 
-class Args():
-
-    def __init__(self, arg1, arg2):
-        self.arg1 = arg1
-        self.arg2 = arg2
-
-
-class Ret():
-
-    def __init__(self, arg3, arg4):
-        self.arg3 = arg3
-        self.arg4 = arg4
-
-
-class ArgsSchema(Schema):
-    arg1 = fields.Integer()
-    arg2 = fields.Integer()
-
-
-class RetSchema(Schema):
-    arg3 = fields.Integer()
-    arg4 = fields.Integer()
-
-
-class DlvmRpcTest(unittest.TestCase):
+class DlvmRpcClientTest(unittest.TestCase):
 
     def setUp(self):
 
-        logger = logging.getLogger('rpc_server_logger')
-        rpc = Rpc('localhost', 9522, logger)
+        def add(req_id_hex, expire_dt, x, y):
+            return x+y
 
-        @rpc.rpc(ArgsSchema, RetSchema)
-        def func(req_ctx, args):
-            arg3 = args['arg1'] + args['arg2']
-            arg4 = args['arg1'] - args['arg2']
-            return Ret(arg3, arg4)
+        def start_server():
+            with SimpleXMLRPCServer(('localhost', 9522)) as server:
+                server.register_function(add)
+                server.serve_forever()
 
-        def start_rpc_server():
-            rpc.start_server()
-
-        self.rpc = rpc
-        self.p = Process(target=start_rpc_server)
+        self.p = Process(target=start_server)
         self.p.start()
         time.sleep(1)
 
@@ -59,16 +30,54 @@ class DlvmRpcTest(unittest.TestCase):
         self.p.terminate()
         self.p.join()
 
-    def test_rpc(self):
-        arg1 = 7
-        arg2 = 5
-        arg = Args(arg1, arg2)
+    def test_sync_client(self):
         req_id = uuid.uuid4()
         logger = logging.getLogger('rpc_client_logger')
         req_ctx = RequestContext(req_id, logger)
-        t = self.rpc.async_call(
-            req_ctx, 'localhost', 9522, 300,
-            'func', 0, arg)
+        client = DlvmRpcClient(req_ctx, 'localhost', 9522, 300, 0)
+        arg1 = 2
+        arg2 = 3
+        ret = client.add(arg1, arg2)
+        self.assertEqual(ret, arg1+arg2)
+
+    def test_async_client(self):
+        req_id = uuid.uuid4()
+        logger = logging.getLogger('rpc_client_logger')
+        req_ctx = RequestContext(req_id, logger)
+        client = DlvmRpcClient(req_ctx, 'localhost', 9522, 300, 0)
+        async_add = client.async('add')
+        arg1 = 2
+        arg2 = 3
+        t = async_add(arg1, arg2)
         ret = t.get_value()
-        self.assertEqual(ret['arg3'], arg1+arg2)
-        self.assertEqual(ret['arg4'], arg1-arg2)
+        self.assertEqual(ret, arg1+arg2)
+
+
+class DlvmRpcServerTest(unittest.TestCase):
+
+    def setUp(self):
+        logger = logging.getLogger('rpc_server_logger')
+        rpc_server = DlvmRpcServer('localhost', 9522, logger)
+
+        @rpc_server.register
+        def add(x, y):
+            return x+y
+
+        def start_server():
+            rpc_server.serve_forever()
+
+        self.p = Process(target=start_server)
+        self.p.start()
+        time.sleep(1)
+
+    def tearDown(self):
+        self.p.terminate()
+        self.p.join()
+
+    def test_rpc_server(self):
+        arg1 = 1
+        arg2 = 2
+        with xmlrpc.client.ServerProxy(
+                "http://localhost:9522/", allow_none=True) as proxy:
+            ret = proxy.add(uuid.uuid4().hex, None, arg1, arg2)
+        self.assertEqual(ret, arg1+arg2)
