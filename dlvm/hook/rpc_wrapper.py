@@ -10,10 +10,12 @@ from datetime import datetime
 from types import MethodType
 
 from dlvm.common.utils import RequestContext
+from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook, ExcInfo
 from dlvm.hook.local_ctx import backend_local, frontend_local
+
 
 xmlrpc.client.MAXINT = 2**63-1
 xmlrpc.client.MININT = -2**63
@@ -33,6 +35,7 @@ class RpcServerContext(NamedTuple):
 class RpcClientContext(NamedTuple):
     req_ctx: RequestContext
     address: str
+    timeout: int
     expire_time: datetime
     func_name: str
     rpc_args: Sequence
@@ -138,6 +141,7 @@ class DlvmRpcClient():
     def __init__(self, req_ctx, server, port, timeout, expire_time):
         self.req_ctx = req_ctx
         self.expire_time = expire_time
+        self.timeout = timeout
         self.address = 'http://{0}:{1}'.format(server, port)
         self.transport = TimeoutTransport(timeout)
 
@@ -156,7 +160,7 @@ class DlvmRpcClient():
 
         def remote_func(self, *args, **kwargs):
             hook_ctx = RpcClientContext(
-                self.req_ctx, self.address, self.expire_time,
+                self.req_ctx, self.address, self.timeout, self.expire_time,
                 func_name, args, kwargs)
             hook_ret_dict = run_pre_hook(
                 'rpc_client', rpc_client_hook_list, hook_ctx)
@@ -187,6 +191,7 @@ class DlvmRpcClient():
 class DpvServer(DlvmRpcServer):
 
     def __init__(self):
+        loginit()
         logger = getLogger('dpv_agent')
         listener = cfg.get('rpc', 'dpv_listener')
         port = cfg.getint('rpc', 'dpv_port')
@@ -196,6 +201,7 @@ class DpvServer(DlvmRpcServer):
 class IhostServer(DlvmRpcServer):
 
     def __init__(self):
+        loginit()
         logger = getLogger('ihost_agent')
         listener = cfg.get('rpc', 'ihost_listener')
         port = cfg.getint('rpc', 'ihost_port')

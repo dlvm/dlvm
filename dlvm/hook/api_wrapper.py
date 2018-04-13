@@ -2,12 +2,13 @@ from typing import NamedTuple, Mapping, Sequence, Callable, Optional, Type
 import sys
 import uuid
 import enum
-import logging
+from logging import getLogger, LoggerAdapter
 
 from flask import request, make_response
 from marshmallow import Schema, fields, ValidationError
 
 from dlvm.common.utils import RequestContext, WorkContext, HttpStatus
+from dlvm.common.loginit import loginit
 from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
 from dlvm.hook.hook import build_hook_list, run_pre_hook, \
@@ -88,7 +89,7 @@ class ApiRet(NamedTuple):
 
 
 api_hook_list = build_hook_list('api_hook')
-ori_logger = logging.getLogger('dlvm_api')
+ori_logger = getLogger('dlvm_api')
 api_headers = {'Content-Type': 'application/json'}
 
 
@@ -97,6 +98,7 @@ class Api():
     def __init__(self, app):
         self.app = app
         self.res_info_dict = {}
+        loginit()
 
     def handler(self, *path_args, **path_kwargs):
         res_info = self.res_info_dict[request.endpoint]
@@ -108,7 +110,7 @@ class Api():
         raw_response = {}
         req_id = uuid.uuid4()
         raw_response['req_id'] = req_id
-        logger = logging.LoggerAdapter(ori_logger, {'req_id': req_id})
+        logger = LoggerAdapter(ori_logger, {'req_id': req_id})
         req_ctx = RequestContext(req_id, logger)
         session = Session()
         work_ctx = WorkContext(session, set())
