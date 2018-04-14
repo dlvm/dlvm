@@ -51,10 +51,7 @@ class RpcExpireError(Exception):
 
 
 class RpcError(Exception):
-
-    def __init__(self, exc_info):
-        self.exc_info = exc_info
-        super(RpcError, self).__init__('rpc error')
+    pass
 
 
 class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -179,7 +176,7 @@ class DlvmRpcClient():
                 run_error_hook(
                     'rpc_client', rpc_client_hook_list,
                     hook_ctx, hook_ret_dict, exc_info)
-                raise
+                raise RpcError
             else:
                 run_post_hook(
                     'rpc_client', rpc_client_hook_list,

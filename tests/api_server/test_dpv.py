@@ -99,3 +99,27 @@ class DpvTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         dpv2 = self.dbm.dpv_get(dpv_name)
         self.assertEqual(dpv2, None)
+
+    @patch('dlvm.api_server.dpv.DpvClient')
+    def test_dpv_update(self, DpvClient):
+        dpv = fake_dpvs[0]
+        self.dbm.dpv_create(**dpv)
+        dpv_name = dpv['dpv_name']
+        total_size = 128*1024*1024*1024
+        free_size = 128*1024*1024*1024
+        DpvClient \
+            .return_value \
+            .dpv_get_info \
+            .return_value = {
+                'total_size': total_size,
+                'free_size': free_size,
+            }
+        path = '/dpvs/{0}/update'.format(dpv_name)
+        resp = self.client.put(path)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertEqual(data['message'], 'succeed')
+
+        dpv1 = self.dbm.dpv_get(dpv_name)
+        self.assertEqual(dpv1.total_size, total_size)
+        self.assertEqual(dpv1.free_size, free_size)
