@@ -7,7 +7,7 @@ from marshmallow_enum import EnumField
 
 from dlvm.common.configure import cfg
 from dlvm.common.utils import HttpStatus, ExcInfo
-from dlvm.common.error import DpvError, ResourceDuplicateError
+import dlvm.common.error as error
 from dlvm.hook.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
 from dlvm.hook.local_ctx import frontend_local
@@ -88,7 +88,7 @@ def dpvs_post():
         free_size = dpv_info['free_size']
         assert(total_size == free_size)
     except Exception:
-        raise DpvError(dpv_name)
+        raise error.DpvError(dpv_name)
     dpv = DistributePhysicalVolume(
         dpv_name=dpv_name,
         total_size=total_size,
@@ -101,7 +101,7 @@ def dpvs_post():
     except IntegrityError:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
-        raise ResourceDuplicateError('dpv', dpv_name, exc_info)
+        raise error.ResourceDuplicateError('dpv', dpv_name, exc_info)
     return None
 
 
@@ -111,3 +111,54 @@ dpvs_post_method = ApiMethod(dpvs_post, HttpStatus.OK, dpvs_post_args_info)
 dpvs_res = ApiResource(
     '/dpvs',
     get=dpvs_get_method, post=dpvs_post_method)
+
+
+class DpvGetArgSchema(Schema):
+    detail = fields.Boolean(missing=False)
+
+
+dpv_get_args_info = ArgInfo(DpvGetArgSchema, ArgLocation.args)
+
+
+def dpv_get(dpv_name):
+    session = frontend_local.session
+    args = frontend_local.args
+    dpv = session.query(DistributePhysicalVolume) \
+        .filter_by(dpv_name=dpv_name) \
+        .one_or_none()
+    if dpv is None:
+        raise error.ResourceNotFoundError(
+            'dpv', dpv_name)
+    if args['detail'] is True:
+        schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=False)
+    else:
+        schema = DpvApiSchema(many=False)
+    return ApiRet(dpv, schema)
+
+
+dpv_get_method = ApiMethod(dpv_get, HttpStatus.OK, dpv_get_args_info)
+
+
+def dpv_delete(dpv_name):
+    session = frontend_local.session
+    dpv = session.query(DistributePhysicalVolume) \
+        .filter_by(dpv_name=dpv_name) \
+        .with_lockmode('update') \
+        .one_or_none()
+    if dpv is None:
+        return None
+    if dpv.dvg_name is not None:
+        raise error.ResourceBusyError(
+            'dpv', dpv_name, 'dvg', dpv.dvg_name)
+    session.delete(dpv)
+    session.commit()
+    return None
+
+
+dpv_delete_method = ApiMethod(dpv_delete, HttpStatus.OK)
+
+
+dpv_res = ApiResource(
+    '/dpvs/<dpv_name>',
+    get=dpv_get_method,
+    delete=dpv_delete_method)

@@ -1,51 +1,12 @@
 import enum
-import uuid
 
 from sqlalchemy import Column, BigInteger, Integer, String, \
     Enum, ForeignKey
-from sqlalchemy.types import TypeDecorator, CHAR
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import UUID
 
 
 Base = declarative_base()
-
-
-class GUID(TypeDecorator):
-    """Platform-independent GUID type.
-
-    Uses PostgreSQL's UUID type, otherwise uses
-    CHAR(32), storing as stringified hex values.
-
-    """
-    impl = CHAR
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
-            return dialect.type_descriptor(UUID())
-        else:
-            return dialect.type_descriptor(CHAR(32))
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return value
-        elif dialect.name == 'postgresql':
-            return str(value)
-        else:
-            if not isinstance(value, uuid.UUID):
-                return "%.32x" % uuid.UUID(value).int
-            else:
-                # hexstring
-                return "%.32x" % value.int
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return value
-        else:
-            if not isinstance(value, uuid.UUID):
-                value = uuid.UUID(value)
-            return value
 
 
 class DpvStatus(enum.Enum):
@@ -236,7 +197,8 @@ class Group(Base):
     __tablename__ = 'group'
 
     group_id = Column(
-        GUID, primary_key=True)
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True, autoincrement=True)
 
     group_idx = Column(
         Integer, nullable=False)
@@ -261,7 +223,8 @@ class Leg(Base):
     __tablename__ = 'leg'
 
     leg_id = Column(
-        GUID, primary_key=True)
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True, autoincrement=True)
 
     leg_idx = Column(Integer)
 
