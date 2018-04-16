@@ -1,4 +1,3 @@
-# from dlvm.common.configure import cfg
 from dlvm.common.database import engine
 from dlvm.core.modules import Base
 

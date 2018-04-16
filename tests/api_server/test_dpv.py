@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 import json
+import os
 
-from dlvm.core.helper import create_all, drop_all
 from dlvm.api_server import app
 
 from tests.utils import DataBaseManager
@@ -13,33 +13,33 @@ fake_dpvs = [
         'dpv_name': 'dpv0',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
-        'status': 'available',
     },
     {
         'dpv_name': 'dpv1',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
-        'status': 'available',
     },
     {
         'dpv_name': 'dpv2',
         'total_size': 512*1024*1024*1024,
         'free_size': 512*1024*1024*1024,
-        'status': 'available',
     },
 ]
 
 
 class DpvTest(unittest.TestCase):
 
+    db_path = '/tmp/dlvm_test.db'
+    db_uri = 'sqlite:////tmp/dlvm_test.db'
+
     def setUp(self):
-        create_all()
         app.config['TESTING'] = True
         self.client = app.test_client()
-        self.dbm = DataBaseManager()
+        self.dbm = DataBaseManager(self.db_uri)
 
     def tearDown(self):
-        drop_all()
+        if os.path.isfile(self.db_path):
+            os.remove(self.db_path)
 
     def test_dpvs_get(self):
         for fake_dpv in fake_dpvs:

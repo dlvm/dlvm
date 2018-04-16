@@ -1,20 +1,26 @@
-from dlvm.common.database import Session
-from dlvm.core.modules import DistributePhysicalVolume, DistributeVolumeGroup
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from dlvm.core.modules import Base, DistributePhysicalVolume, \
+    DistributeVolumeGroup, DistributeLogicalVolume, DpvStatus, DlvStatus
 
 
 class DataBaseManager():
 
-    def __init__(self):
+    def __init__(self, db_uri):
+        engine = create_engine(db_uri)
+        Session = sessionmaker(bind=engine)
         self.session = Session()
+        Base.metadata.create_all(engine)
 
     def dpv_create(
             self, dpv_name,
-            total_size, free_size, status):
+            total_size, free_size):
         dpv = DistributePhysicalVolume(
             dpv_name=dpv_name,
             total_size=total_size,
             free_size=free_size,
-            status=status)
+            status=DpvStatus.available)
         self.session.add(dpv)
         self.session.commit()
 
@@ -40,3 +46,34 @@ class DataBaseManager():
         )
         self.session.add(dvg)
         self.session.commit()
+
+    def dvg_extend(self, dvg_name, dpv_name):
+        dvg = self.session.query(DistributeVolumeGroup) \
+            .query \
+            .filter_by(dvg_name=dvg_name) \
+            .one()
+        dpv = self.session.query(DistributePhysicalVolume) \
+            .query \
+            .filter_by(dpv_name=dpv_name) \
+            .one()
+        dpv.dvg_name = dvg_name
+        self.session.add(dpv)
+        dvg.free_size += dpv.free_size
+        dvg.total_size += dpv.total_size
+        self.session.add(dvg)
+        self.session.commit()
+
+    def dlv_create(
+            self, dlv_name, dlv_size, data_size, stripe_number,
+            dvg_name, igroups):
+        snap_name = '%s/base' % dlv_name
+        dlv = DistributeLogicalVolume(
+            dlv_name=dlv_name,
+            dlv_size=dlv_size,
+            data_size=data_size,
+            stripe_number=stripe_number,
+            status=DlvStatus.available,
+            active_snap_name=snap_name,
+            dvg_name=dvg_name,
+        )
+        print(dlv)
