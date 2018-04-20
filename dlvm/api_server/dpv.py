@@ -8,12 +8,12 @@ from marshmallow_enum import EnumField
 from dlvm.common.configure import cfg
 from dlvm.common.utils import HttpStatus, ExcInfo
 import dlvm.common.error as error
-from dlvm.hook.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
+from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
-from dlvm.hook.local_ctx import frontend_local
-from dlvm.hook.rpc_wrapper import DpvClient, RpcError
-from dlvm.core.modules import DistributePhysicalVolume, DpvStatus, \
-    DistributeVolumeGroup
+from dlvm.wrapper.local_ctx import frontend_local
+from dlvm.wrapper.rpc_wrapper import DpvClient, RpcError
+from dlvm.common.modules import DistributePhysicalVolume, \
+    ServiceStatus, DiskStatus, DistributeVolumeGroup
 from dlvm.core.schema import DpvApiSchema
 from dlvm.core.helper import GeneralQuery
 
@@ -22,7 +22,8 @@ DPV_SUMMARY_FIELDS = (
     'dpv_name',
     'total_size',
     'free_size',
-    'status',
+    'service_status',
+    'disk_status',
     'dvg_name',
     'lock_id',
     'lock_timestamp',
@@ -39,7 +40,8 @@ class DpvsGetArgSchema(Schema):
     offset = fields.Integer(missing=0, validate=Range(0))
     limit = fields.Integer(
         missing=DPV_LIST_LIMIT, validate=Range(0, DPV_LIST_LIMIT))
-    status = EnumField(DpvStatus, missing=None)
+    service_status = EnumField(ServiceStatus, missing=None)
+    disk_status = EnumField(DiskStatus, missing=None)
     locked = fields.Boolean(missing=None)
     dvg_name = fields.String(missing=None)
 
@@ -54,8 +56,10 @@ def dpvs_get():
     query.add_order_field(args['order_by'], args['reverse'])
     query.set_offset(args['offset'])
     query.set_limit(args['limit'])
-    if args['status'] is not None:
-        query.add_is_field('status', args['status'])
+    if args['service_status'] is not None:
+        query.add_is_field('service_status', args['service_status'])
+    if args['disk_status'] is not None:
+        query.add_is_field('disk_status', args['disk_status'])
     if args['locked'] is not None:
         if args['locked'] is True:
             query.add_isnot_field('lock_id', None)
@@ -94,7 +98,8 @@ def dpvs_post():
         dpv_name=dpv_name,
         total_size=total_size,
         free_size=free_size,
-        status=DpvStatus.available,
+        service_status=ServiceStatus.available,
+        disk_status=DiskStatus.available,
     )
     session.add(dpv)
     try:

@@ -1,7 +1,8 @@
 from marshmallow import Schema, fields, post_load, post_dump
 from marshmallow_enum import EnumField
 
-from dlvm.core.modules import DpvStatus, IhostStatus, DlvStatus, SnapStatus
+from dlvm.common.modules import ServiceStatus, DiskStatus, \
+    DlvStatus, SnapStatus
 
 
 class GroupSummarySchema(Schema):
@@ -77,7 +78,8 @@ class DpvApiSchema(Schema):
     dpv_name = fields.String()
     total_size = fields.Integer()
     free_size = fields.Integer()
-    status = EnumField(DpvStatus)
+    service_status = EnumField(ServiceStatus)
+    disk_status = EnumField(DiskStatus)
     dvg_name = fields.String()
     lock_id = fields.String()
     lock_timestamp = fields.Integer()
@@ -145,7 +147,7 @@ class DlvRpcSchema(Schema):
 
 class IhostApiSchema(Schema):
     ihost_name = fields.String()
-    status = EnumField(IhostStatus)
+    service_status = EnumField(ServiceStatus)
     lock_id = fields.String()
     lock_timestamp = fields.String()
     dlvs = fields.Nested(DlvApiSchema, many=True)

@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from dlvm.core.modules import Base, DistributePhysicalVolume, \
-    DistributeVolumeGroup, DistributeLogicalVolume, DpvStatus, DlvStatus
+from dlvm.common.modules import Base, DistributePhysicalVolume, \
+    DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
+    ServiceStatus, DiskStatus
 
 
 class DataBaseManager():
@@ -20,7 +21,8 @@ class DataBaseManager():
             dpv_name=dpv_name,
             total_size=total_size,
             free_size=free_size,
-            status=DpvStatus.available)
+            service_status=ServiceStatus.available,
+            disk_status=DiskStatus.available)
         self.session.add(dpv)
         self.session.commit()
 

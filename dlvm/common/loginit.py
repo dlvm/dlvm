@@ -3,12 +3,10 @@ import logging
 import logging.config
 import json
 
-from dlvm.common.constant import lc_path
+from dlvm.common.constant import LC_PATH, LOGGER_CFG_FILE
 from dlvm.common.utils import run_once
 
-logger_cfg_path = os.path.join(lc_path, 'logger.yml')
-
-inited = False
+logger_cfg_path = os.path.join(LC_PATH, LOGGER_CFG_FILE)
 
 
 @run_once

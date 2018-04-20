@@ -1,5 +1,5 @@
 from dlvm.common.utils import HttpStatus
-from dlvm.hook.api_wrapper import ApiMethod, ApiResource, ApiRet
+from dlvm.wrapper.api_wrapper import ApiMethod, ApiResource, ApiRet
 
 
 def root_get():

@@ -12,9 +12,11 @@ from types import MethodType
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
-from dlvm.hook.hook import build_hook_list, run_pre_hook, \
+from dlvm.common.modules import DistributePhysicalVolume, \
+    InitiatorHost, ServiceStatus
+from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
-from dlvm.hook.local_ctx import backend_local, frontend_local
+from dlvm.wrapper.local_ctx import backend_local, frontend_local, Direction
 
 
 xmlrpc.client.MAXINT = 2**63-1
@@ -98,11 +100,11 @@ class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
 class TimeoutTransport(xmlrpc.client.Transport):
 
-    def __init__(self, timeout: int)-> None:
+    def __init__(self, timeout):
         super(TimeoutTransport, self).__init__(use_builtin_types=True)
         self.__timeout = timeout
 
-    def make_connection(self, host: str)-> int:
+    def make_connection(self, host):
         conn = super(TimeoutTransport, self).make_connection(host)
         conn.timeout = self.__timeout
         return conn
@@ -110,44 +112,67 @@ class TimeoutTransport(xmlrpc.client.Transport):
 
 class RpcClientThread(Thread):
 
-    def __init__(self, remote_func, args, kwargs):
+    def __init__(self, remote_func, args, kwargs, key, force_func):
         self.remote_func = remote_func
         self.args = args
         self.kwargs = kwargs
-        self.ret_or_err = None
+        self.err = None
+        self.key = key
+        self.force_func = force_func
         super(RpcClientThread, self).__init__()
 
     def run(self):
+        # all async call should ignore ret
         try:
-            ret = self.remote_func(*self.args, **self.kwargs)
+            self.remote_func(*self.args, **self.kwargs)
         except Exception as e:
-            self.ret_or_err = e
-        else:
-            self.ret_or_err = ret
+            self.err = e
 
-    def get_value(self):
+    def wait(self):
         self.join()
-        if isinstance(self.ret_or_err, Exception):
-            raise self.ret_or_err
+        force = frontend_local.force
+        worklog = frontend_local.worklog
+        if self.err is not None:
+            if force is True:
+                self.force_func()
+                worklog.add(self.key)
+            else:
+                raise self.err
         else:
-            return self.ret_or_err
+            worklog.add(self.key)
+
+
+def FakeThread():
+
+    def wait(self):
+        pass
 
 
 class DlvmRpcClient():
 
-    def __init__(self, req_ctx, server, port, timeout, expire_time):
+    def __init__(
+            self, req_ctx, server, port, timeout, expire_time, force_func):
         self.req_ctx = req_ctx
         self.expire_time = expire_time
         self.timeout = timeout
         self.address = 'http://{0}:{1}'.format(server, port)
         self.transport = TimeoutTransport(timeout)
+        self.force_func = force_func
 
     def async(self, func_name):
         remote_func = getattr(self, func_name)
 
         def async_func(self, *args, **kwargs):
+            worklog = frontend_local.worklog
+            direction = frontend_local.direction
+            key = '%s:%s' % (self.address, func_name)
+            if direction == Direction.forward and key in worklog:
+                return FakeThread()
+            if direction == Direction.backward and key not in worklog:
+                return FakeThread()
             t = RpcClientThread(
-                remote_func=remote_func, args=args, kwargs=kwargs)
+                remote_func=remote_func, args=args, kwargs=kwargs,
+                key=key, force_func=self.force_func)
             t.start()
             return t
 
@@ -212,16 +237,42 @@ class DpvClient(DlvmRpcClient):
         server = dpv_name
         port = cfg.getint('rpc', 'dpv_port')
         timeout = cfg.getint('rpc', 'dpv_timeout')
+
+        def force_func():
+            session = frontend_local.session
+            lock_owner = frontend_local.lock_owner
+            dpv = session.query(DistributePhysicalVolume) \
+                .filter_by(dpv_name=dpv_name) \
+                .with_lockmode('update') \
+                .one()
+            assert(dpv.lock.lock_owner == lock_owner)
+            dpv.service_status = ServiceStatus.unavailable
+            session.add(dpv)
+            session.commit()
+
         super(DpvClient, self).__init__(
-            req_ctx, server, port, timeout, expire_time)
+            req_ctx, server, port, timeout, expire_time, force_func)
 
 
 class IhostClient(DlvmRpcClient):
 
-    def __init__(self, dpv_name, expire_time=None):
+    def __init__(self, ihost_name, expire_time=None):
         req_ctx = frontend_local.req_ctx
-        server = dpv_name
+        server = ihost_name
         port = cfg.getint('rpc', 'ihost_port')
         timeout = cfg.getint('rpc', 'ihost_timeout')
-        super(DpvClient, self).__init__(
-            req_ctx, server, port, timeout, expire_time)
+
+        def force_func():
+            session = frontend_local.session
+            lock_owner = frontend_local.lock_owner
+            ihost = session.query(InitiatorHost) \
+                .filter_by(ihost_name=ihost_name) \
+                .with_lockmode('update') \
+                .one()
+            assert(ihost.lock.lock_owner == lock_owner)
+            ihost.service_status = ServiceStatus.unavailable
+            session.add(ihost)
+            session.commit()
+
+        super(IhostClient, self).__init__(
+            req_ctx, server, port, timeout, expire_time, force_func)

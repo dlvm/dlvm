@@ -1,6 +1,6 @@
 import traceback
 
-from dlvm.hook.hook import DlvmHook
+from dlvm.wrapper.hook import DlvmHook
 
 
 class LogHook(DlvmHook):

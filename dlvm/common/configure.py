@@ -1,7 +1,7 @@
 import os
 from configparser import ConfigParser
 
-from dlvm.common.constant import lc_path
+from dlvm.common.constant import LC_PATH, DEFAULT_CFG_FILE, DLVM_CFG_FILE
 from dlvm.common.utils import run_once
 
 
@@ -28,9 +28,9 @@ class DlvmConfigParser(ConfigParser):
 def load_cfg():
     cfg = DlvmConfigParser()
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    default_path = os.path.join(curr_dir, 'default.cfg')
+    default_path = os.path.join(curr_dir, DEFAULT_CFG_FILE)
     cfg.read(default_path)
-    cfg_path = os.path.join(lc_path, 'dlvm.cfg')
+    cfg_path = os.path.join(LC_PATH, DLVM_CFG_FILE)
     if os.path.isfile(cfg_path):
         cfg.read(cfg_path)
     return cfg

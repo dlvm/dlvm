@@ -1,6 +1,6 @@
 from flask import Flask
 
-from dlvm.hook.api_wrapper import Api
+from dlvm.wrapper.api_wrapper import Api
 from dlvm.api_server.root import root_res
 from dlvm.api_server.dpv import dpvs_res, dpv_res, dpv_update_res
 

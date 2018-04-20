@@ -1,4 +1,4 @@
-from dlvm.hook.cmd_wrapper import run_cmd
+from dlvm.wrapper.cmd_wrapper import run_cmd
 
 
 def lv_get_path(lv_name, vg_name):

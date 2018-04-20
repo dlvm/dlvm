@@ -1,5 +1,5 @@
 from dlvm.common.database import engine
-from dlvm.core.modules import Base
+from dlvm.common.modules import Base
 
 
 class GeneralQuery():

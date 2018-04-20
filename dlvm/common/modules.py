@@ -9,7 +9,12 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class DpvStatus(enum.Enum):
+class ServiceStatus(enum.Enum):
+    available = 'available'
+    unavailable = 'unavailable'
+
+
+class DiskStatus(enum.Enum):
     available = 'available'
     unavailable = 'unavailable'
 
@@ -24,7 +29,11 @@ class DistributePhysicalVolume(Base):
 
     free_size = Column(BigInteger, nullable=False)
 
-    status = Column(Enum(DpvStatus, name='dpv_status'), nullable=False)
+    service_status = Column(
+        Enum(ServiceStatus, name='dpv_service_status'), nullable=False)
+
+    disk_status = Column(
+        Enum(DiskStatus, name='dpv_disk_status'), nullable=False)
 
     dvg_name = Column(
         String(32), ForeignKey('distribute_volume_group.dvg_name'))
@@ -123,18 +132,14 @@ class DistributeLogicalVolume(Base):
     lock = relationship('Lock')
 
 
-class IhostStatus(enum.Enum):
-    available = 'available'
-    unavailable = 'unavailable'
-
-
 class InitiatorHost(Base):
 
     __tablename__ = 'initiator_host'
 
     ihost_name = Column(String(64), primary_key=True)
 
-    status = Column(Enum(IhostStatus, name='ihost_status'), nullable=False)
+    service_status = Column(
+        Enum(ServiceStatus, name='ihost_service_status'), nullable=False)
 
     dlvs = relationship('DistributeLogicalVolume', back_populates='ihost')
 

@@ -1,5 +1,5 @@
 from dlvm.common.configure import cfg
-from dlvm.hook.rpc_wrapper import DpvServer
+from dlvm.wrapper.rpc_wrapper import DpvServer
 from dlvm.core import command as cmd
 
 server = DpvServer()
