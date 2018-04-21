@@ -8,7 +8,7 @@ import xmlrpc.client
 
 from dlvm.common.utils import RequestContext
 from dlvm.wrapper.rpc_wrapper import DlvmRpcServer, DlvmRpcClient
-from dlvm.wrapper.local_ctx import Direction, frontend_local
+from dlvm.wrapper.local_ctx import frontend_local, WorkerContext
 
 
 class DlvmRpcClientTest(unittest.TestCase):
@@ -25,9 +25,7 @@ class DlvmRpcClientTest(unittest.TestCase):
 
         self.p = Process(target=start_server)
         self.p.start()
-        frontend_local.worklog = set()
-        frontend_local.direction = Direction.forward
-        frontend_local.force = False
+        frontend_local.worker_ctx = WorkerContext()
         time.sleep(1)
 
     def tearDown(self):
