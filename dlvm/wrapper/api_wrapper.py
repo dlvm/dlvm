@@ -121,8 +121,8 @@ class Api():
 
         hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
         try:
-            args = method.arg_info.arg_schema_cls().load(arg_dict)
-            frontend_local.args = args
+            arg = method.arg_info.arg_schema_cls().load(arg_dict)
+            frontend_local.arg = arg
             frontend_local.req_ctx = req_ctx
             frontend_local.session = session
             frontend_local.worker_ctx = get_empty_worker_ctx()

@@ -46,46 +46,46 @@ class DpvsGetArgSchema(NtSchema):
     dvg_name = fields.String(missing=None)
 
 
-dpvs_get_args_info = ArgInfo(DpvsGetArgSchema, ArgLocation.args)
+dpvs_get_arg_info = ArgInfo(DpvsGetArgSchema, ArgLocation.args)
 
 
 def dpvs_get():
     session = frontend_local.session
-    args = frontend_local.args
+    arg = frontend_local.arg
     query = GeneralQuery(session, DistributePhysicalVolume)
-    query.add_order_field(args.order_by, args.reverse)
-    query.set_offset(args.offset)
-    query.set_limit(args.limit)
-    if args.service_status is not None:
-        query.add_is_field('service_status', args.service_status)
-    if args.disk_status is not None:
-        query.add_is_field('disk_status', args.disk_status)
-    if args.locked is not None:
-        if args.locked is True:
+    query.add_order_field(arg.order_by, arg.reverse)
+    query.set_offset(arg.offset)
+    query.set_limit(arg.limit)
+    if arg.service_status is not None:
+        query.add_is_field('service_status', arg.service_status)
+    if arg.disk_status is not None:
+        query.add_is_field('disk_status', arg.disk_status)
+    if arg.locked is not None:
+        if arg.locked is True:
             query.add_isnot_field('lock_id', None)
         else:
             query.add_is_field('lock_id', None)
-    if args.dvg_name is not None:
-        query.add_is_field('dvg_name', args.dvg_name)
+    if arg.dvg_name is not None:
+        query.add_is_field('dvg_name', arg.dvg_name)
     dpvs = query.query()
     schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=True)
     return ApiRet(dpvs, schema)
 
 
-dpvs_get_method = ApiMethod(dpvs_get, HttpStatus.OK, dpvs_get_args_info)
+dpvs_get_method = ApiMethod(dpvs_get, HttpStatus.OK, dpvs_get_arg_info)
 
 
 class DpvsPostArgSchema(NtSchema):
     dpv_name = fields.String(required=True)
 
 
-dpvs_post_args_info = ArgInfo(DpvsPostArgSchema, ArgLocation.json)
+dpvs_post_arg_info = ArgInfo(DpvsPostArgSchema, ArgLocation.json)
 
 
 def dpvs_post():
     session = frontend_local.session
-    args = frontend_local.args
-    dpv_name = args.dpv_name
+    arg = frontend_local.arg
+    dpv_name = arg.dpv_name
     client = DpvClient(dpv_name)
     try:
         dpv_info = client.dpv_get_info()
@@ -111,7 +111,7 @@ def dpvs_post():
     return None
 
 
-dpvs_post_method = ApiMethod(dpvs_post, HttpStatus.OK, dpvs_post_args_info)
+dpvs_post_method = ApiMethod(dpvs_post, HttpStatus.OK, dpvs_post_arg_info)
 
 
 dpvs_res = ApiResource(
@@ -123,26 +123,26 @@ class DpvGetArgSchema(NtSchema):
     detail = fields.Boolean(missing=False)
 
 
-dpv_get_args_info = ArgInfo(DpvGetArgSchema, ArgLocation.args)
+dpv_get_arg_info = ArgInfo(DpvGetArgSchema, ArgLocation.args)
 
 
 def dpv_get(dpv_name):
     session = frontend_local.session
-    args = frontend_local.args
+    arg = frontend_local.arg
     dpv = session.query(DistributePhysicalVolume) \
         .filter_by(dpv_name=dpv_name) \
         .one_or_none()
     if dpv is None:
         raise error.ResourceNotFoundError(
             'dpv', dpv_name)
-    if args.detail is True:
+    if arg.detail is True:
         schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=False)
     else:
         schema = DpvApiSchema(many=False)
     return ApiRet(dpv, schema)
 
 
-dpv_get_method = ApiMethod(dpv_get, HttpStatus.OK, dpv_get_args_info)
+dpv_get_method = ApiMethod(dpv_get, HttpStatus.OK, dpv_get_arg_info)
 
 
 def dpv_delete(dpv_name):
