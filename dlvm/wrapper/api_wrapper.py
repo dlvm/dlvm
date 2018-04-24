@@ -13,7 +13,7 @@ from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
-from dlvm.wrapper.local_ctx import frontend_local, WorkerContext
+from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
 
 
 class ApiContext(NamedTuple):
@@ -125,7 +125,7 @@ class Api():
             frontend_local.args = args
             frontend_local.req_ctx = req_ctx
             frontend_local.session = session
-            frontend_local.worker_ctx = WorkerContext()
+            frontend_local.worker_ctx = get_empty_worker_ctx()
             api_ret = method.func(*path_args, **path_kwargs)
             raw_response['message'] = 'succeed'
             if api_ret is None:

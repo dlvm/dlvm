@@ -95,3 +95,7 @@ class ResourceInvalidError(DlvmError):
             'field_value={3}'
         ).format(res_type, res_name, field_name, field_value)
         super(ResourceInvalidError, self).__init__(message)
+
+
+class RpcError(Exception):
+    pass

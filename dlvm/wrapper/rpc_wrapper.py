@@ -6,18 +6,19 @@ from socketserver import ThreadingMixIn
 import xmlrpc.client
 from threading import Thread
 from logging import LoggerAdapter, getLogger
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import MethodType
 
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
+from dlvm.common.error import RpcError
 from dlvm.common.modules import DistributePhysicalVolume, \
     InitiatorHost, ServiceStatus
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import backend_local, frontend_local, \
-    Direction, RpcError
+    Direction
 
 
 xmlrpc.client.MAXINT = 2**63-1
@@ -30,7 +31,7 @@ rpc_client_hook_list = build_hook_list('rpc_client_hook')
 class RpcServerContext(NamedTuple):
     req_ctx: RequestContext
     func_name: str
-    expire_time: datetime
+    lock_dt: datetime
     args: Sequence
     kwargs: Mapping
 
@@ -39,7 +40,7 @@ class RpcClientContext(NamedTuple):
     req_ctx: RequestContext
     address: str
     timeout: int
-    expire_time: datetime
+    lock_dt: datetime
     func_name: str
     rpc_args: Sequence
     rpc_kwargs: Mapping
@@ -47,10 +48,13 @@ class RpcClientContext(NamedTuple):
 
 class RpcExpireError(Exception):
 
-    def __init__(self, curr_dt, expire_dt):
-        msg = 'curr_dt={0}, expire_dt={1}'.format(
-            curr_dt, expire_dt)
+    def __init__(self, curr_dt, lock_dt):
+        msg = 'curr_dt={0}, lock_dt={1}'.format(
+            curr_dt, lock_dt)
         super(RpcExpireError, self).__init__(msg)
+
+
+expire_delta = timedelta(seconds=cfg.getint('lock', 'expire_seconds'))
 
 
 class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -64,18 +68,18 @@ class DlvmRpcServer(ThreadingMixIn, SimpleXMLRPCServer):
 
         func_name = func.__name__
 
-        def wrapper(req_id_hex, expire_dt, *args, **kwargs):
-            req_id = uuid.UUID(hex=req_id_hex)
+        def wrapper(req_id_str, lock_dt, *args, **kwargs):
+            req_id = uuid.UUID(req_id_str)
             logger = LoggerAdapter(self.logger, {'req_id': req_id})
             req_ctx = RequestContext(req_id, logger)
             hook_ctx = RpcServerContext(
-                req_ctx, func_name, expire_dt, args, kwargs)
+                req_ctx, func_name, lock_dt, args, kwargs)
             hook_ret_dict = run_pre_hook(
                 'rpc_server', rpc_server_hook_list, hook_ctx)
             try:
                 curr_dt = datetime.utcnow()
-                if expire_dt is not None and curr_dt > expire_dt:
-                    raise RpcExpireError(curr_dt, expire_dt)
+                if curr_dt - lock_dt > expire_delta:
+                    raise RpcExpireError(curr_dt, lock_dt)
                 backend_local.req_ctx = req_ctx
                 rpc_ret = func(*args, **kwargs)
             except Exception:
@@ -132,33 +136,32 @@ class RpcClientThread(Thread):
 
     def wait(self):
         if self.bypass is True:
-            return
+            return None
         self.join()
         worklog = frontend_local.worker_ctx.worklog
         direction = frontend_local.worker_ctx.direction
         enforce = frontend_local.worker_ctx.enforce
-        if self.err is not None:
+        if self.err is None:
+            if direction == Direction.forward:
+                worklog.add(self.key)
+            else:
+                worklog.remove(self.key)
+        else:
             if enforce is True:
                 self.enforce_func()
                 if direction == Direction.forward:
                     worklog.add(self.key)
                 else:
                     worklog.remove(self.key)
-            else:
-                raise self.err
-        else:
-            if direction == Direction.forward:
-                worklog.add(self.key)
-            else:
-                worklog.remove(self.key)
+        return self.err
 
 
 class DlvmRpcClient():
 
     def __init__(
-            self, req_ctx, server, port, timeout, expire_time, enforce_func):
+            self, req_ctx, server, port, timeout, lock_dt, enforce_func):
         self.req_ctx = req_ctx
-        self.expire_time = expire_time
+        self.lock_dt = lock_dt
         self.timeout = timeout
         self.address = 'http://{0}:{1}'.format(server, port)
         self.transport = TimeoutTransport(timeout)
@@ -170,7 +173,8 @@ class DlvmRpcClient():
         def async_func(self, *args, **kwargs):
             worklog = frontend_local.worker_ctx.worklog
             direction = frontend_local.worker_ctx.direction
-            key = '%s:%s' % (self.address, func_name)
+            key = '%s-%s-%s-%s' % (
+                self.address, func_name, args, kwargs)
             bypass = False
             if direction == Direction.forward and key in worklog:
                 bypass = True
@@ -188,7 +192,7 @@ class DlvmRpcClient():
 
         def remote_func(self, *args, **kwargs):
             hook_ctx = RpcClientContext(
-                self.req_ctx, self.address, self.timeout, self.expire_time,
+                self.req_ctx, self.address, self.timeout, self.lock_dt,
                 func_name, args, kwargs)
             hook_ret_dict = run_pre_hook(
                 'rpc_client', rpc_client_hook_list, hook_ctx)
@@ -199,7 +203,7 @@ class DlvmRpcClient():
                         allow_none=True) as proxy:
                     rpc_func = getattr(proxy, func_name)
                     rpc_ret = rpc_func(
-                        self.req_ctx.req_id.hex, self.expire_time,
+                        str(self.req_ctx.req_id), self.lock_dt,
                         *args, **kwargs)
             except Exception:
                 etype, value, tb = sys.exc_info()
@@ -238,11 +242,12 @@ class IhostServer(DlvmRpcServer):
 
 class DpvClient(DlvmRpcClient):
 
-    def __init__(self, dpv_name, expire_time=None):
+    def __init__(self, dpv_name):
         req_ctx = frontend_local.req_ctx
         server = dpv_name
         port = cfg.getint('rpc', 'dpv_port')
         timeout = cfg.getint('rpc', 'dpv_timeout')
+        lock_dt = frontend_local.worker_ctx.lock_dt
 
         def enforce_func():
             session = frontend_local.session
@@ -252,21 +257,23 @@ class DpvClient(DlvmRpcClient):
                 .with_lockmode('update') \
                 .one()
             assert(dpv.lock.lock_owner == lock_owner)
-            dpv.service_status = ServiceStatus.unavailable
-            session.add(dpv)
-            session.commit()
+            if dpv.service_status != ServiceStatus.unavailable:
+                dpv.service_status = ServiceStatus.unavailable
+                session.add(dpv)
+                session.commit()
 
         super(DpvClient, self).__init__(
-            req_ctx, server, port, timeout, expire_time, enforce_func)
+            req_ctx, server, port, timeout, lock_dt, enforce_func)
 
 
 class IhostClient(DlvmRpcClient):
 
-    def __init__(self, ihost_name, expire_time=None):
+    def __init__(self, ihost_name):
         req_ctx = frontend_local.req_ctx
         server = ihost_name
         port = cfg.getint('rpc', 'ihost_port')
         timeout = cfg.getint('rpc', 'ihost_timeout')
+        lock_dt = frontend_local.worker_ctx.lock_dt
 
         def enforce_func():
             session = frontend_local.session
@@ -276,9 +283,10 @@ class IhostClient(DlvmRpcClient):
                 .with_lockmode('update') \
                 .one()
             assert(ihost.lock.lock_owner == lock_owner)
-            ihost.service_status = ServiceStatus.unavailable
-            session.add(ihost)
-            session.commit()
+            if ihost.service_status != ServiceStatus.unavailable:
+                ihost.service_status = ServiceStatus.unavailable
+                session.add(ihost)
+                session.commit()
 
         super(IhostClient, self).__init__(
-            req_ctx, server, port, timeout, expire_time, enforce_func)
+            req_ctx, server, port, timeout, lock_dt, enforce_func)

@@ -305,4 +305,4 @@ class Lock(Base):
         Enum(LockType, name='lock_type'),
         nullable=False)
 
-    lock_time = Column(DateTime, nullable=False)
+    lock_dt = Column(DateTime, nullable=False)

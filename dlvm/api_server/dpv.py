@@ -11,7 +11,7 @@ import dlvm.common.error as error
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
-from dlvm.wrapper.rpc_wrapper import DpvClient, RpcError
+from dlvm.wrapper.rpc_wrapper import DpvClient
 from dlvm.common.modules import DistributePhysicalVolume, \
     ServiceStatus, DiskStatus, DistributeVolumeGroup
 from dlvm.core.schema import DpvApiSchema
@@ -92,7 +92,7 @@ def dpvs_post():
         total_size = dpv_info['total_size']
         free_size = dpv_info['free_size']
         assert(total_size == free_size)
-    except RpcError:
+    except error.RpcError:
         raise error.DpvError(dpv_name)
     dpv = DistributePhysicalVolume(
         dpv_name=dpv_name,
@@ -188,7 +188,7 @@ def dpv_update(dpv_name):
         total_delta = total_size - dpv.total_size
         free_delta = free_size - dpv.free_size
         assert(total_delta == free_delta)
-    except RpcError:
+    except error.RpcError:
         raise error.DpvError(dpv_name)
 
     dpv.total_size = total_size

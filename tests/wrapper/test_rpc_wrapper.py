@@ -3,19 +3,20 @@ import logging
 import time
 from multiprocessing import Process
 import uuid
+from datetime import datetime
 from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
 
 from dlvm.common.utils import RequestContext
 from dlvm.wrapper.rpc_wrapper import DlvmRpcServer, DlvmRpcClient
-from dlvm.wrapper.local_ctx import frontend_local, WorkerContext
+from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
 
 
 class DlvmRpcClientTest(unittest.TestCase):
 
     def setUp(self):
 
-        def add(req_id_hex, expire_dt, x, y):
+        def add(req_id_str, expire_dt, x, y):
             return x+y
 
         def start_server():
@@ -25,7 +26,7 @@ class DlvmRpcClientTest(unittest.TestCase):
 
         self.p = Process(target=start_server)
         self.p.start()
-        frontend_local.worker_ctx = WorkerContext()
+        frontend_local.worker_ctx = get_empty_worker_ctx()
         time.sleep(1)
 
     def tearDown(self):
@@ -80,5 +81,6 @@ class DlvmRpcServerTest(unittest.TestCase):
         arg2 = 2
         with xmlrpc.client.ServerProxy(
                 "http://localhost:8888/", allow_none=True) as proxy:
-            ret = proxy.add(uuid.uuid4().hex, None, arg1, arg2)
+            ret = proxy.add(
+                str(uuid.uuid4()), datetime(3000, 1, 1), arg1, arg2)
         self.assertEqual(ret, arg1+arg2)
