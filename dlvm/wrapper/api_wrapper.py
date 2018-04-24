@@ -11,6 +11,7 @@ from dlvm.common.utils import RequestContext, HttpStatus, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.error import DlvmError
 from dlvm.common.database import Session
+from dlvm.common.marshmallow_ext import NtSchema
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
@@ -45,7 +46,6 @@ class ApiResponseSchema(Schema):
             elif schema is None:
                 return obj['data']
             else:
-                schema = self.context['data_schema']
                 return schema.dump(obj['data'])
         except ValidationError as e:
             etype, value, tb = sys.exc_info()
@@ -59,11 +59,11 @@ class ArgLocation(enum.Enum):
 
 
 class ArgInfo(NamedTuple):
-    arg_schema_cls: Type[Schema]
+    arg_schema_cls: Type[NtSchema]
     location: ArgLocation
 
 
-empty_arg_info = ArgInfo(Schema, ArgLocation.args)
+empty_arg_info = ArgInfo(NtSchema, ArgLocation.args)
 
 
 class ApiMethod(NamedTuple):

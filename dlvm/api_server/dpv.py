@@ -1,12 +1,12 @@
 import sys
 
 from sqlalchemy.exc import IntegrityError
-from marshmallow import Schema, fields
+from marshmallow import fields
 from marshmallow.validate import Range, OneOf
-from marshmallow_enum import EnumField
 
 from dlvm.common.configure import cfg
 from dlvm.common.utils import HttpStatus, ExcInfo
+from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, ApiRet, \
     ApiMethod, ApiResource
@@ -33,7 +33,7 @@ DPV_ORDER_FIELDS = ('dpv_name', 'total_size', 'free_size')
 DPV_LIST_LIMIT = cfg.getint('api', 'list_limit')
 
 
-class DpvsGetArgSchema(Schema):
+class DpvsGetArgSchema(NtSchema):
     order_by = fields.String(
         missing=DPV_ORDER_FIELDS[0], validate=OneOf(DPV_ORDER_FIELDS))
     reverse = fields.Boolean(missing=False)
@@ -53,20 +53,20 @@ def dpvs_get():
     session = frontend_local.session
     args = frontend_local.args
     query = GeneralQuery(session, DistributePhysicalVolume)
-    query.add_order_field(args['order_by'], args['reverse'])
-    query.set_offset(args['offset'])
-    query.set_limit(args['limit'])
-    if args['service_status'] is not None:
-        query.add_is_field('service_status', args['service_status'])
-    if args['disk_status'] is not None:
-        query.add_is_field('disk_status', args['disk_status'])
-    if args['locked'] is not None:
-        if args['locked'] is True:
+    query.add_order_field(args.order_by, args.reverse)
+    query.set_offset(args.offset)
+    query.set_limit(args.limit)
+    if args.service_status is not None:
+        query.add_is_field('service_status', args.service_status)
+    if args.disk_status is not None:
+        query.add_is_field('disk_status', args.disk_status)
+    if args.locked is not None:
+        if args.locked is True:
             query.add_isnot_field('lock_id', None)
         else:
             query.add_is_field('lock_id', None)
-    if args['dvg_name'] is not None:
-        query.add_is_field('dvg_name', args['dvg_name'])
+    if args.dvg_name is not None:
+        query.add_is_field('dvg_name', args.dvg_name)
     dpvs = query.query()
     schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=True)
     return ApiRet(dpvs, schema)
@@ -75,7 +75,7 @@ def dpvs_get():
 dpvs_get_method = ApiMethod(dpvs_get, HttpStatus.OK, dpvs_get_args_info)
 
 
-class DpvsPostArgSchema(Schema):
+class DpvsPostArgSchema(NtSchema):
     dpv_name = fields.String(required=True)
 
 
@@ -85,7 +85,7 @@ dpvs_post_args_info = ArgInfo(DpvsPostArgSchema, ArgLocation.json)
 def dpvs_post():
     session = frontend_local.session
     args = frontend_local.args
-    dpv_name = args['dpv_name']
+    dpv_name = args.dpv_name
     client = DpvClient(dpv_name)
     try:
         dpv_info = client.dpv_get_info()
@@ -119,7 +119,7 @@ dpvs_res = ApiResource(
     get=dpvs_get_method, post=dpvs_post_method)
 
 
-class DpvGetArgSchema(Schema):
+class DpvGetArgSchema(NtSchema):
     detail = fields.Boolean(missing=False)
 
 
@@ -135,7 +135,7 @@ def dpv_get(dpv_name):
     if dpv is None:
         raise error.ResourceNotFoundError(
             'dpv', dpv_name)
-    if args['detail'] is True:
+    if args.detail is True:
         schema = DpvApiSchema(only=DPV_SUMMARY_FIELDS, many=False)
     else:
         schema = DpvApiSchema(many=False)
