@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 
 from dlvm.common.modules import Base, DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
-    ServiceStatus, DiskStatus
+    ServiceStatus, DiskStatus, Lock
 
 
 class DataBaseManager():
@@ -79,3 +79,13 @@ class DataBaseManager():
             dvg_name=dvg_name,
         )
         print(dlv)
+
+    def lock_create(self, lock_owner, lock_type, lock_dt):
+        lock = Lock(
+            lock_owner=lock_owner,
+            lock_type=lock_type,
+            lock_dt=lock_dt,
+        )
+        self.session.add(lock)
+        self.session.commit()
+        return lock

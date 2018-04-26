@@ -5,11 +5,11 @@ import enum
 import uuid
 from logging import getLogger, LoggerAdapter
 
-from marshmallow import Schema, fields
+from marshmallow import fields
 
 from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, ExcInfo
-from dlvm.commont.marshmallow_ext import NtSchema, SetField, EnumField
+from dlvm.common.marshmallow_ext import NtSchema, SetField, EnumField
 from dlvm.common.database import Session, acquire_lock, release_lock
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
@@ -18,8 +18,8 @@ from dlvm.wrapper.mq_wrapper import app
 
 
 ori_logger = getLogger('state_machine')
-sm_send_hook_list = build_hook_list('sm_send')
-sm_recv_hook_list = build_hook_list('sm_recv')
+sm_send_hook_list = build_hook_list('sm_send_hook')
+sm_recv_hook_list = build_hook_list('sm_recv_hook')
 
 
 class SmSendContext(NamedTuple):
@@ -32,11 +32,6 @@ class SmRecvContext(NamedTuple):
     req_ctx: RequestContext
     sm_ctx_d: Mapping
     sm_arg_d: Tuple
-
-
-class StateMacineDescription(NamedTuple):
-    sm: Mapping
-    sm_arg_schema: Schema
 
 
 class UniDirJob(metaclass=ABCMeta):
@@ -53,7 +48,7 @@ class UniDirJob(metaclass=ABCMeta):
 class BiDirJob(metaclass=ABCMeta):
 
     @abstractmethod
-    def __init__(self, sm_arg):
+    def __init__(self, res_id):
         raise NotImplementedError
 
     @abstractmethod
@@ -181,7 +176,7 @@ def update_for_succeed(sm_ctx, state):
 
 
 @app.task(bind=True, max_retries=max_retries, default_retry_delay=retry_delay)
-def sm_handler(self, req_id_str, sm_ctx_d, sm_arg_d):
+def sm_handler(self, req_id_str, sm_ctx_d, res_id):
     req_id = uuid.UUID(req_id_str)
     logger = LoggerAdapter(ori_logger, {'req_id': req_id})
     req_ctx = RequestContext(req_id, logger)
@@ -189,36 +184,34 @@ def sm_handler(self, req_id_str, sm_ctx_d, sm_arg_d):
     session = Session()
     frontend_local.session = session
     hook_ctx = SmRecvContext(
-        req_ctx, sm_ctx_d, sm_arg_d)
+        req_ctx, sm_ctx_d, res_id)
     hook_ret_dict = run_pre_hook(
         'sm_recv', sm_recv_hook_list, hook_ctx)
     try:
         sm_ctx = StateMachineContextSchema().load(sm_ctx_d)
-        sm_desc = sm_dict[sm_ctx.sm_name]
-        sm_arg_schema = sm_desc.sm_arg_schema
-        sm_arg = sm_arg_schema().load(sm_arg_d)
         sm = sm_dict[sm_ctx.sm_name]
-        new_owner, lock_dt = acquire_lock(sm_ctx.lock_id, sm_ctx.lock_owner)
+        new_owner, lock_dt = acquire_lock(
+            session, sm_ctx.lock_id, sm_ctx.lock_owner)
         sm_ctx = sm_ctx._replace(lock_owner=new_owner, lock_dt=lock_dt)
         while sm_ctx.state_name != 'stop':
             state = sm[sm_ctx.state_name]
             worker_ctx = build_worker_ctx(sm_ctx, state)
-            job = state.job_cls(sm_arg)
+            job = state.job_cls(res_id)
             if worker_ctx.direction == Direction.forward:
                 func = job.forward
             else:
                 func = job.backward
             frontend_local.worker_ctx = worker_ctx
             try:
-                func(sm_arg)
+                func()
             except SmRetry:
                 sm_ctx = update_for_failed(sm_ctx, state)
                 sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
-                args = (req_id_str, sm_ctx_d, sm_arg_d)
+                args = (req_id_str, sm_ctx_d, res_id)
                 raise self.retry(args=args)
             else:
                 sm_ctx = update_for_succeed(sm_ctx, state)
-        release_lock(sm_ctx.lock_id, sm_ctx.lock_owner)
+        release_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner, True)
     except Exception as e:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
@@ -237,18 +230,8 @@ def sm_handler(self, req_id_str, sm_ctx_d, sm_arg_d):
 
 class StateMachine(metaclass=ABCMeta):
 
-    @abstractmethod
-    def __init__(self, arg):
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_arg(self):
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def get_arg_schema(self):
-        raise NotImplementedError
+    def __init__(self, res_id):
+        self.res_id = res_id
 
     @classmethod
     @abstractmethod
@@ -267,16 +250,13 @@ class StateMachine(metaclass=ABCMeta):
 
     def start(self, lock):
         sm_name = self.get_sm_name()
-        sm_arg = self.get_arg()
-        sm_arg_schema = self.get_arg_schema()
         queue = self.get_queue()
         req_id_str = str(frontend_local.req_ctx.req_id)
-        sm_arg_d = sm_arg_schema().dump(sm_arg)
         sm_ctx = StateMachineContextSchema.nt(
             sm_name, 'start', StepType.forward, 0,
             set(), lock.lock_id, lock.lock_owner, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
-        args = (req_id_str, sm_ctx_d, sm_arg_d)
+        args = (req_id_str, sm_ctx_d, self.res_id)
         req_ctx = frontend_local.req_ctx
         hook_ctx = SmSendContext(
             req_ctx, args, queue)
@@ -298,6 +278,4 @@ class StateMachine(metaclass=ABCMeta):
 
 
 def sm_register(cls):
-    sm_desc = StateMacineDescription(
-        cls.get_sm(), cls.get_sm_arg_type())
-    sm_dict[cls.get_sm_name()] = sm_desc
+    sm_dict[cls.get_sm_name()] = cls.get_sm()
