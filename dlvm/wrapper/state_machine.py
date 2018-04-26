@@ -270,13 +270,13 @@ class StateMachine(metaclass=ABCMeta):
         sm_arg = self.get_arg()
         sm_arg_schema = self.get_arg_schema()
         queue = self.get_queue()
-        req_id_hex = frontend_local.req_ctx.req_id.hex
+        req_id_str = str(frontend_local.req_ctx.req_id)
         sm_arg_d = sm_arg_schema().dump(sm_arg)
         sm_ctx = StateMachineContextSchema.nt(
             sm_name, 'start', StepType.forward, 0,
             set(), lock.lock_id, lock.lock_owner, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
-        args = (req_id_hex, sm_ctx_d, sm_arg_d)
+        args = (req_id_str, sm_ctx_d, sm_arg_d)
         req_ctx = frontend_local.req_ctx
         hook_ctx = SmSendContext(
             req_ctx, args, queue)

@@ -40,7 +40,11 @@ class NtSchemaMeta(SchemaMeta):
         attr_list = []
         for key in cls._declared_fields:
             attr_list.append(key)
-        cls.nt = namedtuple(name, attr_list)
+        if name.endswith('Schema'):
+            nt_name = name[:-6]
+        else:
+            nt_name = name
+        cls.nt = namedtuple(nt_name, attr_list)
         cls.nt.__new__.__defaults__ = (None,) * len(attr_list)
 
         @post_load
