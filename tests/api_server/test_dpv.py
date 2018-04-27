@@ -4,6 +4,7 @@ import json
 import os
 
 from dlvm.api_server import app
+from dlvm.dpv_agent import DpvGetInfoRetSchema
 
 from tests.utils import DataBaseManager
 
@@ -50,18 +51,16 @@ class DpvTest(unittest.TestCase):
         self.assertEqual(data['message'], 'succeed')
         self.assertEqual(len(data['data']), len(fake_dpvs))
 
-    @patch('dlvm.api_server.dpv.DpvClient')
-    def test_dpvs_post(self, DpvClient):
+    @patch('dlvm.api_server.dpv.dpv_rpc')
+    def test_dpvs_post(self, dpv_rpc):
         dpv_name = 'dpv0'
         total_size = 512*1024*1024*1024
         free_size = 512*1024*1024*1024
-        DpvClient \
+        dpv_rpc.sync_client \
             .return_value \
             .dpv_get_info \
-            .return_value = {
-                'total_size': total_size,
-                'free_size': free_size,
-            }
+            .return_value = DpvGetInfoRetSchema.nt(
+                total_size, free_size)
         headers = {
             'Content-Type': 'application/json',
         }
@@ -100,20 +99,18 @@ class DpvTest(unittest.TestCase):
         dpv2 = self.dbm.dpv_get(dpv_name)
         self.assertEqual(dpv2, None)
 
-    @patch('dlvm.api_server.dpv.DpvClient')
-    def test_dpv_update(self, DpvClient):
+    @patch('dlvm.api_server.dpv.dpv_rpc')
+    def test_dpv_update(self, dpv_rpc):
         dpv = fake_dpvs[0]
         self.dbm.dpv_create(**dpv)
         dpv_name = dpv['dpv_name']
         total_size = 128*1024*1024*1024
         free_size = 128*1024*1024*1024
-        DpvClient \
+        dpv_rpc.sync_client \
             .return_value \
             .dpv_get_info \
-            .return_value = {
-                'total_size': total_size,
-                'free_size': free_size,
-            }
+            .return_value = DpvGetInfoRetSchema.nt(
+                total_size, free_size)
         path = '/dpvs/{0}/update'.format(dpv_name)
         resp = self.client.put(path)
         self.assertEqual(resp.status_code, 200)

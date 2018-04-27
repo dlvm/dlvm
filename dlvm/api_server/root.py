@@ -1,10 +1,9 @@
 from dlvm.common.utils import HttpStatus
-from dlvm.wrapper.api_wrapper import ApiMethod, ApiResource, ApiRet
+from dlvm.wrapper.api_wrapper import ApiMethod, ApiResource
 
 
 def root_get():
-    data = {'api_version': 'v1'}
-    return ApiRet(data, None)
+    return 'dlvm'
 
 
 root_get_method = ApiMethod(root_get, HttpStatus.OK)

@@ -25,45 +25,23 @@ class ApiContext(NamedTuple):
     path_kwargs: Mapping
 
 
-class ApiResponseSchemaError(Exception):
-
-    def __init__(self, message, exc_info):
-        self.message = message
-        self.exc_info = exc_info
-        super(ApiResponseSchemaError, self).__init__(message)
-
-
 class ApiResponseSchema(Schema):
     req_id = fields.UUID()
     message = fields.String()
-    data = fields.Method('dump_data')
-
-    def dump_data(self, obj):
-        schema = self.context['data_schema']
-        try:
-            if obj['data'] is None:
-                return None
-            elif schema is None:
-                return obj['data']
-            else:
-                return schema.dump(obj['data'])
-        except ValidationError as e:
-            etype, value, tb = sys.exc_info()
-            exc_info = ExcInfo(etype, value, tb)
-            raise ApiResponseSchemaError(str(e.messages), exc_info)
+    data = fields.Raw()
 
 
 class ArgLocation(enum.Enum):
-    args = 'args'
-    json = 'json'
+    query = 'query'
+    body = 'body'
 
 
 class ArgInfo(NamedTuple):
-    arg_schema_cls: Type[NtSchema]
+    arg_schema: Type[NtSchema]
     location: ArgLocation
 
 
-empty_arg_info = ArgInfo(NtSchema, ArgLocation.args)
+empty_arg_info = ArgInfo(NtSchema, ArgLocation.query)
 
 
 class ApiMethod(NamedTuple):
@@ -80,19 +58,73 @@ class ApiResource(NamedTuple):
     delete: Optional[ApiMethod] = None
 
 
-class ResInfo(NamedTuple):
-    res: ApiResource
-    method_dict: Mapping[str, ApiMethod]
-
-
-class ApiRet(NamedTuple):
-    data: object
-    schema: Schema
-
-
 api_hook_list = build_hook_list('api_hook')
 ori_logger = getLogger('dlvm_api')
 api_headers = {'Content-Type': 'application/json'}
+
+
+def common_handler(method, *path_args, **path_kwargs):
+    if method.arg_info.location == ArgLocation.query:
+        arg_dict = request.args
+    else:
+        arg_dict = request.get_json()
+
+    raw_response = {}
+    req_id = uuid.uuid4()
+    raw_response['req_id'] = req_id
+    logger = LoggerAdapter(ori_logger, {'req_id': req_id})
+    req_ctx = RequestContext(req_id, logger)
+    session = Session()
+    hook_ctx = ApiContext(
+        req_ctx, method.func.__name__,
+        arg_dict, path_args, path_kwargs)
+    hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
+    try:
+        arg = method.arg_info.arg_schema().load(arg_dict)
+        frontend_local.arg = arg
+        frontend_local.req_ctx = req_ctx
+        frontend_local.session = session
+        frontend_local.worker_ctx = get_empty_worker_ctx()
+        data = method.func(*path_args, **path_kwargs)
+        raw_response['data'] = data
+        raw_response['message'] = 'succeed'
+        response = ApiResponseSchema().dumps(raw_response)
+        full_response = make_response(
+            response, method.status_code, api_headers)
+    except Exception as e:
+        if isinstance(e, ValidationError):
+            message = str(e.messages)
+            status_code = HttpStatus.BadRequest
+            etype, value, tb = sys.exc_info()
+            exc_info = ExcInfo(etype, value, tb)
+        elif isinstance(e, DlvmError):
+            message = e.message
+            status_code = e.status_code
+            if e.exc_info is not None:
+                exc_info = e.exc_info
+            else:
+                etype, value, tb = sys.exc_info()
+                exc_info = ExcInfo(etype, value, tb)
+        else:
+            message = 'internal_error'
+            status_code = HttpStatus.InternalServerError
+            etype, value, tb = sys.exc_info()
+            exc_info = ExcInfo(etype, value, tb)
+
+        session.rollback()
+        run_error_hook(
+            'api', api_hook_list, hook_ctx, hook_ret_dict, exc_info)
+        raw_response['message'] = message
+        raw_response['data'] = None
+        response = ApiResponseSchema().dumps(raw_response)
+        full_response = make_response(
+            response, status_code, api_headers)
+    else:
+        run_post_hook(
+            'api', api_hook_list, hook_ctx, hook_ret_dict, full_response)
+    finally:
+        session.close()
+        return full_response
 
 
 class Api():
@@ -101,83 +133,6 @@ class Api():
         self.app = app
         self.res_info_dict = {}
         loginit()
-
-    def handler(self, *path_args, **path_kwargs):
-        res_info = self.res_info_dict[request.endpoint]
-        method = res_info.method_dict[request.method]
-        if method.arg_info.location == ArgLocation.args:
-            arg_dict = request.args
-        else:
-            arg_dict = request.get_json()
-        raw_response = {}
-        req_id = uuid.uuid4()
-        raw_response['req_id'] = req_id
-        logger = LoggerAdapter(ori_logger, {'req_id': req_id})
-        req_ctx = RequestContext(req_id, logger)
-        session = Session()
-        hook_ctx = ApiContext(
-            req_ctx, method.func.__name__,
-            arg_dict, path_args, path_kwargs)
-
-        hook_ret_dict = run_pre_hook('api', api_hook_list, hook_ctx)
-        try:
-            arg = method.arg_info.arg_schema_cls().load(arg_dict)
-            frontend_local.arg = arg
-            frontend_local.req_ctx = req_ctx
-            frontend_local.session = session
-            frontend_local.worker_ctx = get_empty_worker_ctx()
-            api_ret = method.func(*path_args, **path_kwargs)
-            raw_response['message'] = 'succeed'
-            if api_ret is None:
-                raw_response['data'] = None
-                api_response_schema = ApiResponseSchema()
-                api_response_schema.context['data_schema'] = None
-            else:
-                raw_response['data'] = api_ret.data
-                api_response_schema = ApiResponseSchema()
-                api_response_schema.context['data_schema'] = api_ret.schema
-            response = api_response_schema.dumps(raw_response)
-            full_response = make_response(
-                response, method.status_code, api_headers)
-        except Exception as e:
-            if isinstance(e, ValidationError):
-                message = str(e.messages)
-                status_code = HttpStatus.BadRequest
-                etype, value, tb = sys.exc_info()
-                exc_info = ExcInfo(etype, value, tb)
-            elif isinstance(e, DlvmError):
-                message = e.message
-                status_code = e.status_code
-                if e.exc_info is not None:
-                    exc_info = e.exc_info
-                else:
-                    etype, value, tb = sys.exc_info()
-                    exc_info = ExcInfo(etype, value, tb)
-            elif isinstance(e, ApiResponseSchemaError):
-                message = e.message
-                status_code = HttpStatus.InternalServerError
-                exc_info = e.exc_info
-            else:
-                message = 'internal_error'
-                status_code = HttpStatus.InternalServerError
-                etype, value, tb = sys.exc_info()
-                exc_info = ExcInfo(etype, value, tb)
-
-            session.rollback()
-            run_error_hook(
-                'api', api_hook_list, hook_ctx, hook_ret_dict, exc_info)
-            raw_response['message'] = message
-            raw_response['data'] = None
-            api_response_schema = ApiResponseSchema()
-            response = api_response_schema.dumps(raw_response)
-            full_response = make_response(
-                response, status_code, api_headers)
-        else:
-            run_post_hook(
-                'api', api_hook_list, hook_ctx, hook_ret_dict, full_response)
-        finally:
-            session.close()
-            return full_response
 
     def add_resource(self, res):
         methods = []
@@ -194,7 +149,10 @@ class Api():
         if res.delete is not None:
             methods.append('DELETE')
             method_dict['DELETE'] = res.delete
-        res_info = ResInfo(res, method_dict)
-        self.res_info_dict[res.path] = res_info
+
+        def handler(*path_args, **path_kwargs):
+            method = method_dict[request.method]
+            return common_handler(method, *path_args, **path_kwargs)
+
         self.app.add_url_rule(
-            res.path, res.path, self.handler, methods=methods)
+            res.path, res.path, handler, methods=methods)

@@ -15,4 +15,4 @@ class RootTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = json.loads(resp.data)
         self.assertEqual(data['message'], 'succeed')
-        self.assertEqual(data['data']['api_version'], 'v1')
+        self.assertEqual(data['data'], 'dlvm')

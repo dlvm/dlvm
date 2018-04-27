@@ -1,19 +1,23 @@
+from marshmallow import fields
 from dlvm.common.configure import cfg
-from dlvm.wrapper.rpc_wrapper import DpvServer
-from dlvm.core import command as cmd
+from dlvm.common.marshmallow_ext import NtSchema
+from dlvm.wrapper.rpc_wrapper import DpvRpc
+from dlvm.common import command as cmd
 
-server = DpvServer()
+dpv_rpc = DpvRpc()
 
 
-@server.register
+class DpvGetInfoRetSchema(NtSchema):
+    total_size = fields.Integer()
+    free_size = fields.Integer()
+
+
+@dpv_rpc.register(ret_schema=DpvGetInfoRetSchema)
 def dpv_get_info():
     vg_name = cfg.get('storage', 'local_vg')
     total_size, free_size = cmd.vg_get_size(vg_name)
-    return {
-        'total_size': total_size,
-        'free_size': free_size,
-    }
+    return DpvGetInfoRetSchema.nt(total_size, free_size)
 
 
 def start_dpv_agent():
-    server.serve_forever()
+    dpv_rpc.start_server()

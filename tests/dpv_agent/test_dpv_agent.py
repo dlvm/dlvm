@@ -13,5 +13,5 @@ class DpvAgentTest(unittest.TestCase):
         cmd_mock.vg_get_size.return_value = (
             total_size, free_size)
         dpv_info = dpv_get_info()
-        self.assertEqual(dpv_info['total_size'], total_size)
-        self.assertEqual(dpv_info['free_size'], free_size)
+        self.assertEqual(dpv_info.total_size, total_size)
+        self.assertEqual(dpv_info.free_size, free_size)
