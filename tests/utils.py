@@ -51,11 +51,9 @@ class DataBaseManager():
 
     def dvg_extend(self, dvg_name, dpv_name):
         dvg = self.session.query(DistributeVolumeGroup) \
-            .query \
             .filter_by(dvg_name=dvg_name) \
             .one()
         dpv = self.session.query(DistributePhysicalVolume) \
-            .query \
             .filter_by(dpv_name=dpv_name) \
             .one()
         dpv.dvg_name = dvg_name
@@ -64,6 +62,12 @@ class DataBaseManager():
         dvg.total_size += dpv.total_size
         self.session.add(dvg)
         self.session.commit()
+
+    def dvg_get(self, dvg_name):
+        dvg = self.session.query(DistributeVolumeGroup) \
+            .filter_by(dvg_name=dvg_name) \
+            .one_or_none()
+        return dvg
 
     def dlv_create(
             self, dlv_name, dlv_size, data_size, stripe_number,

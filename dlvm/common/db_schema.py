@@ -51,7 +51,7 @@ class DpvSchema(DpvSummarySchema):
     legs = fields.Nested(LegSchema, many=True)
 
 
-class DvgApiSchema(NtSchema):
+class DvgSchema(NtSchema):
     dvg_name = fields.String()
     total_size = fields.Integer()
     free_size = fields.Integer()
