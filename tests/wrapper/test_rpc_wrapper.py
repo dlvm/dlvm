@@ -14,7 +14,7 @@ from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
 
 server_logger = getLogger('server_logger')
 client_logger = getLogger('client_logger')
-dlvm_rpc = DlvmRpc('localhost', 9522, server_logger)
+dlvm_rpc = DlvmRpc('localhost', 8888, server_logger)
 
 
 class AddArgSchema(NtSchema):
@@ -55,7 +55,7 @@ class DlvmRpcTest(unittest.TestCase):
 
     def test_sync_client(self):
         client = dlvm_rpc.sync_client(
-            frontend_local.req_ctx, 'localhost', 9522, 3,
+            frontend_local.req_ctx, 'localhost', 8888, 3,
             frontend_local.worker_ctx.lock_dt)
         arg = AddArgSchema.nt(2, 3)
         ret = client.add(arg)
@@ -63,6 +63,6 @@ class DlvmRpcTest(unittest.TestCase):
 
     def test_async_client(self):
         client = dlvm_rpc.async_client(
-            frontend_local.req_ctx, 'localhost', 9522, 3,
+            frontend_local.req_ctx, 'localhost', 8888, 3,
             frontend_local.worker_ctx.lock_dt, None)
         client.no_data()

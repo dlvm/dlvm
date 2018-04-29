@@ -5,6 +5,7 @@ from sqlalchemy import Column, BigInteger, Integer, String, \
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
+from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH
 
 Base = declarative_base()
 
@@ -23,7 +24,7 @@ class DistributePhysicalVolume(Base):
 
     __tablename__ = 'distribute_physical_volume'
 
-    dpv_name = Column(String(64), primary_key=True)
+    dpv_name = Column(String(DNS_NAME_LENGTH), primary_key=True)
 
     total_size = Column(BigInteger, nullable=False)
 
@@ -36,7 +37,8 @@ class DistributePhysicalVolume(Base):
         Enum(DiskStatus, name='dpv_disk_status'), nullable=False)
 
     dvg_name = Column(
-        String(32), ForeignKey('distribute_volume_group.dvg_name'))
+        String(RES_NAME_LENGTH),
+        ForeignKey('distribute_volume_group.dvg_name'))
 
     dvg = relationship('DistributeVolumeGroup', back_populates='dpvs')
 
@@ -51,7 +53,7 @@ class DistributeVolumeGroup(Base):
 
     __tablename__ = 'distribute_volume_group'
 
-    dvg_name = Column(String(32), primary_key=True)
+    dvg_name = Column(String(RES_NAME_LENGTH), primary_key=True)
 
     total_size = Column(BigInteger, nullable=False)
 
@@ -81,7 +83,7 @@ class DistributeLogicalVolume(Base):
 
     __tablename__ = 'distribute_logical_volume'
 
-    dlv_name = Column(String(32), primary_key=True)
+    dlv_name = Column(String(RES_NAME_LENGTH), primary_key=True)
 
     dlv_size = Column(BigInteger, nullable=False)
 
@@ -92,13 +94,15 @@ class DistributeLogicalVolume(Base):
     status = Column(Enum(DlvStatus, name='dlv_status'), nullable=False)
 
     dvg_name = Column(
-        String(32),
+        String(RES_NAME_LENGTH),
         ForeignKey('distribute_volume_group.dvg_name'),
         nullable=False)
 
     dvg = relationship('DistributeVolumeGroup', back_populates='dlvs')
 
-    ihost_name = Column(String(32), ForeignKey('initiator_host.ihost_name'))
+    ihost_name = Column(
+        String(DNS_NAME_LENGTH),
+        ForeignKey('initiator_host.ihost_name'))
 
     ihost = relationship('InitiatorHost', back_populates='dlvs')
 
@@ -107,10 +111,10 @@ class DistributeLogicalVolume(Base):
         back_populates='dlv',
         foreign_keys='[Snapshot.dlv_name]')
 
-    active_snap_name = Column(
-        String(64), ForeignKey('snapshot.snap_name'), nullable=False)
+    active_snap_id = Column(
+        String, ForeignKey('snapshot.snap_id'), nullable=False)
 
-    active_snap = relationship('Snapshot', foreign_keys=[active_snap_name])
+    active_snap = relationship('Snapshot', foreign_keys=[active_snap_id])
 
     groups = relationship('Group', back_populates='dlv')
 
@@ -136,7 +140,7 @@ class InitiatorHost(Base):
 
     __tablename__ = 'initiator_host'
 
-    ihost_name = Column(String(64), primary_key=True)
+    ihost_name = Column(String(DNS_NAME_LENGTH), primary_key=True)
 
     service_status = Column(
         Enum(ServiceStatus, name='ihost_service_status'), nullable=False)
@@ -155,7 +159,9 @@ class Snapshot(Base):
 
     __tablename__ = 'snapshot'
 
-    snap_name = Column(String(64), primary_key=True)
+    snap_id = Column(String(2*RES_NAME_LENGTH+1), primary_key=True)
+
+    snap_name = Column(String(RES_NAME_LENGTH), primary_key=True)
 
     thin_id = Column(Integer, nullable=False)
 
@@ -164,7 +170,7 @@ class Snapshot(Base):
     status = Column(Enum(SnapStatus, name='snap_status'), nullable=False)
 
     dlv_name = Column(
-        String(32),
+        String(RES_NAME_LENGTH),
         ForeignKey('distribute_logical_volume.dlv_name'),
         nullable=False)
 
@@ -187,7 +193,8 @@ class Group(Base):
     group_size = Column(BigInteger, nullable=False)
 
     dlv_name = Column(
-        String(32), ForeignKey('distribute_logical_volume.dlv_name'))
+        String(RES_NAME_LENGTH),
+        ForeignKey('distribute_logical_volume.dlv_name'))
 
     dlv = relationship('DistributeLogicalVolume', back_populates='groups')
 
@@ -211,7 +218,7 @@ class Leg(Base):
     group = relationship('Group', back_populates='legs')
 
     dpv_name = Column(
-        String(32),
+        String(DNS_NAME_LENGTH),
         ForeignKey('distribute_physical_volume.dpv_name'))
 
     dpv = relationship('DistributePhysicalVolume', back_populates='legs')
@@ -233,10 +240,11 @@ class FailoverJob(Base):
 
     __tablename__ = 'failover_job'
 
-    fj_name = Column(String(32), primary_key=True)
+    fj_name = Column(String(RES_NAME_LENGTH), primary_key=True)
 
     dlv_name = Column(
-        String(32), ForeignKey('distribute_logical_volume.dlv_name'))
+        String(RES_NAME_LENGTH),
+        ForeignKey('distribute_logical_volume.dlv_name'))
 
     dlv = relationship('DistributeLogicalVolume', back_populates='fjs')
 
@@ -264,13 +272,15 @@ class CloneJob(Base):
 
     __tablename__ = 'clone_job'
 
-    cj_name = Column(String(32), primary_key=True)
+    cj_name = Column(String(RES_NAME_LENGTH), primary_key=True)
 
     src_dlv_name = Column(
-        String(32), ForeignKey('distribute_logical_volume.dlv_name'))
+        String(RES_NAME_LENGTH),
+        ForeignKey('distribute_logical_volume.dlv_name'))
 
     dst_dlv_name = Column(
-        String(32), ForeignKey('distribute_logical_volume.dlv_name'))
+        String(RES_NAME_LENGTH),
+        ForeignKey('distribute_logical_volume.dlv_name'))
 
     src_dlv = relationship(
         'DistributeLogicalVolume',
@@ -299,7 +309,7 @@ class Lock(Base):
         primary_key=True, autoincrement=True)
 
     lock_owner = Column(
-        String(32), nullable=False)
+        String(RES_NAME_LENGTH), nullable=False)
 
     lock_type = Column(
         Enum(LockType, name='lock_type'),

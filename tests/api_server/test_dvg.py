@@ -90,3 +90,47 @@ class DvgTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         dvg2 = self.dbm.dvg_get(dvg_name)
         self.assertEqual(dvg2, None)
+
+    def test_dvg_extend(self):
+        self.dbm.dvg_create(**fake_dvg)
+        self.dbm.dpv_create(**fake_dpvs[0])
+        dvg_name = fake_dvg['dvg_name']
+        dvg1 = self.dbm.dvg_get(dvg_name)
+        self.assertEqual(dvg1.total_size, 0)
+        self.assertEqual(dvg1.free_size, 0)
+        path = '/dvgs/{0}/extend'.format(dvg_name)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        raw_data = {
+            'dpv_name': fake_dpvs[0]['dpv_name'],
+        }
+        data = json.dumps(raw_data)
+        resp = self.client.put(path, headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        dvg2 = self.dbm.dvg_get(dvg_name)
+        self.assertEqual(dvg2.total_size, fake_dpvs[0]['total_size'])
+        self.assertEqual(dvg2.free_size, fake_dpvs[0]['free_size'])
+
+    def test_dvg_reduce(self):
+        self.dbm.dvg_create(**fake_dvg)
+        self.dbm.dpv_create(**fake_dpvs[0])
+        dvg_name = fake_dvg['dvg_name']
+        dpv_name = fake_dpvs[0]['dpv_name']
+        self.dbm.dvg_extend(dvg_name, dpv_name)
+        dvg1 = self.dbm.dvg_get(dvg_name)
+        self.assertEqual(dvg1.total_size, fake_dpvs[0]['total_size'])
+        self.assertEqual(dvg1.free_size, fake_dpvs[0]['free_size'])
+        path = '/dvgs/{0}/reduce'.format(dvg_name)
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        raw_data = {
+            'dpv_name': dpv_name,
+        }
+        data = json.dumps(raw_data)
+        resp = self.client.put(path, headers=headers, data=data)
+        self.assertEqual(resp.status_code, 200)
+        dvg2 = self.dbm.dvg_get(dvg_name)
+        self.assertEqual(dvg2.total_size, 0)
+        self.assertEqual(dvg2.free_size, 0)
