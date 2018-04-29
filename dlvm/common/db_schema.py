@@ -65,5 +65,9 @@ class DlvSummarySchema(NtSchema):
     status = EnumField(DlvStatus)
     dvg_name = fields.String()
     ihost_name = fields.String()
-    active_snap_name = fields.String()
+    active_snap_id = fields.String()
     lock_id = fields.Integer()
+
+
+class DlvSchema(DlvSummarySchema):
+    groups = fields.Nested(GroupSchema, many=True)

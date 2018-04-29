@@ -298,6 +298,7 @@ class LockType(enum.Enum):
     dpv = 'dpv'
     fj = 'fj'
     cj = 'cj'
+    ej = 'ej'
 
 
 class Lock(Base):

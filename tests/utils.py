@@ -1,9 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from dlvm.common.constant import DEFAULT_SNAP_NAME
 from dlvm.common.modules import Base, DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
-    ServiceStatus, DiskStatus, Lock
+    ServiceStatus, DiskStatus, Lock, SnapStatus, Snapshot, Group, Leg
 
 
 class DataBaseManager():
@@ -75,22 +76,57 @@ class DataBaseManager():
             .one_or_none()
         return dvg
 
-    def dlv_create(
-            self, dlv_name, dlv_size, data_size, stripe_number,
-            dvg_name, igroups):
+    def dlv_create(self, dlv_info):
         session = self.Session()
-        snap_name = '%s/base' % dlv_name
+        snap_name = DEFAULT_SNAP_NAME
+        snap_id = '%s%s' % (dlv_info['dlv_name'], snap_name)
         dlv = DistributeLogicalVolume(
-            dlv_name=dlv_name,
-            dlv_size=dlv_size,
-            data_size=data_size,
-            stripe_number=stripe_number,
+            dlv_name=dlv_info['dlv_name'],
+            dlv_size=dlv_info['dlv_size'],
+            data_size=dlv_info['init_size'],
+            stripe_number=dlv_info['stripe_number'],
             status=DlvStatus.available,
-            active_snap_name=snap_name,
-            dvg_name=dvg_name,
+            active_snap_id=snap_id,
+            dvg_name=dlv_info['dvg_name'],
         )
         session.add(dlv)
-        session.commit()
+        snap = Snapshot(
+            snap_id=snap_id,
+            snap_name=snap_name,
+            thin_id=0,
+            ori_thin_id=0,
+            status=SnapStatus.available,
+            dlv_name=dlv_info['dlv_name'],
+        )
+        session.add(snap)
+
+        dvg = session.query(DistributeVolumeGroup) \
+            .filter_by(dvg_name=dlv_info['dvg_name']) \
+            .one()
+
+        for igroup in dlv_info['groups']:
+            group = Group(
+                group_idx=igroup['group_idx'],
+                group_size=igroup['group_size'],
+                dlv_name=dlv_info['dlv_name'],
+            )
+            session.add(group)
+            for ileg in igroup['legs']:
+                leg = Leg(
+                    leg_idx=ileg['leg_idx'],
+                    leg_size=ileg['leg_size'],
+                    group_id=group.group_id,
+                    dpv_name=ileg['dpv_name'],
+                )
+                session.add(leg)
+                dpv = session.query(DistributePhysicalVolume) \
+                    .filter_by(dpv_name=ileg['dpv_name']) \
+                    .one()
+                dpv.free_size -= ileg['leg_size']
+                session.add(dpv)
+                dvg.free_size -= ileg['leg_size']
+            session.add(dvg)
+            session.commit()
 
     def lock_create(self, lock_owner, lock_type, lock_dt):
         session = self.Session()

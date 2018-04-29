@@ -12,3 +12,5 @@ CELERY_APP_NAME = 'dlvm_celery_app'
 RES_NAME_REGEX = r'[a-z,A-Z][a-z,A-Z,_]*'
 RES_NAME_LENGTH = 32
 DNS_NAME_LENGTH = 64
+
+DEFAULT_SNAP_NAME = 'base'
