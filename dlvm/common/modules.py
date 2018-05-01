@@ -1,11 +1,11 @@
 import enum
 
 from sqlalchemy import Column, BigInteger, Integer, String, \
-    DateTime, Enum, ForeignKey
+    DateTime, Enum, Binary, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH
+from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH, MAX_BM_SIZE
 
 Base = declarative_base()
 
@@ -44,7 +44,7 @@ class DistributePhysicalVolume(Base):
 
     legs = relationship('Leg', back_populates='dpv')
 
-    lock_id = Column(BigInteger, ForeignKey('lock.lock_id'))
+    lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'))
 
     lock = relationship('Lock')
 
@@ -93,6 +93,10 @@ class DistributeLogicalVolume(Base):
 
     status = Column(Enum(DlvStatus, name='dlv_status'), nullable=False)
 
+    bm_dirty = Column(Boolean, nullable=False)
+
+    bm_ignore = Column(Boolean, nullable=False)
+
     dvg_name = Column(
         String(RES_NAME_LENGTH),
         ForeignKey('distribute_volume_group.dvg_name'),
@@ -108,13 +112,9 @@ class DistributeLogicalVolume(Base):
 
     snapshots = relationship(
         'Snapshot',
-        back_populates='dlv',
-        foreign_keys='[Snapshot.dlv_name]')
+        back_populates='dlv')
 
-    active_snap_id = Column(
-        String, ForeignKey('snapshot.snap_id'), nullable=False)
-
-    active_snap = relationship('Snapshot', foreign_keys=[active_snap_id])
+    active_snap_name = Column(String(RES_NAME_LENGTH), nullable=False)
 
     groups = relationship('Group', back_populates='dlv')
 
@@ -131,7 +131,7 @@ class DistributeLogicalVolume(Base):
         uselist=False,
         back_populates='src_dlv')
 
-    lock_id = Column(BigInteger, ForeignKey('lock.lock_id'))
+    lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'))
 
     lock = relationship('Lock')
 
@@ -161,13 +161,15 @@ class Snapshot(Base):
 
     snap_id = Column(String(2*RES_NAME_LENGTH+1), primary_key=True)
 
-    snap_name = Column(String(RES_NAME_LENGTH), primary_key=True)
+    snap_name = Column(String(RES_NAME_LENGTH), nullable=False)
 
     thin_id = Column(Integer, nullable=False)
 
     ori_thin_id = Column(Integer, nullable=False)
 
     status = Column(Enum(SnapStatus, name='snap_status'), nullable=False)
+
+    thin_mapping = Column(Text, nullable=False)
 
     dlv_name = Column(
         String(RES_NAME_LENGTH),
@@ -176,13 +178,12 @@ class Snapshot(Base):
 
     dlv = relationship(
         'DistributeLogicalVolume',
-        foreign_keys=[dlv_name],
         back_populates='snapshots')
 
 
 class Group(Base):
 
-    __tablename__ = 'group'
+    __tablename__ = 'dlv_group'
 
     group_id = Column(
         BigInteger().with_variant(Integer, "sqlite"),
@@ -191,6 +192,8 @@ class Group(Base):
     group_idx = Column(Integer, nullable=False)
 
     group_size = Column(BigInteger, nullable=False)
+
+    bitmap = Column(Binary(MAX_BM_SIZE), nullable=False)
 
     dlv_name = Column(
         String(RES_NAME_LENGTH),
@@ -213,7 +216,7 @@ class Leg(Base):
 
     leg_size = Column(BigInteger, nullable=False)
 
-    group_id = Column(BigInteger, ForeignKey('group.group_id'))
+    group_id = Column(BigInteger, ForeignKey('dlv_group.group_id'))
 
     group = relationship('Group', back_populates='legs')
 
@@ -263,7 +266,7 @@ class FailoverJob(Base):
     dst_leg = relationship(
         'Leg', foreign_keys=[dst_leg_id], back_populates='dst_fj')
 
-    lock_id = Column(BigInteger, ForeignKey('lock.lock_id'))
+    lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'))
 
     lock = relationship('Lock')
 
@@ -303,7 +306,7 @@ class LockType(enum.Enum):
 
 class Lock(Base):
 
-    __tablename__ = 'lock'
+    __tablename__ = 'dlvm_lock'
 
     lock_id = Column(
         BigInteger().with_variant(Integer, "sqlite"),

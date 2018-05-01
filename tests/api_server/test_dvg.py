@@ -1,7 +1,7 @@
 import unittest
 import json
-import os
 
+from dlvm.common.configure import cfg
 from dlvm.api_server import app
 
 from tests.utils import DataBaseManager
@@ -30,17 +30,14 @@ fake_dvg = {'dvg_name': 'dvg0'}
 
 class DvgTest(unittest.TestCase):
 
-    db_path = '/tmp/dlvm_test.db'
-    db_uri = 'sqlite:////tmp/dlvm_test.db'
-
     def setUp(self):
         app.config['TESTING'] = True
         self.client = app.test_client()
-        self.dbm = DataBaseManager(self.db_uri)
+        self.dbm = DataBaseManager(cfg.get('database', 'db_uri'))
+        self.dbm.setup()
 
     def tearDown(self):
-        if os.path.isfile(self.db_path):
-            os.remove(self.db_path)
+        self.dbm.teardown()
 
     def test_dvgs_get(self):
         self.dbm.dvg_create(**fake_dvg)
@@ -88,6 +85,7 @@ class DvgTest(unittest.TestCase):
         path = '/dvgs/{0}'.format(dvg_name)
         resp = self.client.delete(path)
         self.assertEqual(resp.status_code, 200)
+        self.dbm.update_session()
         dvg2 = self.dbm.dvg_get(dvg_name)
         self.assertEqual(dvg2, None)
 
@@ -108,6 +106,7 @@ class DvgTest(unittest.TestCase):
         data = json.dumps(raw_data)
         resp = self.client.put(path, headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+        self.dbm.update_session()
         dvg2 = self.dbm.dvg_get(dvg_name)
         self.assertEqual(dvg2.total_size, fake_dpvs[0]['total_size'])
         self.assertEqual(dvg2.free_size, fake_dpvs[0]['free_size'])
@@ -131,6 +130,7 @@ class DvgTest(unittest.TestCase):
         data = json.dumps(raw_data)
         resp = self.client.put(path, headers=headers, data=data)
         self.assertEqual(resp.status_code, 200)
+        self.dbm.update_session()
         dvg2 = self.dbm.dvg_get(dvg_name)
         self.assertEqual(dvg2.total_size, 0)
         self.assertEqual(dvg2.free_size, 0)

@@ -1,7 +1,7 @@
 import unittest
 import json
-import os
 
+from dlvm.common.configure import cfg
 from dlvm.api_server import app
 
 from tests.utils import DataBaseManager
@@ -37,6 +37,7 @@ fake_dlv = {
     'dlv_size': 100*1024*1024*1024,
     'init_size': 50*1024*1024*1024,
     'stripe_number': 1,
+    'bm_ignore': False,
     'dvg_name': 'dvg0',
     'groups': [{
         'group_idx': 0,
@@ -74,11 +75,11 @@ class DlvTest(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
         self.client = app.test_client()
-        self.dbm = DataBaseManager(self.db_uri)
+        self.dbm = DataBaseManager(cfg.get('database', 'db_uri'))
+        self.dbm.setup()
 
     def tearDown(self):
-        if os.path.isfile(self.db_path):
-            os.remove(self.db_path)
+        self.dbm.teardown()
 
     def test_dlvs_get(self):
         self.dbm.dvg_create(**fake_dvg)

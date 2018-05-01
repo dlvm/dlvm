@@ -81,6 +81,7 @@ class DlvsPostArgSchema(NtSchema):
         required=True, validate=stripe_number_validator)
     init_size = fields.Integer(
         required=True, validate=init_size_validator)
+    bm_ignore = fields.Boolean(missing=False)
     dvg_name = fields.String(required=True)
 
 
@@ -88,7 +89,9 @@ dlvs_post_arg_info = ArgInfo(DlvsPostArgSchema, ArgLocation.body)
 
 
 def dlvs_post():
-    pass
+    session = frontend_local.session
+    arg = frontend_local.arg
+    dlv = DistributeLogicalVolume
 
 
 dlvs_post_method = ApiMethod(dlvs_post, HttpStatus.Created, dlvs_post_arg_info)

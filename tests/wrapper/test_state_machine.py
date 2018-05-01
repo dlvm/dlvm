@@ -1,8 +1,8 @@
 import unittest
-import os
 from datetime import datetime
 import uuid
 
+from dlvm.common.configure import cfg
 from dlvm.wrapper.state_machine import sm_handler, sm_register, \
     StateMachineContextSchema, UniDirJob, UniDirState, StateMachine, StepType
 
@@ -41,15 +41,12 @@ class Foo(StateMachine):
 
 class StateMachineTest(unittest.TestCase):
 
-    db_path = '/tmp/dlvm_test.db'
-    db_uri = 'sqlite:////tmp/dlvm_test.db'
-
     def setUp(self):
-        self.dbm = DataBaseManager(self.db_uri)
+        self.dbm = DataBaseManager(cfg.get('database', 'db_uri'))
+        self.dbm.setup()
 
     def tearDown(self):
-        if os.path.isfile(self.db_path):
-            os.remove(self.db_path)
+        self.dbm.teardown()
 
     def test_state_machine(self):
         lock = self.dbm.lock_create(

@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 import json
-import os
 
+from dlvm.common.configure import cfg
 from dlvm.api_server import app
 from dlvm.dpv_agent import DpvGetInfoRetSchema
 
@@ -30,17 +30,14 @@ fake_dpvs = [
 
 class DpvTest(unittest.TestCase):
 
-    db_path = '/tmp/dlvm_test.db'
-    db_uri = 'sqlite:////tmp/dlvm_test.db'
-
     def setUp(self):
         app.config['TESTING'] = True
         self.client = app.test_client()
-        self.dbm = DataBaseManager(self.db_uri)
+        self.dbm = DataBaseManager(cfg.get('database', 'db_uri'))
+        self.dbm.setup()
 
     def tearDown(self):
-        if os.path.isfile(self.db_path):
-            os.remove(self.db_path)
+        self.dbm.teardown()
 
     def test_dpvs_get(self):
         for fake_dpv in fake_dpvs:
@@ -96,6 +93,7 @@ class DpvTest(unittest.TestCase):
         path = '/dpvs/{0}'.format(dpv_name)
         resp = self.client.delete(path)
         self.assertEqual(resp.status_code, 200)
+        self.dbm.update_session()
         dpv2 = self.dbm.dpv_get(dpv_name)
         self.assertEqual(dpv2, None)
 
