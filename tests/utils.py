@@ -66,7 +66,7 @@ class DataBaseManager():
         return dpv
 
     def dpv_set(self, dpv_name, name, value):
-        dpv = session.query(DistributePhysicalVolume) \
+        dpv = self.session.query(DistributePhysicalVolume) \
             .filter_by(dpv_name=dpv_name) \
             .one()
         setattr(dpv, name, value)
