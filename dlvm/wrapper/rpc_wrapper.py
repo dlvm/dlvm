@@ -15,7 +15,7 @@ from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
 from dlvm.common.error import RpcError
 from dlvm.common.modules import DistributePhysicalVolume, \
-    InitiatorHost, ServiceStatus
+    ServiceStatus
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import backend_local, frontend_local, \
@@ -368,17 +368,7 @@ class IhostRpc(DlvmRpc):
         lock_dt = frontend_local.worker_ctx.lock_dt
 
         def enforce_func():
-            session = frontend_local.session
-            lock_owner = frontend_local.worker_ctx.lock_owner
-            ihost = session.query(InitiatorHost) \
-                .filter_by(ihost_name=ihost_name) \
-                .with_lockmode('update') \
-                .one()
-            assert(ihost.lock.lock_owner == lock_owner)
-            if ihost.service_status != ServiceStatus.unavailable:
-                ihost.service_status = ServiceStatus.unavailable
-                session.add(ihost)
-                session.commit()
+            pass
 
         super(IhostRpc, self).async_client(
             req_ctx, server, port, timeout, lock_dt, enforce_func)

@@ -104,11 +104,7 @@ class DistributeLogicalVolume(Base):
 
     dvg = relationship('DistributeVolumeGroup', back_populates='dlvs')
 
-    ihost_name = Column(
-        String(DNS_NAME_LENGTH),
-        ForeignKey('initiator_host.ihost_name'))
-
-    ihost = relationship('InitiatorHost', back_populates='dlvs')
+    ihost_name = Column(String(DNS_NAME_LENGTH))
 
     snapshots = relationship(
         'Snapshot',
@@ -134,18 +130,6 @@ class DistributeLogicalVolume(Base):
     lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'))
 
     lock = relationship('Lock')
-
-
-class InitiatorHost(Base):
-
-    __tablename__ = 'initiator_host'
-
-    ihost_name = Column(String(DNS_NAME_LENGTH), primary_key=True)
-
-    service_status = Column(
-        Enum(ServiceStatus, name='ihost_service_status'), nullable=False)
-
-    dlvs = relationship('DistributeLogicalVolume', back_populates='ihost')
 
 
 class SnapStatus(enum.Enum):
