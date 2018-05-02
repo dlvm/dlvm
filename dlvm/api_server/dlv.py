@@ -1,4 +1,3 @@
-import sys
 import zlib
 
 from sqlalchemy.exc import IntegrityError
@@ -11,14 +10,14 @@ from dlvm.common.configure import cfg
 from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
-from dlvm.common.modules import DistributePhysicalVolume, \
-    DistributeVolumeGroup, DistributeLogicalVolume, Snapshot, \
+from dlvm.common.modules import DistributeLogicalVolume, Snapshot, \
     DlvStatus, SnapStatus
 from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
+from dlvm.wrapper.action_check import Action, run_checker
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
@@ -132,3 +131,33 @@ dlvs_post_method = ApiMethod(dlvs_post, HttpStatus.Created, dlvs_post_arg_info)
 dlvs_res = ApiResource(
     '/dlvs',
     get=dlvs_get_method, post=dlvs_post_method)
+
+
+def dlv_get(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .one_or_none()
+    if dlv is None:
+        raise error.ResourceNotFoundError(
+            'dlv', dlv_name)
+    return DlvSchema(many=False).dump(dlv)
+
+
+dlv_get_method = ApiMethod(dlv_get, HttpStatus.OK)
+
+
+def dlv_delete(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one_or_none()
+    if dlv is None:
+        return None
+
+    run_checker(Action.dlv_delete, dlv)
+
+    dlv.status = DlvStatus.deleting
+    session.add(dlv)
+    session.commit()
