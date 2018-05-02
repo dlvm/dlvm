@@ -1,3 +1,6 @@
+import sys
+import uuid
+from datetime import datetime
 import zlib
 
 from sqlalchemy.exc import IntegrityError
@@ -11,13 +14,14 @@ from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributeLogicalVolume, Snapshot, \
-    DlvStatus, SnapStatus
+    DlvStatus, SnapStatus, Lock, LockType
 from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
 from dlvm.wrapper.action_check import Action, run_checker
+from dlvm.worker.dlv import DlvCreate
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
@@ -96,6 +100,15 @@ dlvs_post_arg_info = ArgInfo(DlvsPostArgSchema, ArgLocation.body)
 def dlvs_post():
     session = frontend_local.session
     arg = frontend_local.arg
+    lock_owner = uuid.uuid4().hex
+    lock_dt = datetime.utcnow()
+    lock = Lock(
+        lock_owner=lock_owner,
+        lock_type=LockType.dlv,
+        lock_dt=lock_dt,
+    )
+    session.add(lock)
+    session.flush()
     dlv = DistributeLogicalVolume(
         dlv_name=arg.dlv_name,
         dlv_size=arg.dlv_size,
@@ -106,6 +119,7 @@ def dlvs_post():
         bm_ignore=arg.bm_ignore,
         dvg_name=arg.dvg_name,
         active_snap_name=DEFAULT_SNAP_NAME,
+        lock_id=lock.lock_id,
     )
     session.add(dlv)
     snap_id = '{0}/{1}'.format(arg.dlv_name, DEFAULT_SNAP_NAME)
@@ -122,7 +136,15 @@ def dlvs_post():
         dlv_name=arg.dlv_name,
     )
     session.add(snap)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        etype, value, tb = sys.exc_info()
+        exc_info = ExcInfo(etype, value, tb)
+        raise error.ResourceDuplicateError('dlv', arg.dpv_name, exc_info)
+
+    sm = DlvCreate(arg.dlv_name)
+    sm.start()
 
 
 dlvs_post_method = ApiMethod(dlvs_post, HttpStatus.Created, dlvs_post_arg_info)

@@ -235,7 +235,7 @@ class StateMachine(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def get_sm_name(self):
+    def get_sm_name(cls):
         raise NotImplementedError
 
     @classmethod
@@ -245,7 +245,7 @@ class StateMachine(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def get_sm(self):
+    def get_sm(cls):
         raise NotImplementedError
 
     def start(self, lock):
@@ -279,3 +279,4 @@ class StateMachine(metaclass=ABCMeta):
 
 def sm_register(cls):
     sm_dict[cls.get_sm_name()] = cls.get_sm()
+    return cls

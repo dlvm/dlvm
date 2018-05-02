@@ -1,8 +1,10 @@
 import unittest
+from unittest.mock import patch
 import json
 
 from dlvm.common.constant import DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
+from dlvm.common.modules import DlvStatus
 from dlvm.api_server import app
 
 from tests.utils import DataBaseManager
@@ -97,7 +99,8 @@ class DlvTest(unittest.TestCase):
         dlv = data['data'][0]
         self.assertEqual(dlv['dlv_name'], fake_dlv['dlv_name'])
 
-    def test_dlvs_post(self):
+    @patch('dlvm.api_server.dlv.DlvCreate')
+    def test_dlvs_post(self, DlvCreate):
         self.dbm.dvg_create(**fake_dvg)
         headers = {
             'Content-Type': 'application/json',
@@ -121,6 +124,7 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(dlv.bm_ignore, raw_data['bm_ignore'])
         self.assertEqual(dlv.dvg_name, raw_data['dvg_name'])
         self.assertEqual(dlv.bm_dirty, False)
+        self.assertEqual(dlv.status, DlvStatus.creating)
         snap = self.dbm.snap_get(raw_data['dlv_name'], DEFAULT_SNAP_NAME)
         self.assertEqual(snap.snap_name, DEFAULT_SNAP_NAME)
         self.assertEqual(snap.dlv_name, raw_data['dlv_name'])
