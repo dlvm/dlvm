@@ -97,5 +97,20 @@ class ResourceInvalidError(DlvmError):
         super(ResourceInvalidError, self).__init__(message)
 
 
+class CheckerError(DlvmError):
+
+    status_code = HttpStatus.BadRequest
+
+    def __init__(
+            self, res_type, res_name, reason):
+        message = (
+            'checker_failed '
+            'res_type={0} '
+            'res_name={1} '
+            'reason={2}'
+        ).format(res_type, res_name, reason)
+        super(CheckerError, self).__init__(message)
+
+
 class RpcError(Exception):
     pass

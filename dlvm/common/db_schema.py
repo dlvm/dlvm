@@ -63,6 +63,8 @@ class DlvSummarySchema(NtSchema):
     data_size = fields.Integer()
     stripe_number = fields.Integer()
     status = EnumField(DlvStatus)
+    bm_dirty = fields.Boolean()
+    bm_ignore = fields.Boolean()
     dvg_name = fields.String()
     ihost_name = fields.String()
     active_snap_name = fields.String()

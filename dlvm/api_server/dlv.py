@@ -20,8 +20,8 @@ from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
-from dlvm.wrapper.action_check import Action, run_checker
-from dlvm.worker.dlv import DlvCreate
+from dlvm.wrapper.action_check import Action, run_checker, add_checker
+from dlvm.worker.dlv import DlvCreate, DlvDelete
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
@@ -144,7 +144,7 @@ def dlvs_post():
         raise error.ResourceDuplicateError('dlv', arg.dpv_name, exc_info)
 
     sm = DlvCreate(arg.dlv_name)
-    sm.start()
+    sm.start(lock)
 
 
 dlvs_post_method = ApiMethod(dlvs_post, HttpStatus.Created, dlvs_post_arg_info)
@@ -180,6 +180,38 @@ def dlv_delete(dlv_name):
 
     run_checker(Action.dlv_delete, dlv)
 
+    lock_owner = uuid.uuid4().hex
+    lock_dt = datetime.utcnow()
+    lock = Lock(
+        lock_owner=lock_owner,
+        lock_type=LockType.dlv,
+        lock_dt=lock_dt,
+    )
+    session.add(lock)
+    session.flush()
+
     dlv.status = DlvStatus.deleting
+    dlv.lock_id = lock.lock_id
     session.add(dlv)
     session.commit()
+
+    sm = DlvDelete(dlv.dlv_name)
+    sm.start(lock)
+
+
+dlv_delete_method = ApiMethod(dlv_delete, HttpStatus.Created)
+
+dlv_res = ApiResource(
+    '/dlvs/<dlv_name>',
+    get=dlv_get_method,
+    delete=dlv_delete_method)
+
+
+@add_checker(Action.dlv_delete)
+def normal_checker(dlv):
+    if dlv.status != DlvStatus.available:
+        reason = 'status is {0}'.format(dlv.status)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)
+    if dlv.lock_id is not None:
+        reason = 'has lock {0}'.format(dlv.lock_id)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)

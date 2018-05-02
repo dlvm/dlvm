@@ -17,7 +17,7 @@ checker_dict = {
 def add_checker(action):
 
     def add_checker_to_action(func):
-        checker_dict[action] = func
+        checker_dict[action].append(func)
         return func
 
     return add_checker_to_action

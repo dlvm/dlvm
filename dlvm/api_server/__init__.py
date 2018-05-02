@@ -5,7 +5,7 @@ from dlvm.api_server.root import root_res
 from dlvm.api_server.dpv import dpvs_res, dpv_res, dpv_update_res
 from dlvm.api_server.dvg import dvgs_res, dvg_res, dvg_extend_res, \
     dvg_reduce_res
-from dlvm.api_server.dlv import dlvs_res
+from dlvm.api_server.dlv import dlvs_res, dlv_res
 
 
 app = Flask(__name__)
@@ -20,3 +20,4 @@ api.add_resource(dvg_res)
 api.add_resource(dvg_extend_res)
 api.add_resource(dvg_reduce_res)
 api.add_resource(dlvs_res)
+api.add_resource(dlv_res)

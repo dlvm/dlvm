@@ -128,3 +128,35 @@ class DlvTest(unittest.TestCase):
         snap = self.dbm.snap_get(raw_data['dlv_name'], DEFAULT_SNAP_NAME)
         self.assertEqual(snap.snap_name, DEFAULT_SNAP_NAME)
         self.assertEqual(snap.dlv_name, raw_data['dlv_name'])
+
+    def test_dlv_get(self):
+        self.dbm.dvg_create(**fake_dvg)
+        for fake_dpv in fake_dpvs:
+            self.dbm.dpv_create(**fake_dpv)
+            self.dbm.dvg_extend(
+                fake_dvg['dvg_name'], fake_dpv['dpv_name'])
+        self.dbm.dlv_create(fake_dlv)
+        path = '/dlvs/{0}'.format(fake_dlv['dlv_name'])
+        resp = self.client.get(path)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertEqual(data['message'], 'succeed')
+        self.assertEqual(data['data']['dlv_name'], fake_dlv['dlv_name'])
+        self.assertEqual(len(data['data']['groups']), 2)
+
+    @patch('dlvm.api_server.dlv.DlvDelete')
+    def test_dlv_delete(self, DlvDelete):
+        self.dbm.dvg_create(**fake_dvg)
+        for fake_dpv in fake_dpvs:
+            self.dbm.dpv_create(**fake_dpv)
+            self.dbm.dvg_extend(
+                fake_dvg['dvg_name'], fake_dpv['dpv_name'])
+        self.dbm.dlv_create(fake_dlv)
+        dlv1 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv1.status, DlvStatus.available)
+        path = '/dlvs/{0}'.format(fake_dlv['dlv_name'])
+        resp = self.client.delete(path)
+        self.assertEqual(resp.status_code, 201)
+        self.dbm.update_session()
+        dlv2 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv2.status, DlvStatus.deleting)
