@@ -10,11 +10,12 @@ from marshmallow.validate import Length, Regexp, OneOf, Range
 from dlvm.common.constant import RES_NAME_REGEX, RES_NAME_LENGTH, \
     DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
-from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping
+from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping, \
+    div_round_up
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributeLogicalVolume, Snapshot, \
-    DlvStatus, SnapStatus, Lock, LockType
+    DlvStatus, SnapStatus, Lock, LockType, Group, Leg
 from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
@@ -24,7 +25,14 @@ from dlvm.wrapper.action_check import Action, run_checker, add_checker
 from dlvm.worker.dlv import DlvCreate, DlvDelete
 
 
+thin_meta_factor = cfg.getint('device_mapper', 'thin_meta_factor')
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
+lvm_unit = cfg.getsize('device_mapper', 'lvm_unit')
+thin_meta_min = cfg.getsize('device_mapper', 'thin_meta_min')
+thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
+mirror_meta_blocks = cfg.getint('device_mapper', 'mirror_meta_blocks')
+mirror_meta_size = thin_block_size * mirror_meta_blocks
+
 
 DLV_ORDER_FIELDS = ('dlv_name', 'dlv_size', 'data_size')
 DLV_LIST_LIMIT = cfg.getint('api', 'list_limit')
@@ -100,6 +108,7 @@ dlvs_post_arg_info = ArgInfo(DlvsPostArgSchema, ArgLocation.body)
 def dlvs_post():
     session = frontend_local.session
     arg = frontend_local.arg
+
     lock_owner = uuid.uuid4().hex
     lock_dt = datetime.utcnow()
     lock = Lock(
@@ -109,6 +118,7 @@ def dlvs_post():
     )
     session.add(lock)
     session.flush()
+
     dlv = DistributeLogicalVolume(
         dlv_name=arg.dlv_name,
         dlv_size=arg.dlv_size,
@@ -122,6 +132,7 @@ def dlvs_post():
         lock_id=lock.lock_id,
     )
     session.add(dlv)
+
     snap_id = '{0}/{1}'.format(arg.dlv_name, DEFAULT_SNAP_NAME)
     thin_mapping_str = get_empty_thin_mapping(
         thin_block_size, arg.init_size//thin_block_size)
@@ -136,12 +147,57 @@ def dlvs_post():
         dlv_name=arg.dlv_name,
     )
     session.add(snap)
+
+    thin_meta_size = thin_meta_factor * div_round_up(
+        arg.dlv_size, thin_block_size)
+    if thin_meta_size < thin_meta_min:
+        thin_meta_size = thin_meta_min
+    group = Group(
+        group_idx=0,
+        group_size=thin_meta_size,
+        dlv_name=arg.dlv_name,
+        bitmap=bytes(),
+    )
+    session.add(group)
+    leg_size = thin_meta_size + mirror_meta_size
+    leg_size = div_round_up(leg_size, lvm_unit) * lvm_unit
+    for i in range(2):
+        leg = Leg(
+            leg_idx=i,
+            group=group,
+            leg_size=leg_size,
+        )
+        session.add(leg)
+
+    group_size = arg.init_size
+    bm_len_8 = div_round_up(group_size, thin_block_size)
+    bm_len = div_round_up(bm_len_8, 8)
+    bitmap = bytes([0x0 for i in range(bm_len)])
+    group = Group(
+        group_idx=1,
+        group_size=group_size,
+        dlv_name=arg.dlv_name,
+        bitmap=bitmap,
+    )
+    session.add(group)
+    leg_size = div_round_up(
+        group_size, arg.stripe_number) + mirror_meta_size
+    leg_size = div_round_up(leg_size, lvm_unit) * lvm_unit
+    legs_per_group = 2 * arg.stripe_number
+    for i in range(legs_per_group):
+        leg = Leg(
+            leg_idx=i,
+            group=group,
+            leg_size=leg_size,
+        )
+        session.add(leg)
+
     try:
         session.commit()
     except IntegrityError:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
-        raise error.ResourceDuplicateError('dlv', arg.dpv_name, exc_info)
+        raise error.ResourceDuplicateError('dlv', arg.dlv_name, exc_info)
 
     sm = DlvCreate(arg.dlv_name)
     sm.start(lock)

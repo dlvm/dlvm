@@ -49,3 +49,7 @@ def get_empty_thin_mapping(thin_block_bytes, thin_data_blocks):
     return template.format(
         thin_block_sectors=thin_block_sectors,
         thin_data_blocks=thin_data_blocks)
+
+
+def div_round_up(dividend, divisor):
+    return (dividend+divisor-1) // divisor
