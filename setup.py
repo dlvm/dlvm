@@ -29,6 +29,7 @@ setup(
     package_data={
         'dlvm': [
             'common/default.cfg',
+            'common/thin_mapping_template.xml'
         ],
     },
 )

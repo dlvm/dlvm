@@ -14,7 +14,7 @@ class DpvGetInfoRetSchema(NtSchema):
 
 @dpv_rpc.register(ret_schema=DpvGetInfoRetSchema)
 def dpv_get_info():
-    vg_name = cfg.get('storage', 'local_vg')
+    vg_name = cfg.get('device_mapper', 'local_vg')
     total_size, free_size = cmd.vg_get_size(vg_name)
     return DpvGetInfoRetSchema.nt(total_size, free_size)
 

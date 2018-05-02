@@ -8,7 +8,7 @@ from dlvm.common.modules import Base, DistributePhysicalVolume, \
     ServiceStatus, DiskStatus, Lock, SnapStatus, Snapshot, Group, Leg
 
 
-thin_block_size = cfg.getsize('storage', 'thin_block_size')
+thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
 
 
 class DataBaseManager():
@@ -125,7 +125,7 @@ class DataBaseManager():
             thin_id=0,
             ori_thin_id=0,
             status=SnapStatus.available,
-            thin_mapping='',
+            thin_mapping=bytes(),
             dlv_name=dlv_info['dlv_name'],
         )
         self.session.add(snap)
@@ -159,6 +159,19 @@ class DataBaseManager():
                 dvg.free_size -= ileg['leg_size']
             self.session.add(dvg)
             self.session.commit()
+
+    def dlv_get(self, dlv_name):
+        dlv = self.session.query(DistributeLogicalVolume) \
+            .filter_by(dlv_name=dlv_name) \
+            .one_or_none()
+        return dlv
+
+    def snap_get(self, dlv_name, snap_name):
+        snap_id = '{0}/{1}'.format(dlv_name, snap_name)
+        snap = self.session.query(Snapshot) \
+            .filter_by(snap_id=snap_id) \
+            .one_or_none()
+        return snap
 
     def lock_create(self, lock_owner, lock_type, lock_dt):
         lock = Lock(

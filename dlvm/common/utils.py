@@ -3,6 +3,7 @@ from types import TracebackType
 from threading import Lock
 import enum
 import uuid
+import os
 from logging import LoggerAdapter
 
 
@@ -37,3 +38,14 @@ class HttpStatus(enum.IntEnum):
     BadRequest = 400
     NotFound = 404
     InternalServerError = 500
+
+
+def get_empty_thin_mapping(thin_block_bytes, thin_data_blocks):
+    thin_block_sectors = thin_block_bytes // 512
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(curr_dir, 'thin_mapping_template.xml')
+    with open(template_path) as f:
+        template = f.read()
+    return template.format(
+        thin_block_sectors=thin_block_sectors,
+        thin_data_blocks=thin_data_blocks)

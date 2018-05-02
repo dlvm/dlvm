@@ -5,7 +5,8 @@ from sqlalchemy import Column, BigInteger, Integer, String, \
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH, MAX_BM_SIZE
+from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH, \
+    MAX_BM_SIZE, MAX_THIN_MAPPING
 
 Base = declarative_base()
 
@@ -131,6 +132,8 @@ class DistributeLogicalVolume(Base):
 
     lock = relationship('Lock')
 
+    reason = Column(Text)
+
 
 class SnapStatus(enum.Enum):
     creating = 'creating'
@@ -153,7 +156,7 @@ class Snapshot(Base):
 
     status = Column(Enum(SnapStatus, name='snap_status'), nullable=False)
 
-    thin_mapping = Column(Text, nullable=False)
+    thin_mapping = Column(Binary(MAX_THIN_MAPPING), nullable=False)
 
     dlv_name = Column(
         String(RES_NAME_LENGTH),

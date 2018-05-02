@@ -1,0 +1,4 @@
+<superblock uuid="" time="0" transaction="0" flags="0" version="2" data_block_size="{thin_block_sectors}" nr_data_blocks="{thin_data_blocks}">
+  <device dev_id="0" mapped_blocks="0" transaction="0" creation_time="0" snap_time="0">
+  </device>
+</superblock>

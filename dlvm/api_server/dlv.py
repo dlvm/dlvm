@@ -1,21 +1,27 @@
 import sys
+import zlib
+
 from sqlalchemy.exc import IntegrityError
 from marshmallow import fields
 from marshmallow.validate import Length, Regexp, OneOf, Range
 
-from dlvm.common.constant import RES_NAME_REGEX, RES_NAME_LENGTH
+from dlvm.common.constant import RES_NAME_REGEX, RES_NAME_LENGTH, \
+    DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
-from dlvm.common.utils import HttpStatus, ExcInfo
+from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributePhysicalVolume, \
-    DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus
+    DistributeVolumeGroup, DistributeLogicalVolume, Snapshot, \
+    DlvStatus, SnapStatus
 from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
 
+
+thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
 
 DLV_ORDER_FIELDS = ('dlv_name', 'dlv_size', 'data_size')
 DLV_LIST_LIMIT = cfg.getint('api', 'list_limit')
@@ -91,7 +97,33 @@ dlvs_post_arg_info = ArgInfo(DlvsPostArgSchema, ArgLocation.body)
 def dlvs_post():
     session = frontend_local.session
     arg = frontend_local.arg
-    dlv = DistributeLogicalVolume
+    dlv = DistributeLogicalVolume(
+        dlv_name=arg.dlv_name,
+        dlv_size=arg.dlv_size,
+        data_size=arg.init_size,
+        stripe_number=arg.stripe_number,
+        status=DlvStatus.creating,
+        bm_dirty=False,
+        bm_ignore=arg.bm_ignore,
+        dvg_name=arg.dvg_name,
+        active_snap_name=DEFAULT_SNAP_NAME,
+    )
+    session.add(dlv)
+    snap_id = '{0}/{1}'.format(arg.dlv_name, DEFAULT_SNAP_NAME)
+    thin_mapping_str = get_empty_thin_mapping(
+        thin_block_size, arg.init_size//thin_block_size)
+    thin_mapping = zlib.compress(thin_mapping_str.encode('utf-8'))
+    snap = Snapshot(
+        snap_id=snap_id,
+        snap_name=DEFAULT_SNAP_NAME,
+        thin_id=0,
+        ori_thin_id=0,
+        status=SnapStatus.available,
+        thin_mapping=thin_mapping,
+        dlv_name=arg.dlv_name,
+    )
+    session.add(snap)
+    session.commit()
 
 
 dlvs_post_method = ApiMethod(dlvs_post, HttpStatus.Created, dlvs_post_arg_info)
