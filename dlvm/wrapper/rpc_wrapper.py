@@ -1,4 +1,4 @@
-from typing import NamedTuple, Type, Optional
+from typing import NamedTuple, Type, Optional, Callable
 import sys
 import uuid
 from xmlrpc.server import SimpleXMLRPCServer
@@ -20,6 +20,7 @@ from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import backend_local, frontend_local, \
     Direction
+from dlvm.wrapper.rpc_lock import RpcLock
 
 
 xmlrpc.client.MAXINT = 2**63-1
@@ -56,6 +57,7 @@ class RpcExpireError(Exception):
 class RpcSchema(NamedTuple):
     arg_schema: Optional[Type[NtSchema]]
     ret_schema: Optional[Type[NtSchema]]
+    lock_method: Optional[Callable]
 
 
 expire_delta = timedelta(seconds=cfg.getint('lock', 'expire_seconds'))
@@ -236,9 +238,10 @@ class DlvmRpc():
     def __init__(self, listener, port, logger):
         self.logger = logger
         self.server = DlvmRpcServer(listener, port)
+        self.rpc_lock = RpcLock()
         self.rpc_dict = {}
 
-    def register(self, arg_schema=None, ret_schema=None):
+    def register(self, arg_schema=None, ret_schema=None, lock_method=None):
 
         def create_wrapper(func):
 
@@ -258,10 +261,25 @@ class DlvmRpc():
                         raise RpcExpireError(curr_dt, lock_dt)
                     backend_local.req_ctx = req_ctx
                     if arg_schema is None:
-                        ret = func()
+                        args = ()
                     else:
                         arg = arg_schema().load(arg_d)
-                        ret = func(arg)
+                        args = (arg,)
+                    # if lock_method is None, don't lock
+                    # if lock_method is not None, check the lock_method ret
+                    # if ret is None, use global_lock
+                    # if ret is not None, use res_lock,
+                    # and use the ret as res_name
+                    if lock_method is None:
+                        ret = func(*args)
+                    else:
+                        lock_ret = lock_method(*args)
+                        if lock_ret is None:
+                            with self.rpc_lock.global_lock():
+                                ret = func(*args)
+                        else:
+                            with self.rpc_lock.res_lock(lock_ret):
+                                ret = func(*args)
                     if ret_schema is None:
                         ret_d = None
                     else:
@@ -281,7 +299,7 @@ class DlvmRpc():
 
             self.server.register_function(wrapper, func_name)
             self.rpc_dict[func_name] = RpcSchema(
-                arg_schema, ret_schema)
+                arg_schema, ret_schema, lock_method)
             return func
 
         return create_wrapper
