@@ -96,8 +96,8 @@ class DlvTest(unittest.TestCase):
         dlv = data['data'][0]
         self.assertEqual(dlv['dlv_name'], fake_dlv['dlv_name'])
 
-    @patch('dlvm.api_server.dlv.DlvCreate')
-    def test_dlvs_post(self, DlvCreate):
+    @patch('dlvm.wrapper.state_machine.sm_handler')
+    def test_dlvs_post(self, sm_handler):
         self.dbm.dvg_create(**fake_dvg)
         headers = {
             'Content-Type': 'application/json',
@@ -125,6 +125,7 @@ class DlvTest(unittest.TestCase):
         snap = self.dbm.snap_get(raw_data['dlv_name'], DEFAULT_SNAP_NAME)
         self.assertEqual(snap.snap_name, DEFAULT_SNAP_NAME)
         self.assertEqual(snap.dlv_name, raw_data['dlv_name'])
+        self.assertEqual(sm_handler.apply_async.call_count, 1)
 
     def test_dlv_get(self):
         self.dbm.dvg_create(**fake_dvg)
@@ -141,8 +142,8 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(data['data']['dlv_name'], fake_dlv['dlv_name'])
         self.assertEqual(len(data['data']['groups']), 2)
 
-    @patch('dlvm.api_server.dlv.DlvDelete')
-    def test_dlv_delete(self, DlvDelete):
+    @patch('dlvm.wrapper.state_machine.sm_handler')
+    def test_dlv_delete(self, sm_handler):
         self.dbm.dvg_create(**fake_dvg)
         for fake_dpv in fake_dpvs:
             self.dbm.dpv_create(**fake_dpv)
@@ -157,3 +158,4 @@ class DlvTest(unittest.TestCase):
         self.dbm.update_session()
         dlv2 = self.dbm.dlv_get(fake_dlv['dlv_name'])
         self.assertEqual(dlv2.status, DlvStatus.deleting)
+        self.assertEqual(sm_handler.apply_async.call_count, 1)
