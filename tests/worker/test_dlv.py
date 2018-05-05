@@ -111,3 +111,35 @@ class DlvTest(unittest.TestCase):
         self.dbm.update_session()
         dlv = self.dbm.dlv_get(dlv_name)
         self.assertEqual(dlv.status, DlvStatus.available)
+
+    @patch('dlvm.worker.dlv.dpv_rpc')
+    def test_dlv_delete(self, dpv_rpc):
+        self.dbm.dvg_create(**fake_dvg)
+        for fake_dpv in fake_dpvs:
+            self.dbm.dpv_create(**fake_dpv)
+            self.dbm.dvg_extend(
+                fake_dvg['dvg_name'], fake_dpv['dpv_name'])
+        self.dbm.dlv_create(fake_dlv)
+        lock_owner = uuid.uuid4().hex
+        lock_type = LockType.dlv
+        lock_dt = datetime.utcnow()
+        lock = self.dbm.lock_create(lock_owner, lock_type, lock_dt)
+        dlv_name = fake_dlv['dlv_name']
+        self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
+        self.dbm.dlv_set(dlv_name, 'status', DlvStatus.deleting)
+        mock_wait = dpv_rpc.async_client \
+            .return_value \
+            .leg_delete \
+            .return_value \
+            .wait
+        mock_wait.return_value = None
+        req_id = uuid.uuid4()
+        sm_ctx = StateMachineContextSchema.nt(
+            'dlv_delete', 'start', StepType.forward, 0, set(),
+            lock.lock_id, lock.lock_owner, lock.lock_dt)
+        sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
+        sm_handler(str(req_id), sm_ctx_d, dlv_name)
+        self.assertEqual(mock_wait.call_count, 4)
+        self.dbm.update_session()
+        dlv = self.dbm.dlv_get(dlv_name)
+        self.assertEqual(dlv, None)

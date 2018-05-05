@@ -179,8 +179,26 @@ def dlv_failed(dlv_name):
         .filter_by(dlv_name=dlv_name) \
         .with_lockmode('update') \
         .one()
+    assert(dlv.status == DlvStatus.creating)
     dlv.status = DlvStatus.failed
     session.add(dlv)
+
+
+def dlv_delete(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one()
+    assert(dlv.status == DlvStatus.deleting)
+    for group in dlv.groups:
+        for leg in group.legs:
+            assert(leg.dpv is None)
+            session.delete(leg)
+        session.delete(group)
+    for snapshot in dlv.snapshots:
+        session.delete(snapshot)
+    session.delete(dlv)
 
 
 class DlvCreateJob(BiDirJob):
@@ -231,12 +249,36 @@ class DlvCreate(StateMachine):
         return cls.sm
 
 
+class DlvReleaseJob(UniDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_release(self.dlv_name)
+
+
+class DlvDeleteJob(UniDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_delete(self.dlv_name)
+
+
+dlv_delete_sm = {
+    'start': UniDirState(DlvReleaseJob, 'delete'),
+    'delete': UniDirState(DlvDeleteJob, 'stop'),
+}
+
+
 @sm_register
 class DlvDelete(StateMachine):
 
     sm_name = 'dlv_delete'
     queue_name = dlv_delete_queue
-    sm = {}
+    sm = dlv_delete_sm
 
     @classmethod
     def get_sm_name(cls):

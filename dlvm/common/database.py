@@ -47,9 +47,10 @@ def remove_lock(session, lock, res_id):
         dlv = session.query(DistributeLogicalVolume) \
             .filter_by(dlv_name=res_id) \
             .with_lockmode('update') \
-            .one()
-        dlv.lock = None
-        session.add(dlv)
+            .one_or_none()
+        if dlv is not None:
+            dlv.lock = None
+            session.add(dlv)
     else:
         msg = 'unknown lock type: %s' % lock.lock_type
         raise Exception(msg)
