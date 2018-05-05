@@ -31,11 +31,24 @@ class DmContextSchema(NtSchema):
 class LegCreateArgSchema(NtSchema):
     leg_id = fields.Integer()
     leg_size = fields.Integer()
-    dm_context = fields.Nested(DmContextSchema, many=False)
+    dm_ctx = fields.Nested(DmContextSchema, many=False)
 
 
-@dpv_rpc.register(arg_schema=LegCreateArgSchema)
+@dpv_rpc.register(
+    arg_schema=LegCreateArgSchema,
+    lock_method=lambda arg: arg.leg_id)
 def leg_create(arg):
+    pass
+
+
+class LegDeleteArgSchema(NtSchema):
+    leg_id = fields.Integer()
+
+
+@dpv_rpc.register(
+    arg_schema=LegDeleteArgSchema,
+    lock_method=lambda arg: arg.leg_id)
+def leg_delete(arg):
     pass
 
 

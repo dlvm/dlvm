@@ -72,9 +72,6 @@ fake_dlv = {
 
 class DlvTest(unittest.TestCase):
 
-    db_path = '/tmp/dlvm_test.db'
-    db_uri = 'sqlite:////tmp/dlvm_test.db'
-
     def setUp(self):
         app.config['TESTING'] = True
         self.client = app.test_client()

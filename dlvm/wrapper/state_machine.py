@@ -10,7 +10,8 @@ from marshmallow import fields
 from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.marshmallow_ext import NtSchema, SetField, EnumField
-from dlvm.common.database import Session, acquire_lock, release_lock
+from dlvm.common.database import Session, acquire_lock, release_lock, \
+    verify_lock
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import frontend_local, Direction, WorkerContext
@@ -205,13 +206,18 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
             try:
                 func()
             except SmRetry:
+                verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
+                session.commit()
                 sm_ctx = update_for_failed(sm_ctx, state)
                 sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
                 args = (req_id_str, sm_ctx_d, res_id)
                 raise self.retry(args=args)
             else:
+                verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
+                session.commit()
                 sm_ctx = update_for_succeed(sm_ctx, state)
-        release_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner, True)
+
+        release_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner, res_id)
     except Exception as e:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)

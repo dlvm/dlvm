@@ -78,6 +78,7 @@ class DlvStatus(enum.Enum):
     attached = 'attached'
     detaching = 'detaching'
     deleting = 'deleting'
+    failed = 'failed'
 
 
 class DistributeLogicalVolume(Base):

@@ -147,7 +147,7 @@ class DataBaseManager():
                 leg = Leg(
                     leg_idx=ileg['leg_idx'],
                     leg_size=ileg['leg_size'],
-                    group_id=group.group_id,
+                    group=group,
                     dpv_name=ileg['dpv_name'],
                 )
                 self.session.add(leg)
@@ -165,6 +165,14 @@ class DataBaseManager():
             .filter_by(dlv_name=dlv_name) \
             .one_or_none()
         return dlv
+
+    def dlv_set(self, dlv_name, field_name, field_value):
+        dlv = self.session.query(DistributeLogicalVolume) \
+            .filter_by(dlv_name=dlv_name) \
+            .one()
+        setattr(dlv, field_name, field_value)
+        self.session.add(dlv)
+        self.session.commit()
 
     def snap_get(self, dlv_name, snap_name):
         snap_id = '{0}/{1}'.format(dlv_name, snap_name)

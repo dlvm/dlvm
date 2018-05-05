@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE
 from dlvm.common.configure import cfg
-from dlvm.common.modules import Base, Lock
+from dlvm.common.modules import Base, Lock, LockType, DistributeLogicalVolume
 
 sqlalchemy_cfg_path = os.path.join(LC_PATH, SQLALCHEMY_CFG_FILE)
 
@@ -22,13 +22,18 @@ engine = create_engine(cfg.get('database', 'db_uri'), **sqlalchemy_kwargs)
 Session = sessionmaker(bind=engine)
 
 
-def acquire_lock(session, lock_id, lock_owner):
-    new_owner = uuid.uuid4().hex
+def verify_lock(session, lock_id, lock_owner):
     lock = session.query(Lock) \
         .filter_by(lock_id=lock_id) \
         .with_lockmode('update') \
         .one()
     assert(lock.lock_owner == lock_owner)
+    return lock
+
+
+def acquire_lock(session, lock_id, lock_owner):
+    new_owner = uuid.uuid4().hex
+    lock = verify_lock(session, lock_id, lock_owner)
     lock_dt = datetime.utcnow()
     lock.lock_owner = new_owner
     lock.lock_dt = lock_dt
@@ -37,15 +42,24 @@ def acquire_lock(session, lock_id, lock_owner):
     return new_owner, lock_dt
 
 
-def release_lock(session, lock_id, lock_owner, commit):
-    lock = session.query(Lock) \
-        .filter_by(lock_id=lock_id) \
-        .with_lockmode('update') \
-        .one()
-    assert(lock.lock_owner == lock_owner)
+def remove_lock(session, lock, res_id):
+    if lock.lock_type == LockType.dlv:
+        dlv = session.query(DistributeLogicalVolume) \
+            .filter_by(dlv_name=res_id) \
+            .with_lockmode('update') \
+            .one()
+        dlv.lock = None
+        session.add(dlv)
+    else:
+        msg = 'unknown lock type: %s' % lock.lock_type
+        raise Exception(msg)
+
+
+def release_lock(session, lock_id, lock_owner, res_id):
+    lock = verify_lock(session, lock_id, lock_owner)
+    remove_lock(session, lock, res_id)
     session.delete(lock)
-    if commit is True:
-        session.commit()
+    session.commit()
 
 
 class GeneralQuery():

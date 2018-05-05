@@ -117,7 +117,6 @@ def dlvs_post():
         lock_dt=lock_dt,
     )
     session.add(lock)
-    session.flush()
 
     dlv = DistributeLogicalVolume(
         dlv_name=arg.dlv_name,
@@ -129,7 +128,7 @@ def dlvs_post():
         bm_ignore=arg.bm_ignore,
         dvg_name=arg.dvg_name,
         active_snap_name=DEFAULT_SNAP_NAME,
-        lock_id=lock.lock_id,
+        lock=lock,
     )
     session.add(dlv)
 
@@ -244,10 +243,9 @@ def dlv_delete(dlv_name):
         lock_dt=lock_dt,
     )
     session.add(lock)
-    session.flush()
 
     dlv.status = DlvStatus.deleting
-    dlv.lock_id = lock.lock_id
+    dlv.lock = lock
     session.add(dlv)
     session.commit()
 

@@ -85,6 +85,7 @@ def common_handler(method, *path_args, **path_kwargs):
         frontend_local.req_ctx = req_ctx
         frontend_local.session = session
         frontend_local.worker_ctx = get_empty_worker_ctx()
+        frontend_local.async = True
         data = method.func(*path_args, **path_kwargs)
         raw_response['data'] = data
         raw_response['message'] = 'succeed'
