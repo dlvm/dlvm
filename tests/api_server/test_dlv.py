@@ -37,14 +37,13 @@ fake_dvg = {'dvg_name': 'dvg0'}
 
 fake_dlv = {
     'dlv_name': 'dlv0',
-    'dlv_size': 100*1024*1024*1024,
-    'init_size': 50*1024*1024*1024,
-    'stripe_number': 1,
-    'bm_ignore': False,
+    'dlv_size': 64*1024*1024*1024,
+    'init_size': 32*1024*1024*1024,
+    'stripe_number': 2,
     'dvg_name': 'dvg0',
     'groups': [{
         'group_idx': 0,
-        'group_size': 20*1024*1024,
+        'group_size': 16*1024*1024*1024,
         'legs': [{
             'leg_idx': 0,
             'leg_size': 20*1024*1024,
@@ -53,17 +52,33 @@ fake_dlv = {
             'leg_idx': 1,
             'leg_size': 20*1024*1024,
             'dpv_name': 'dpv1',
+        }, {
+            'leg_idx': 2,
+            'leg_size': 17*1024*1024*1024,
+            'dpv_name': 'dpv0',
+        }, {
+            'leg_idx': 3,
+            'leg_size': 17*1024*1024*1024,
+            'dpv_name': 'dpv1',
         }],
     }, {
         'group_idx': 1,
-        'group_size': 50*1024*1024*1024,
+        'group_size': 16*1024*1024*1024,
         'legs': [{
             'leg_idx': 0,
-            'leg_size': 50*1024*1024*1024,
+            'leg_size': 17*1024*1024*1024,
             'dpv_name': 'dpv0',
         }, {
             'leg_idx': 1,
             'leg_size': 50*1024*1024*1024,
+            'dpv_name': 'dpv1',
+        }, {
+            'leg_idx': 2,
+            'leg_size': 17*1024*1024*1024,
+            'dpv_name': 'dpv0',
+        }, {
+            'leg_idx': 3,
+            'leg_size': 17*1024*1024*1024,
             'dpv_name': 'dpv1',
         }],
     }]
@@ -107,7 +122,6 @@ class DlvTest(unittest.TestCase):
             'dlv_size': 100*1024*1024*1024,
             'stripe_number': 4,
             'init_size': 50*1024*1024*1024,
-            'bm_ignore': False,
             'dvg_name': fake_dvg['dvg_name']
         }
         data = json.dumps(raw_data)
@@ -118,7 +132,6 @@ class DlvTest(unittest.TestCase):
         self.assertEqual(dlv.dlv_size, raw_data['dlv_size'])
         self.assertEqual(dlv.stripe_number, raw_data['stripe_number'])
         self.assertEqual(dlv.data_size, raw_data['init_size'])
-        self.assertEqual(dlv.bm_ignore, raw_data['bm_ignore'])
         self.assertEqual(dlv.dvg_name, raw_data['dvg_name'])
         self.assertEqual(dlv.bm_dirty, False)
         self.assertEqual(dlv.status, DlvStatus.creating)

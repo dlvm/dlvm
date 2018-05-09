@@ -5,7 +5,8 @@ from dlvm.common.constant import DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
-    ServiceStatus, DiskStatus, Lock, SnapStatus, Snapshot, Group, Leg
+    ServiceStatus, DiskStatus, Lock, SnapStatus, Snapshot, \
+    Group, Leg, GroupSnapshot
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
@@ -112,7 +113,6 @@ class DataBaseManager():
             data_size=dlv_info['init_size'],
             stripe_number=dlv_info['stripe_number'],
             status=DlvStatus.available,
-            bm_ignore=dlv_info['bm_ignore'],
             bm_dirty=False,
             dvg_name=dlv_info['dvg_name'],
             active_snap_name=snap_name,
@@ -125,7 +125,6 @@ class DataBaseManager():
             thin_id=0,
             ori_thin_id=0,
             status=SnapStatus.available,
-            thin_mapping=bytes(),
             dlv_name=dlv_info['dlv_name'],
         )
         self.session.add(snap)
@@ -135,14 +134,19 @@ class DataBaseManager():
             .one()
 
         for igroup in dlv_info['groups']:
-            bitmap_size = igroup['group_size'] // (thin_block_size * 8)
             group = Group(
                 group_idx=igroup['group_idx'],
                 group_size=igroup['group_size'],
                 dlv_name=dlv_info['dlv_name'],
-                bitmap=bytes((0x0,)*bitmap_size)
+                bitmap=bytes(),
             )
             self.session.add(group)
+            gsnap = GroupSnapshot(
+                thin_mapping=bytes(),
+                snap=snap,
+                group=group,
+            )
+            self.session.add(gsnap)
             for ileg in igroup['legs']:
                 leg = Leg(
                     leg_idx=ileg['leg_idx'],

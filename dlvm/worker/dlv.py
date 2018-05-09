@@ -25,7 +25,7 @@ def select_dpvs(dvg_name, required_size, batch_count, offset):
         .filter_by(service_status=ServiceStatus.available) \
         .filter_by(disk_status=DiskStatus.available) \
         .filter(DistributePhysicalVolume.free_size > required_size) \
-        .ordeer_by(DistributePhysicalVolume.free_size.desc()) \
+        .order_by(DistributePhysicalVolume.free_size.desc()) \
         .limit(batch_count) \
         .offset(offset) \
         .with_entities(DistributePhysicalVolume.dpv_name) \

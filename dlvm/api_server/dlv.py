@@ -2,6 +2,7 @@ import sys
 import uuid
 from datetime import datetime
 import zlib
+from math import ceil
 
 from sqlalchemy.exc import IntegrityError
 from marshmallow import fields
@@ -10,12 +11,11 @@ from marshmallow.validate import Length, Regexp, OneOf, Range
 from dlvm.common.constant import RES_NAME_REGEX, RES_NAME_LENGTH, \
     DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
-from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping, \
-    div_round_up
+from dlvm.common.utils import HttpStatus, ExcInfo, get_empty_thin_mapping
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributeLogicalVolume, Snapshot, \
-    DlvStatus, SnapStatus, Lock, LockType, Group, Leg
+    DlvStatus, SnapStatus, Lock, LockType, Group, GroupSnapshot, Leg
 from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
@@ -31,7 +31,8 @@ lvm_unit = cfg.getsize('device_mapper', 'lvm_unit')
 thin_meta_min = cfg.getsize('device_mapper', 'thin_meta_min')
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
 mirror_meta_blocks = cfg.getint('device_mapper', 'mirror_meta_blocks')
-mirror_meta_size = thin_block_size * mirror_meta_blocks
+mirror_meta_size = ceil(
+    (thin_block_size * mirror_meta_blocks)/lvm_unit) * lvm_unit
 
 
 DLV_ORDER_FIELDS = ('dlv_name', 'dlv_size', 'data_size')
@@ -98,7 +99,6 @@ class DlvsPostArgSchema(NtSchema):
         required=True, validate=stripe_number_validator)
     init_size = fields.Integer(
         required=True, validate=init_size_validator)
-    bm_ignore = fields.Boolean(missing=False)
     dvg_name = fields.String(required=True)
 
 
@@ -125,7 +125,6 @@ def dlvs_post():
         stripe_number=arg.stripe_number,
         status=DlvStatus.creating,
         bm_dirty=False,
-        bm_ignore=arg.bm_ignore,
         dvg_name=arg.dvg_name,
         active_snap_name=DEFAULT_SNAP_NAME,
         lock=lock,
@@ -133,63 +132,63 @@ def dlvs_post():
     session.add(dlv)
 
     snap_id = '{0}/{1}'.format(arg.dlv_name, DEFAULT_SNAP_NAME)
-    thin_mapping_str = get_empty_thin_mapping(
-        thin_block_size, arg.init_size//thin_block_size)
-    thin_mapping = zlib.compress(thin_mapping_str.encode('utf-8'))
     snap = Snapshot(
         snap_id=snap_id,
         snap_name=DEFAULT_SNAP_NAME,
         thin_id=0,
         ori_thin_id=0,
         status=SnapStatus.available,
-        thin_mapping=thin_mapping,
         dlv_name=arg.dlv_name,
     )
     session.add(snap)
 
-    thin_meta_size = thin_meta_factor * div_round_up(
-        arg.dlv_size, thin_block_size)
+    thin_mapping_str = get_empty_thin_mapping(
+        thin_block_size, arg.init_size//thin_block_size)
+    thin_mapping = zlib.compress(thin_mapping_str.encode('utf-8'))
+
+    group_size = ceil(arg.init_size/arg.stripe_number)
+    group_size = ceil(group_size/lvm_unit) * lvm_unit
+    blocks_per_group = ceil(group_size/thin_block_size)
+    bm_len = ceil(blocks_per_group/8)
+    bitmap = bytes([0x0 for i in range(bm_len)])
+    thin_meta_size = thin_meta_factor * blocks_per_group
     if thin_meta_size < thin_meta_min:
         thin_meta_size = thin_meta_min
-    group = Group(
-        group_idx=0,
-        group_size=thin_meta_size,
-        dlv_name=arg.dlv_name,
-        bitmap=bytes(),
-    )
-    session.add(group)
-    leg_size = thin_meta_size + mirror_meta_size
-    leg_size = div_round_up(leg_size, lvm_unit) * lvm_unit
-    for i in range(2):
-        leg = Leg(
-            leg_idx=i,
-            group=group,
-            leg_size=leg_size,
-        )
-        session.add(leg)
+    thin_mapping_str = get_empty_thin_mapping(
+        thin_block_size, blocks_per_group)
+    thin_mapping = zlib.compress(
+        thin_mapping_str.encode('utf-8'))
 
-    group_size = arg.init_size
-    bm_len_8 = div_round_up(group_size, thin_block_size)
-    bm_len = div_round_up(bm_len_8, 8)
-    bitmap = bytes([0x0 for i in range(bm_len)])
-    group = Group(
-        group_idx=1,
-        group_size=group_size,
-        dlv_name=arg.dlv_name,
-        bitmap=bitmap,
-    )
-    session.add(group)
-    leg_size = div_round_up(
-        group_size, arg.stripe_number) + mirror_meta_size
-    leg_size = div_round_up(leg_size, lvm_unit) * lvm_unit
-    legs_per_group = 2 * arg.stripe_number
-    for i in range(legs_per_group):
-        leg = Leg(
-            leg_idx=i,
-            group=group,
-            leg_size=leg_size,
+    for i in range(arg.stripe_number):
+        group = Group(
+            group_idx=i,
+            group_size=group_size,
+            bitmap=bitmap,
+            dlv_name=arg.dlv_name,
         )
-        session.add(leg)
+        session.add(group)
+        gsnap = GroupSnapshot(
+            thin_mapping=thin_mapping,
+            snap=snap,
+            group=group,
+        )
+        session.add(gsnap)
+
+        leg_size = thin_meta_size + mirror_meta_size
+        for j in range(2):
+            leg = Leg(
+                leg_idx=j,
+                group=group,
+                leg_size=leg_size)
+            session.add(leg)
+
+        leg_size = group_size + mirror_meta_size
+        for j in range(2, 4):
+            leg = Leg(
+                leg_idx=j,
+                group=group,
+                leg_size=leg_size)
+            session.add(leg)
 
     try:
         session.commit()

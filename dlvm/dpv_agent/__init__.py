@@ -4,6 +4,8 @@ from dlvm.common.marshmallow_ext import NtSchema
 from dlvm.wrapper.rpc_wrapper import DpvRpc
 from dlvm.common import command as cmd
 
+local_vg_name = cfg.get('device_mapper', 'local_vg')
+
 
 dpv_rpc = DpvRpc()
 
@@ -15,8 +17,7 @@ class DpvGetInfoRetSchema(NtSchema):
 
 @dpv_rpc.register(ret_schema=DpvGetInfoRetSchema)
 def dpv_get_info():
-    vg_name = cfg.get('device_mapper', 'local_vg')
-    total_size, free_size = cmd.vg_get_size(vg_name)
+    total_size, free_size = cmd.vg_get_size(local_vg_name)
     return DpvGetInfoRetSchema.nt(total_size, free_size)
 
 
@@ -39,6 +40,10 @@ class LegCreateArgSchema(NtSchema):
     lock_method=lambda arg: arg.leg_id)
 def leg_create(arg):
     pass
+    # lv_path = cmd.lv_create(
+    #     str(arg.leg_id), arg.leg_size, local_vg_name)
+    # leg_sectors = leg_size / 512
+    # layer1_name = get_layer1_name(leg_id)
 
 
 class LegDeleteArgSchema(NtSchema):

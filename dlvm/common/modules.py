@@ -37,6 +37,8 @@ class DistributePhysicalVolume(Base):
     disk_status = Column(
         Enum(DiskStatus, name='dpv_disk_status'), nullable=False)
 
+    location = Column(String(DNS_NAME_LENGTH))
+
     dvg_name = Column(
         String(RES_NAME_LENGTH),
         ForeignKey('distribute_volume_group.dvg_name'))
@@ -97,8 +99,6 @@ class DistributeLogicalVolume(Base):
 
     bm_dirty = Column(Boolean, nullable=False)
 
-    bm_ignore = Column(Boolean, nullable=False)
-
     dvg_name = Column(
         String(RES_NAME_LENGTH),
         ForeignKey('distribute_volume_group.dvg_name'),
@@ -157,7 +157,7 @@ class Snapshot(Base):
 
     status = Column(Enum(SnapStatus, name='snap_status'), nullable=False)
 
-    thin_mapping = Column(Binary(MAX_THIN_MAPPING), nullable=False)
+    gsnaps = relationship('GroupSnapshot', back_populates='snap')
 
     dlv_name = Column(
         String(RES_NAME_LENGTH),
@@ -190,6 +190,33 @@ class Group(Base):
     dlv = relationship('DistributeLogicalVolume', back_populates='groups')
 
     legs = relationship('Leg', back_populates='group')
+
+    gsnaps = relationship('GroupSnapshot', back_populates='group')
+
+
+class GroupSnapshot(Base):
+
+    __tablename__ = 'group_snapshot'
+
+    gsnap_id = Column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True, autoincrement=True)
+
+    thin_mapping = Column(
+        Binary(MAX_THIN_MAPPING), nullable=False)
+
+    snap_id = Column(
+        String(2*RES_NAME_LENGTH+1),
+        ForeignKey('snapshot.snap_id'),
+        nullable=False)
+
+    snap = relationship(
+        'Snapshot', back_populates='gsnaps')
+
+    group_id = Column(
+        BigInteger, ForeignKey('dlv_group.group_id'), nullable=False)
+
+    group = relationship('Group', back_populates='gsnaps')
 
 
 class Leg(Base):

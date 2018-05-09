@@ -65,6 +65,7 @@ dpvs_get_method = ApiMethod(dpvs_get, HttpStatus.OK, dpvs_get_arg_info)
 
 class DpvsPostArgSchema(NtSchema):
     dpv_name = fields.String(required=True)
+    location = fields.String(missing=None)
 
 
 dpvs_post_arg_info = ArgInfo(DpvsPostArgSchema, ArgLocation.body)
@@ -74,6 +75,7 @@ def dpvs_post():
     session = frontend_local.session
     arg = frontend_local.arg
     dpv_name = arg.dpv_name
+    location = arg.location
     client = dpv_rpc.sync_client(dpv_name)
     try:
         dpv_info = client.dpv_get_info()
@@ -88,6 +90,7 @@ def dpvs_post():
         free_size=free_size,
         service_status=ServiceStatus.available,
         disk_status=DiskStatus.available,
+        location=location,
     )
     session.add(dpv)
     try:
