@@ -1,102 +1,87 @@
-import random
-
 from dlvm.common.configure import cfg
+from dlvm.common.utils import chunks
 from dlvm.common.modules import DistributePhysicalVolume, \
-    DistributeVolumeGroup, DistributeLogicalVolume, ServiceStatus, \
-    DiskStatus, DlvStatus
+    DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus
 from dlvm.wrapper.local_ctx import frontend_local
 from dlvm.wrapper.state_machine import StateMachine, sm_register, SmRetry, \
     BiDirState, UniDirState, BiDirJob, UniDirJob
 from dlvm.dpv_agent import dpv_rpc, LegCreateArgSchema, LegDeleteArgSchema
 from dlvm.worker.helper import get_dm_ctx
+from dlvm.worker.allocator import Allocator, AllocationError
 
 
 dlv_create_queue = cfg.get('mq', 'dlv_create_queue')
 dlv_delete_queue = cfg.get('mq', 'dlv_delete_queue')
 
-test_mode = cfg.getboolean('device_mapper', 'test_mode')
-dpv_search_overhead = cfg.getint('device_mapper', 'dpv_search_overhead')
 
-
-def select_dpvs(dvg_name, required_size, batch_count, offset):
+def allocate_dpvs_for_group(dvg, group, allocator):
     session = frontend_local.session
-    dpvs = session.query(DistributePhysicalVolume) \
-        .filter_by(dvg_name=dvg_name) \
-        .filter_by(service_status=ServiceStatus.available) \
-        .filter_by(disk_status=DiskStatus.available) \
-        .filter(DistributePhysicalVolume.free_size > required_size) \
-        .order_by(DistributePhysicalVolume.free_size.desc()) \
-        .limit(batch_count) \
-        .offset(offset) \
-        .with_entities(DistributePhysicalVolume.dpv_name) \
-        .all()
-    random.shuffle(dpvs)
-    return dpvs
+    legs = sorted(group.legs, key=lambda x: x.leg_idx)
+    for leg0, leg1 in chunks(legs, 2):
+        assert(leg0.leg_size == leg1.leg_size)
+        assert(leg0.dpv_name is None)
+        assert(leg1.dpv_name is None)
+        dpv0, dpv1 = allocator.get_pair(leg0.leg_size)
+        dpv0 = session.query(DistributePhysicalVolume) \
+            .filter_by(dpv_name=dpv0.dpv_name) \
+            .with_lockmode('update') \
+            .one()
+        assert(dpv0.free_size >= leg0.leg_size)
+        dpv0.free_size -= leg0.leg_size
+        leg0.dpv = dpv0
+        session.add(dpv0)
+        session.add(leg0)
+        assert(dvg.free_size >= leg0.leg_size)
+        dvg.free_size -= leg0.leg_size
+        dpv1 = session.query(DistributePhysicalVolume) \
+            .filter_by(dpv_name=dpv1.dpv_name) \
+            .with_lockmode('update') \
+            .one()
+        assert(dpv1.free_size >= leg1.leg_size)
+        leg1.dpv = dpv1
+        session.add(dpv1)
+        session.add(leg1)
+        assert(dvg.free_size >= leg1.leg_size)
+        dvg.free_size -= leg1.leg_size
 
 
-def allocate_dpvs_for_group(dlv, group):
+def dlv_allocate_dpv(dlv_name):
     session = frontend_local.session
-    dpvs = []
-    dpv_name_set = set()
-    batch_count = len(group.legs) * dpv_search_overhead
-    i = -1
-    total_leg_size = 0
-    for leg in group.legs:
-        i += 1
-        if leg.dpv is not None:
-            continue
-        leg_size = leg.leg_size
-        while True:
-            if len(dpvs) == 0:
-                if test_mode is True:
-                    dpvs = select_dpvs(
-                        dlv.dvg_name, leg_size, batch_count, 0)
-                else:
-                    dpvs = select_dpvs(
-                        dlv.dvg_name, leg_size, batch_count, i)
-            if len(dpvs) == 0:
-                msg = 'allocate dpvs failed, {0} {1}'.format(
-                    dlv.dvg_name, leg_size)
-                raise SmRetry(msg)
-            dpv = dpvs.pop()
-            if dpv.dpv_name in dpv_name_set:
-                continue
-            else:
-                if test_mode is False:
-                    dpv_name_set.add(dpv.dpv_name)
-            dpv = session.query(DistributePhysicalVolume) \
-                .filter_by(dpv_name=dpv.dpv_name) \
-                .with_lockmode('update') \
-                .one()
-            if dpv.service_status != ServiceStatus.available:
-                continue
-            if dpv.disk_status != DiskStatus.available:
-                continue
-            if dpv.free_size < leg_size:
-                continue
-            dpv.free_size -= leg_size
-            total_leg_size += leg_size
-            leg.dpv = dpv
-            session.add(dpv)
-            session.add(leg)
-            break
-
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one()
     dvg = session.query(DistributeVolumeGroup) \
         .filter_by(dvg_name=dlv.dvg_name) \
         .with_lockmode('update') \
         .one()
-    assert(dvg.free_size >= total_leg_size)
-    dvg.free_size -= total_leg_size
-    session.add(dvg)
+    allocator = Allocator(session, dlv.dvg_name)
+    try:
+        for group in dlv.groups:
+            allocate_dpvs_for_group(dvg, group, allocator)
+        dlv.status = DlvStatus.available
+    except AllocationError as e:
+        raise SmRetry(e.message)
+    else:
+        session.add(dlv)
+        session.add(dvg)
 
+
+def dlv_create_leg(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one()
     dm_ctx = get_dm_ctx()
     thread_list = []
-    for leg in group.legs:
-        dpv_name = leg.dpv_name
-        ac = dpv_rpc.async_client(dpv_name)
-        arg = LegCreateArgSchema.nt(leg.leg_id, leg.leg_size, dm_ctx)
-        t = ac.leg_create(arg)
-        thread_list.append(t)
+    for group in dlv.groups:
+        for leg in group.legs:
+            dpv_name = leg.dpv_name
+            ac = dpv_rpc.async_client(dpv_name)
+            arg = LegCreateArgSchema.nt(leg.leg_id, leg.leg_size, dm_ctx)
+            t = ac.leg_create(arg)
+            thread_list.append(t)
     err_list = []
     for t in thread_list:
         err = t.wait()
@@ -106,32 +91,16 @@ def allocate_dpvs_for_group(dlv, group):
             raise SmRetry()
 
 
-def dlv_create(dlv_name):
+def dlv_delete_leg(dlv_name):
     session = frontend_local.session
     dlv = session.query(DistributeLogicalVolume) \
         .filter_by(dlv_name=dlv_name) \
         .with_lockmode('update') \
         .one()
-    for group in dlv.groups:
-        allocate_dpvs_for_group(dlv, group)
-    dlv.status = DlvStatus.available
-    session.add(dlv)
-
-
-def release_dpvs_from_group(dlv, group):
-    session = frontend_local.session
-    dpv_dict = {}
     thread_list = []
-    for leg in group.legs:
-        dpv_name = leg.dpv_name
-        if dpv_name is None:
-            continue
-        dpv = session.query(DistributePhysicalVolume) \
-            .filter_by(dpv_name=dpv_name) \
-            .with_lockmode('update') \
-            .one()
-        dpv_dict[dpv_name] = dpv
-        if dpv.service_status == ServiceStatus.available:
+    for group in dlv.groups:
+        for leg in group.legs:
+            dpv_name = leg.dpv_name
             ac = dpv_rpc.async_client(dpv_name)
             arg = LegDeleteArgSchema.nt(leg.leg_id)
             t = ac.leg_delete(arg)
@@ -143,34 +112,32 @@ def release_dpvs_from_group(dlv, group):
     for err in err_list:
         if err:
             raise err
-    total_free_size = 0
-    for leg in group.legs:
-        if leg.dpv_name is None:
-            continue
-        dpv = dpv_dict[leg.dpv_name]
-        leg_size = leg.leg_size
-        dpv.free_size += leg_size
-        session.add(dpv)
-        leg.dpv_name = None
-        session.add(leg)
-        total_free_size += leg_size
-
-    dvg = session.query(DistributeVolumeGroup) \
-        .filter_by(dvg_name=dlv.dvg_name) \
-        .with_lockmode('update') \
-        .one()
-    dvg.free_size += total_free_size
-    session.add(dvg)
 
 
-def dlv_release(dlv_name):
+def dlv_release_dpv(dlv_name):
     session = frontend_local.session
     dlv = session.query(DistributeLogicalVolume) \
         .filter_by(dlv_name=dlv_name) \
         .with_lockmode('update') \
         .one()
+    dvg = session.query(DistributeVolumeGroup) \
+        .filter_by(dvg_name=dlv.dvg_name) \
+        .with_lockmode('update') \
+        .one()
     for group in dlv.groups:
-        release_dpvs_from_group(dlv, group)
+        for leg in group.legs:
+            if leg.dpv_name is None:
+                continue
+            dpv = session.query(DistributePhysicalVolume) \
+                .filter_by(dpv_name=leg.dpv_name) \
+                .with_lockmode('update') \
+                .one()
+            dpv.free_size += leg.leg_size
+            session.add(dpv)
+            leg.dpv_name = None
+            session.add(leg)
+            dvg.free_size += leg.leg_size
+    session.add(dvg)
 
 
 def dlv_failed(dlv_name):
@@ -195,22 +162,56 @@ def dlv_delete(dlv_name):
         for leg in group.legs:
             assert(leg.dpv is None)
             session.delete(leg)
+        for gsnap in group.gsnaps:
+            session.delete(gsnap)
         session.delete(group)
     for snapshot in dlv.snapshots:
         session.delete(snapshot)
     session.delete(dlv)
 
 
-class DlvCreateJob(BiDirJob):
+class DlvAllocateDpvJob(BiDirJob):
 
     def __init__(self, dlv_name):
         self.dlv_name = dlv_name
 
     def forward(self):
-        dlv_create(self.dlv_name)
+        dlv_allocate_dpv(self.dlv_name)
 
     def backward(self):
-        dlv_release(self.dlv_name)
+        # if dlv_allocate_dpv failed, all db actions will rollback
+        # so nothing to do
+        pass
+
+
+class DlvCreateLegJob(BiDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_create_leg(self.dlv_name)
+
+    def backward(self):
+        dlv_delete_leg(self.dlv_name)
+
+
+class DlvDeleteLegJob(UniDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_delete_leg(self.dlv_name)
+
+
+class DlvReleaseDpvJob(UniDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_release_dpv(self.dlv_name)
 
 
 class DlvFailedJob(UniDirJob):
@@ -223,8 +224,12 @@ class DlvFailedJob(UniDirJob):
 
 
 dlv_create_sm = {
-    'start': BiDirState(DlvCreateJob, 'stop', 'retry1'),
-    'retry1': BiDirState(DlvCreateJob, 'stop', 'failed'),
+    'start': BiDirState(DlvAllocateDpvJob, 'create_leg', 'failed'),
+    'create_leg': BiDirState(DlvCreateLegJob, 'stop', 'retry'),
+    'retry': UniDirState(DlvReleaseDpvJob, 'allocate_2'),
+    'allocate_2': BiDirState(DlvAllocateDpvJob, 'create_leg_2', 'failed'),
+    'create_leg_2': BiDirState(DlvCreateLegJob, 'stop', 'release'),
+    'release': UniDirState(DlvReleaseDpvJob, 'failed'),
     'failed': UniDirState(DlvFailedJob, 'stop'),
 }
 
@@ -255,7 +260,7 @@ class DlvReleaseJob(UniDirJob):
         self.dlv_name = dlv_name
 
     def forward(self):
-        dlv_release(self.dlv_name)
+        dlv_release_dpv(self.dlv_name)
 
 
 class DlvDeleteJob(UniDirJob):
@@ -268,7 +273,8 @@ class DlvDeleteJob(UniDirJob):
 
 
 dlv_delete_sm = {
-    'start': UniDirState(DlvReleaseJob, 'delete'),
+    'start': UniDirState(DlvDeleteLegJob, 'release'),
+    'release': UniDirState(DlvReleaseDpvJob, 'delete'),
     'delete': UniDirState(DlvDeleteJob, 'stop'),
 }
 

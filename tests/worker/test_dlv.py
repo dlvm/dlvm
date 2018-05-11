@@ -48,11 +48,11 @@ fake_dlv = {
         'legs': [{
             'leg_idx': 0,
             'leg_size': 20*1024*1024,
-            'dpv_name': 'dpv0',
+            'dpv_name': None,
         }, {
             'leg_idx': 1,
             'leg_size': 20*1024*1024,
-            'dpv_name': 'dpv1',
+            'dpv_name': None,
         }],
     }, {
         'group_idx': 1,
@@ -60,11 +60,11 @@ fake_dlv = {
         'legs': [{
             'leg_idx': 0,
             'leg_size': 50*1024*1024*1024,
-            'dpv_name': 'dpv0',
+            'dpv_name': None,
         }, {
             'leg_idx': 1,
             'leg_size': 50*1024*1024*1024,
-            'dpv_name': 'dpv1',
+            'dpv_name': None,
         }],
     }]
 }
@@ -81,7 +81,6 @@ class DlvTest(unittest.TestCase):
 
     @patch('dlvm.worker.dlv.dpv_rpc')
     def test_dlv_create(self, dpv_rpc):
-        return
         self.dbm.dvg_create(**fake_dvg)
         for fake_dpv in fake_dpvs:
             self.dbm.dpv_create(**fake_dpv)
@@ -114,7 +113,6 @@ class DlvTest(unittest.TestCase):
 
     @patch('dlvm.worker.dlv.dpv_rpc')
     def test_dlv_delete(self, dpv_rpc):
-        return
         self.dbm.dvg_create(**fake_dvg)
         for fake_dpv in fake_dpvs:
             self.dbm.dpv_create(**fake_dpv)

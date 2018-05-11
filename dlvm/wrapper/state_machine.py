@@ -100,7 +100,18 @@ class StateMachineContext(NamedTuple):
 
 
 class SmRetry(Exception):
-    pass
+
+    def __init__(self, message=None):
+        self.message = message
+        super(SmRetry, self).__init__(message)
+
+
+class DoRetry(Exception):
+
+    def __init__(self, args, message):
+        self.args = args
+        self.message = message
+        super(DoRetry, self).__init__(message)
 
 
 class EnforceError(Exception):
@@ -205,13 +216,11 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
             frontend_local.worker_ctx = worker_ctx
             try:
                 func()
-            except SmRetry:
-                verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
-                session.commit()
+            except SmRetry as e:
                 sm_ctx = update_for_failed(sm_ctx, state)
                 sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
                 args = (req_id_str, sm_ctx_d, res_id)
-                raise self.retry(args=args)
+                raise DoRetry(args, e.message)
             else:
                 verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
                 session.commit()
@@ -225,7 +234,10 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
         run_error_hook(
             'sm_recv', sm_recv_hook_list, hook_ctx,
             hook_ret_dict, exc_info)
-        raise
+        if isinstance(e, DoRetry):
+            raise self.retry(args=e.args)
+        else:
+            raise e
     else:
         run_post_hook(
             'sm_recv', sm_recv_hook_list, hook_ctx,

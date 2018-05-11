@@ -155,12 +155,13 @@ class DataBaseManager():
                     dpv_name=ileg['dpv_name'],
                 )
                 self.session.add(leg)
-                dpv = self.session.query(DistributePhysicalVolume) \
-                    .filter_by(dpv_name=ileg['dpv_name']) \
-                    .one()
-                dpv.free_size -= ileg['leg_size']
-                self.session.add(dpv)
-                dvg.free_size -= ileg['leg_size']
+                if ileg['dpv_name'] is not None:
+                    dpv = self.session.query(DistributePhysicalVolume) \
+                        .filter_by(dpv_name=ileg['dpv_name']) \
+                        .one()
+                    dpv.free_size -= ileg['leg_size']
+                    self.session.add(dpv)
+                    dvg.free_size -= ileg['leg_size']
             self.session.add(dvg)
             self.session.commit()
 

@@ -14,7 +14,9 @@ class DlvmConfigParser(ConfigParser):
         val = self.get(section, option)
         count = int(val[:-1])
         unit = val[-1:]
-        if unit == 'G':
+        if unit == 'T':
+            return count*1024*1024*1024*1024
+        elif unit == 'G':
             return count*1024*1024*1024
         elif unit == 'M':
             return count*1024*1024

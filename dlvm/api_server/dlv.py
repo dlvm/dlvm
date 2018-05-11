@@ -262,7 +262,7 @@ dlv_res = ApiResource(
 
 @add_checker(Action.dlv_delete)
 def normal_checker(dlv):
-    if dlv.status != DlvStatus.available:
+    if dlv.status not in (DlvStatus.available, DlvStatus.failed):
         reason = 'status is {0}'.format(dlv.status)
         raise error.CheckerError('dlv', dlv.dlv_name, reason)
     if dlv.lock_id is not None:

@@ -8,7 +8,8 @@ from sqlalchemy.orm import sessionmaker
 
 from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE
 from dlvm.common.configure import cfg
-from dlvm.common.modules import Base, Lock, LockType, DistributeLogicalVolume
+from dlvm.common.modules import Base, Lock, LockType, \
+    DistributeLogicalVolume
 
 sqlalchemy_cfg_path = os.path.join(LC_PATH, SQLALCHEMY_CFG_FILE)
 

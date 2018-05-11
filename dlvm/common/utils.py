@@ -51,5 +51,7 @@ def get_empty_thin_mapping(thin_block_bytes, thin_data_blocks):
         thin_data_blocks=thin_data_blocks)
 
 
-def div_round_up(dividend, divisor):
-    return (dividend+divisor-1) // divisor
+def chunks(array, n):
+    """Yield successive n-sized chunks from array."""
+    for i in range(0, len(array), n):
+        yield array[i:i+n]
