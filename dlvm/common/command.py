@@ -1,4 +1,9 @@
+from dlvm.common.configure import cfg
 from dlvm.wrapper.cmd_wrapper import run_cmd
+
+
+target_prefix = cfg.get('iscsi', 'target_prefix')
+initiator_prefix = cfg.get('iscsi', 'initiator_prefix')
 
 
 def lv_get_path(lv_name, vg_name):
@@ -75,3 +80,17 @@ def vg_get_size(vg_name):
     total_size = int(sizes[0].strip())
     free_size = int(sizes[1].strip())
     return total_size, free_size
+
+
+def encode_target_name(leg_id):
+    return '{target_prefix}.{leg_id}'.format(
+        target_prefix=target_prefix,
+        leg_id=leg_id,
+    )
+
+
+def encode_initiator_name(host_name):
+    return '{initiator_prefix}.{host_name}'.format(
+        initiator_prefix=initiator_prefix,
+        host_name=host_name,
+    )
