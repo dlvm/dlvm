@@ -25,6 +25,7 @@ setup(
         'Programming Language :: Python :: 3.6',
     ),
     keywords='dlvm storage',
+    python_requires='>=3.6',
     packages=find_packages(exclude=['tests*']),
     package_data={
         'dlvm': [
@@ -32,4 +33,10 @@ setup(
             'common/thin_mapping_template.xml'
         ],
     },
+    data_files=[(
+        'bin/dlvm_bin', [
+            'binary/pdata_tools',
+            'binary/dm_dd',
+        ],
+    )]
 )

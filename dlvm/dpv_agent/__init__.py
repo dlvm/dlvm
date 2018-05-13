@@ -6,7 +6,7 @@ from marshmallow import fields
 from dlvm.common.configure import cfg
 from dlvm.common.marshmallow_ext import NtSchema
 from dlvm.wrapper.rpc_wrapper import DpvRpc
-from dlvm.common import command as cmd
+from dlvm.wrapper import command as cmd
 from dlvm.dpv_agent.mirror_meta import generate_mirror_meta
 
 
@@ -172,13 +172,18 @@ def leg_create(arg):
         mirror_region_size,
         bm,
     )
-    cmd.dd(file_path, layer2_path)
-    cmd.dd(
-        '/dev/zero',
-        layer2_path,
-        bs=thin_block_size,
-        seek=mirror_meta_blocks,
+    cmd.dm_dd(
+        src=file_path,
+        dst=layer2_path,
+        bs=mirror_meta_size,
         count=1,
+    )
+    cmd.dm_dd(
+        src='/dev/zero',
+        dst=layer2_path,
+        bs=thin_block_size,
+        count=1,
+        seek=mirror_meta_blocks,
     )
     os.remove(file_path)
 

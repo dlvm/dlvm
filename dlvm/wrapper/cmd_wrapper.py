@@ -35,6 +35,10 @@ class CmdPath():
         for path in self.default_paths:
             self.paths.append(path)
         self.path_dict = {}
+        self.path_dict['dm_dd'] = os.path.join(
+            sys.prefix, 'bin/dlvm_bin/dm_dd')
+        self.path_dict['pdata_tools'] = os.path.join(
+            sys.prefix, 'bin/dlvm_bin/pdata_tools')
 
     def get_path(self, name):
         if name not in self.path_dict:
