@@ -26,6 +26,12 @@ setup(
     ),
     keywords='dlvm storage',
     python_requires='>=3.6',
+    install_requires=[
+        'Flask',
+        'marshmallow>=3.0.0b1',
+        'SQLAlchemy',
+        'celery',
+    ],
     packages=find_packages(exclude=['tests*']),
     package_data={
         'dlvm': [
