@@ -9,6 +9,7 @@ from logging import LoggerAdapter, getLogger
 from datetime import datetime, timedelta
 from types import MethodType
 
+from dlvm.common.constant import DPV_LOGGER_NAME, IHOST_LOGGER_NAME
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.marshmallow_ext import NtSchema
 from dlvm.common.loginit import loginit
@@ -322,7 +323,7 @@ class DpvRpc(DlvmRpc):
 
     def __init__(self):
         loginit()
-        logger = getLogger('dpv_agent')
+        logger = getLogger(DPV_LOGGER_NAME)
         listener = cfg.get('rpc', 'dpv_listener')
         port = cfg.getint('rpc', 'dpv_port')
         super(DpvRpc, self).__init__(listener, port, logger)
@@ -364,7 +365,7 @@ class IhostRpc(DlvmRpc):
 
     def __init__(self):
         loginit()
-        logger = getLogger('ihost_agent')
+        logger = getLogger(IHOST_LOGGER_NAME)
         listener = cfg.get('rpc', 'ihost_listener')
         port = cfg.getint('rpc', 'ihost_port')
         super(IhostRpc, self).__init__(listener, port, logger)

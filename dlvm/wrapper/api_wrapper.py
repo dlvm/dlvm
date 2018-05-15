@@ -7,6 +7,7 @@ from logging import getLogger, LoggerAdapter
 from flask import request, make_response
 from marshmallow import Schema, fields, ValidationError
 
+from dlvm.common.constant import API_LOGGER_NAME
 from dlvm.common.utils import RequestContext, HttpStatus, ExcInfo
 from dlvm.common.loginit import loginit
 from dlvm.common.error import DlvmError
@@ -59,7 +60,7 @@ class ApiResource(NamedTuple):
 
 
 api_hook_list = build_hook_list('api_hook')
-ori_logger = getLogger('dlvm_api')
+ori_logger = getLogger(API_LOGGER_NAME)
 api_headers = {'Content-Type': 'application/json'}
 
 

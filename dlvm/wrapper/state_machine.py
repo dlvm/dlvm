@@ -7,6 +7,7 @@ from logging import getLogger, LoggerAdapter
 
 from marshmallow import fields
 
+from dlvm.common.constant import WORKER_LOGGER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.marshmallow_ext import NtSchema, SetField, EnumField
@@ -18,7 +19,7 @@ from dlvm.wrapper.local_ctx import frontend_local, Direction, WorkerContext
 from dlvm.wrapper.mq_wrapper import app
 
 
-ori_logger = getLogger('state_machine')
+ori_logger = getLogger(WORKER_LOGGER_NAME)
 sm_send_hook_list = build_hook_list('sm_send_hook')
 sm_recv_hook_list = build_hook_list('sm_recv_hook')
 

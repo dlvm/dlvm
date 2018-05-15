@@ -4,6 +4,7 @@ from threading import Lock
 import enum
 import uuid
 import os
+from logging.handlers import WatchedFileHandler
 from logging import LoggerAdapter
 
 
@@ -49,6 +50,15 @@ def get_empty_thin_mapping(thin_block_bytes, thin_data_blocks):
     return template.format(
         thin_block_sectors=thin_block_sectors,
         thin_data_blocks=thin_data_blocks)
+
+
+class PidWatchedFileHandler(WatchedFileHandler):
+
+    def __init__(
+            self, filename, mode='a', encoding=None, delay=False):
+        filename_pid = filename.format(pid=os.getpid())
+        super(PidWatchedFileHandler, self).__init__(
+            filename_pid, mode, encoding, delay)
 
 
 def chunks(array, n):
