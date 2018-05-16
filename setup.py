@@ -44,5 +44,10 @@ setup(
             'binary/pdata_tools',
             'binary/dm_dd',
         ],
-    )]
+    )],
+    entry_points={
+        'console_scripts': [
+            'dlvm_init_db=dlvm.common.database:create_all',
+        ]
+    }
 )
