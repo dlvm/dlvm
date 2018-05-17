@@ -238,9 +238,11 @@ class DlvmRpc():
 
     def __init__(self, listener, port, logger):
         self.logger = logger
-        self.server = DlvmRpcServer(listener, port)
+        self.listener = listener
+        self.port = port
         self.rpc_lock = RpcLock()
         self.rpc_dict = {}
+        self.register_dict = {}
 
     def register(self, arg_schema=None, ret_schema=None, lock_method=None):
 
@@ -298,7 +300,7 @@ class DlvmRpc():
                         hook_ctx, hook_ret_dict, ret_d)
                     return ret_d
 
-            self.server.register_function(wrapper, func_name)
+            self.register_dict[func_name] = wrapper
             self.rpc_dict[func_name] = RpcSchema(
                 arg_schema, ret_schema, lock_method)
             return func
@@ -306,7 +308,11 @@ class DlvmRpc():
         return create_wrapper
 
     def start_server(self):
-        self.server.serve_forever()
+        server = DlvmRpcServer(self.listener, self.port)
+        for func_name in self.register_dict:
+            wrapper = self.register_dict[func_name]
+            server.register_function(wrapper, func_name)
+        server.serve_forever()
 
     def sync_client(self, req_ctx, server, port, timeout, lock_dt):
         return SyncClient(
