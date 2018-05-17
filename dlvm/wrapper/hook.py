@@ -25,10 +25,9 @@ def build_hook_list(hook_name):
     for cfg_hook_path in cfg_hook_list:
         spliter = cfg_hook_path.rindex('.')
         mod_name = cfg_hook_path[:spliter]
-        cls_name = cfg_hook_path[spliter+1:]
+        instance_name = cfg_hook_path[spliter+1:]
         mod = import_module(mod_name)
-        custom_cls = getattr(mod, cls_name)
-        instance = custom_cls()
+        instance = getattr(mod, instance_name)
         hook_list.append(instance)
     return hook_list
 

@@ -16,3 +16,6 @@ class LogHook(DlvmHook):
             err_info.etype, err_info.value, err_info.tb))
         hook_ctx.req_ctx.logger.warning(
             'error_hook: %s\n%s', hook_ctx, calltrace)
+
+
+log_hook = LogHook()
