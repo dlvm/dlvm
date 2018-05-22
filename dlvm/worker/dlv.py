@@ -3,7 +3,7 @@ from dlvm.common.utils import chunks
 from dlvm.common.modules import DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus
 from dlvm.wrapper.local_ctx import frontend_local
-from dlvm.wrapper.state_machine import StateMachine, sm_register, SmRetry, \
+from dlvm.wrapper.state_machine import StateMachine, SmRetry, \
     BiDirState, UniDirState, BiDirJob, UniDirJob
 from dlvm.dpv_agent import dpv_rpc, LegCreateArgSchema, LegDeleteArgSchema
 from dlvm.worker.helper import get_dm_ctx
@@ -234,7 +234,6 @@ dlv_create_sm = {
 }
 
 
-@sm_register
 class DlvCreate(StateMachine):
 
     sm_name = 'dlv_create'
@@ -279,7 +278,6 @@ dlv_delete_sm = {
 }
 
 
-@sm_register
 class DlvDelete(StateMachine):
 
     sm_name = 'dlv_delete'
