@@ -312,6 +312,8 @@ class DlvmRpc():
         for func_name in self.register_dict:
             wrapper = self.register_dict[func_name]
             server.register_function(wrapper, func_name)
+        logger = LoggerAdapter(self.logger, {'req_id': None})
+        logger.info('start server')
         server.serve_forever()
 
     def sync_client(self, req_ctx, server, port, timeout, lock_dt):
@@ -337,7 +339,7 @@ class DpvRpc(DlvmRpc):
     def sync_client(self, dpv_name):
         req_ctx = frontend_local.req_ctx
         server = dpv_name
-        port = cfg.getinit('rpc', 'dpv_port')
+        port = cfg.getint('rpc', 'dpv_port')
         timeout = cfg.getint('rpc', 'dpv_timeout')
         lock_dt = frontend_local.worker_ctx.lock_dt
         return super(DpvRpc, self).sync_client(

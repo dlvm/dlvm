@@ -39,7 +39,7 @@ def lv_remove(lv_name, vg_name):
         lv_path,
     ]
     r = run_cmd(cmd, check=False)
-    if r.rcode == 0:
+    if r.returncode == 0:
         cmd = [
             'lvm',
             'lvremove',
@@ -60,7 +60,7 @@ def lv_get_all(vg_name):
     ]
     r = run_cmd(cmd)
     lv_name_list = []
-    items = r.out.split('\n')
+    items = r.stdout.decode('utf-8').split('\n')
     for item in items[:-1]:
         lv_name_list.append(item.strip())
     return lv_name_list
@@ -76,7 +76,7 @@ def vg_get_size(vg_name):
         vg_name,
     ]
     r = run_cmd(cmd)
-    sizes = r.out.strip().split(' ')
+    sizes = r.stdout.decode('utf-8').strip().split(' ')
     total_size = int(sizes[0].strip())
     free_size = int(sizes[1].strip())
     return total_size, free_size

@@ -48,6 +48,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dlvm_init_db=dlvm.common.database:create_all',
+            'dlvm_dpv_agent=dlvm.dpv_agent:start_dpv_agent',
         ]
     }
 )

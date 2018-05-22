@@ -55,7 +55,7 @@ def get_empty_thin_mapping(thin_block_bytes, thin_data_blocks):
 class PidWatchedFileHandler(WatchedFileHandler):
 
     def __init__(
-            self, filename, mode='a', encoding=None, delay=False):
+            self, filename, mode='a', encoding=None, delay=True):
         filename_pid = filename.format(pid=os.getpid())
         super(PidWatchedFileHandler, self).__init__(
             filename_pid, mode, encoding, delay)
