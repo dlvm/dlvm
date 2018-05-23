@@ -348,7 +348,7 @@ class DpvRpc(DlvmRpc):
     def async_client(self, dpv_name):
         req_ctx = frontend_local.req_ctx
         server = dpv_name
-        port = cfg.getinit('rpc', 'dpv_port')
+        port = cfg.getint('rpc', 'dpv_port')
         timeout = cfg.getint('rpc', 'dpv_timeout')
         lock_dt = frontend_local.worker_ctx.lock_dt
 
@@ -365,7 +365,7 @@ class DpvRpc(DlvmRpc):
                 session.add(dpv)
                 session.commit()
 
-        super(DpvRpc, self).async_client(
+        return super(DpvRpc, self).async_client(
             req_ctx, server, port, timeout, lock_dt, enforce_func)
 
 
@@ -381,7 +381,7 @@ class IhostRpc(DlvmRpc):
     def sync_client(self, ihost_name):
         req_ctx = frontend_local.req_ctx
         server = ihost_name
-        port = cfg.getinit('rpc', 'ihost_port')
+        port = cfg.getint('rpc', 'ihost_port')
         timeout = cfg.getint('rpc', 'ihost_timeout')
         lock_dt = frontend_local.worker_ctx.lock_dt
         return super(IhostRpc, self).sync_client(
@@ -390,12 +390,12 @@ class IhostRpc(DlvmRpc):
     def async_client(self, ihost_name):
         req_ctx = frontend_local.req_ctx
         server = ihost_name
-        port = cfg.getinit('rpc', 'ihost_port')
+        port = cfg.getint('rpc', 'ihost_port')
         timeout = cfg.getint('rpc', 'ihost_timeout')
         lock_dt = frontend_local.worker_ctx.lock_dt
 
         def enforce_func():
             pass
 
-        super(IhostRpc, self).async_client(
+        return super(IhostRpc, self).async_client(
             req_ctx, server, port, timeout, lock_dt, enforce_func)

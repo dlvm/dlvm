@@ -59,7 +59,6 @@ def dlv_allocate_dpv(dlv_name):
     try:
         for group in dlv.groups:
             allocate_dpvs_for_group(dvg, group, allocator)
-        dlv.status = DlvStatus.available
     except AllocationError as e:
         raise SmRetry(e.message)
     else:
@@ -89,6 +88,8 @@ def dlv_create_leg(dlv_name):
     for err in err_list:
         if err:
             raise SmRetry()
+    dlv.status = DlvStatus.available
+    session.add(dlv)
 
 
 def dlv_delete_leg(dlv_name):
