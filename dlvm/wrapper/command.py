@@ -7,6 +7,11 @@ from dlvm.wrapper.cmd_wrapper import run_cmd
 
 target_prefix = cfg.get('iscsi', 'target_prefix')
 initiator_prefix = cfg.get('iscsi', 'initiator_prefix')
+initiator_iface = cfg.get('iscsi', 'iface')
+iscsi_path_fmt = cfg.get('iscsi', 'path_fmt')
+iscsi_userid = cfg.get('iscsi', 'iscsi_userid')
+iscsi_password = cfg.get('iscsi', 'iscsi_password')
+iscsi_port = cfg.getint('iscsi', 'iscsi_port')
 
 
 def lv_get_path(lv_name, vg_name):
@@ -441,3 +446,305 @@ class DmError(DmBasic):
     def _format_table(self, param):
         table = '{start} {length} error'.format(**param)
         return table
+
+
+def iscsi_extract_context(output):
+    items = output.split('\n')
+    address = None
+    port = None
+    for item in items:
+        if item.startswith('node.conn[0].address'):
+            address = item.split()[-1]
+        elif item.startswith('node.conn[0].port'):
+            port = item.split()[-1]
+        if address is not None and port is not None:
+            break
+    assert(address is not None)
+    assert(port is not None)
+    context = {}
+    context['address'] = address
+    context['port'] = port
+    return context
+
+
+def iscsi_get_context(target_name, iscsi_ip_port):
+    cmd = [
+        'iscsiadm',
+        '-m', 'node',
+        '-o', 'show',
+        '-T', target_name,
+        '-I', initiator_iface,
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        cmd = [
+            'iscsiadm',
+            '-m', 'discovery',
+            '-t', 'sendtargets',
+            '-p', iscsi_ip_port,
+            '-I', initiator_iface,
+        ]
+        run_cmd(cmd)
+        cmd = [
+            'iscsiadm',
+            '-m', 'node',
+            '-o', 'show',
+            '-T', target_name,
+            '-I', initiator_iface,
+        ]
+        r = run_cmd(cmd)
+    return iscsi_extract_context(r.stdout.decode('utf-8'))
+
+
+def iscsi_get_path(target_name, context):
+    iscsi_path = iscsi_path_fmt.format(
+        address=context['address'],
+        port=context['port'],
+        target_name=target_name,
+    )
+    return iscsi_path
+
+
+def iscsi_login(target_name, dpv_name):
+    iscsi_ip_port = '{dpv_name}:{iscsi_port}'.format(
+        dpv_name=dpv_name, iscsi_port=iscsi_port)
+    context = iscsi_get_context(
+        target_name, iscsi_ip_port)
+    iscsi_path = iscsi_get_path(target_name, context)
+    if os.path.exists(iscsi_path):
+        return iscsi_path
+    cmd = [
+        'iscsiadm',
+        '-m', 'node',
+        '--login',
+        '-T', target_name,
+        '-p', iscsi_ip_port,
+        '-I', initiator_iface,
+    ]
+    run_cmd(cmd)
+    verify_dev_path(iscsi_path)
+    return iscsi_path
+
+
+def iscsi_logout(target_name):
+    # iscsiadm -m node -o show -T target_name
+    cmd = [
+        'iscsiadm',
+        '-m', 'node',
+        '-o', 'show',
+        '-T', target_name,
+        '-I', initiator_iface,
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        return
+    context = iscsi_extract_context(r.stdout.decode('utf-8'))
+    iscsi_path = iscsi_get_path(target_name, context)
+    if os.path.exists(iscsi_path):
+        cmd = [
+            'iscsiadm',
+            '-m', 'node',
+            '--logout',
+            '-T', target_name,
+            '-I', initiator_iface,
+        ]
+        run_cmd(cmd)
+    # iscsiadm -m node -T target_name -o delete
+    cmd = [
+        'iscsiadm',
+        '-m', 'node',
+        '-T', target_name,
+        '-o', 'delete',
+        '-I', initiator_iface,
+    ]
+    run_cmd(cmd)
+
+
+def iscsi_create(target_name, dev_name, dev_path):
+    backstore_path = '/backstores/iblock/{dev_name}'.format(
+        dev_name=dev_name)
+    cmd = [
+        'targetcli',
+        backstore_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        dev = 'dev={dev_path}'.format(
+            dev_path=dev_path)
+        name = 'name={dev_name}'.format(
+            dev_name=dev_name)
+        cmd = [
+            'targetcli',
+            '/backstores/iblock',
+            'create',
+            dev,
+            name,
+        ]
+        run_cmd(cmd)
+
+    target_path = '/iscsi/{target_name}'.format(
+        target_name=target_name)
+    cmd = [
+        'targetcli',
+        target_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        cmd = [
+            'targetcli',
+            '/iscsi',
+            'create',
+            target_name,
+        ]
+        run_cmd(cmd)
+
+    lun0 = '{target_path}/tpg1/luns/lun0'.format(
+        target_path=target_path)
+    cmd = [
+        'targetcli',
+        lun0,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        lun_path = '{target_path}/tpg1/luns'.format(
+            target_path=target_path)
+        cmd = [
+            'targetcli',
+            lun_path,
+            'create',
+            backstore_path,
+        ]
+        run_cmd(cmd)
+
+    portal_path = '/iscsi/{target_name}/tpg1/portals'.format(
+        target_name=target_name,
+    )
+    export_portal_path = '{portal_path}/0.0.0.0:{iscsi_port}'.format(
+        portal_path=portal_path,
+        iscsi_port=iscsi_port)
+    cmd = [
+        'targetcli',
+        export_portal_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        ip_port = 'ip_port={iscsi_port}'.format(
+            iscsi_port=iscsi_port)
+        cmd = [
+            'targetcli',
+            portal_path,
+            'create',
+            'ip_address=0.0.0.0',
+            ip_port,
+        ]
+        run_cmd(cmd)
+
+
+def iscsi_delete(target_name, dev_name):
+    target_path = '/iscsi/{target_name}'.format(
+        target_name=target_name)
+    cmd = [
+        'targetcli',
+        target_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode == 0:
+        cmd = [
+            'targetcli',
+            '/iscsi',
+            'delete',
+            target_name,
+        ]
+        run_cmd(cmd)
+
+    backstore_path = '/backstores/iblock/{dev_name}'.format(
+        dev_name=dev_name)
+    cmd = [
+        'targetcli',
+        backstore_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode == 0:
+        cmd = [
+            'targetcli',
+            '/backstores/iblock',
+            'delete',
+            dev_name,
+        ]
+        run_cmd(cmd)
+
+
+def iscsi_export(target_name, initiator_name):
+    acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
+        target_name=target_name,
+    )
+    initiator_path = '{acl_path}/{initiator_name}'.format(
+        acl_path=acl_path,
+        initiator_name=initiator_name,
+    )
+    cmd = [
+        'targetcli',
+        initiator_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode != 0:
+        cmd = [
+            'targetcli',
+            acl_path,
+            'create',
+            initiator_name,
+        ]
+        run_cmd(cmd)
+
+    assign_userid = 'userid={iscsi_userid}'.format(
+        iscsi_userid=iscsi_userid)
+    cmd = [
+        'targetcli',
+        initiator_path,
+        'set',
+        'auth',
+        assign_userid,
+    ]
+    run_cmd(cmd)
+
+    assign_password = 'password={iscsi_password}'.format(
+        iscsi_password=iscsi_password)
+    cmd = [
+        'targetcli',
+        initiator_path,
+        'set',
+        'auth',
+        assign_password,
+    ]
+    run_cmd(cmd)
+
+
+def iscsi_unexport(target_name, initiator_name):
+    acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
+        target_name=target_name,
+    )
+    initiator_path = '{acl_path}/{initiator_name}'.format(
+        acl_path=acl_path,
+        initiator_name=initiator_name,
+    )
+    cmd = [
+        'targetcli',
+        initiator_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode == 0:
+        cmd = [
+            'targetcli',
+            acl_path,
+            'delete',
+            initiator_name,
+        ]
+        run_cmd(cmd)
