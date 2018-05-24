@@ -100,20 +100,14 @@ def encode_initiator_name(host_name):
 
 
 def dm_dd(src, dst, bs, count, skip=0, seek=0):
-    dd_if = 'if={src}'.format(src=src)
-    dd_of = 'of={dst}'.format(dst=dst)
-    dd_bs = 'bs={bs}'.format(bs=bs)
-    dd_count = 'count={count}'.format(count=count)
-    dd_seek = 'seek={seek}'.format(seek=seek)
-    dd_skip = 'skip={skip}'.format(skip=skip)
     cmd = [
         'dm_dd',
-        dd_if,
-        dd_of,
-        dd_bs,
-        dd_count,
-        dd_seek,
-        dd_skip,
+        src,
+        dst,
+        str(bs),
+        str(count),
+        str(skip),
+        str(seek),
     ]
     run_cmd(cmd)
 

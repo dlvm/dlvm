@@ -134,7 +134,7 @@ def leg_create(arg):
     dm_ctx = arg.dm_ctx
     lv_path = cmd.lv_create(
         str(leg_id), leg_size, local_vg_name)
-    leg_sectors = leg_size / 512
+    leg_sectors = leg_size // 512
     layer1_name = get_layer1_name(leg_id)
     dm = cmd.DmLinear(layer1_name)
     table = [{

@@ -109,8 +109,8 @@ class SmRetry(Exception):
 
 class DoRetry(Exception):
 
-    def __init__(self, args, message):
-        self.args = args
+    def __init__(self, retry_args, message):
+        self.retry_args = retry_args
         self.message = message
         super(DoRetry, self).__init__(message)
 
@@ -220,8 +220,8 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
             except SmRetry as e:
                 sm_ctx = update_for_failed(sm_ctx, state)
                 sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
-                args = (req_id_str, sm_ctx_d, res_id)
-                raise DoRetry(args, e.message)
+                retry_args = (req_id_str, sm_ctx_d, res_id)
+                raise DoRetry(retry_args, e.message)
             else:
                 verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
                 session.commit()
@@ -236,7 +236,7 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
             'sm_recv', sm_recv_hook_list, hook_ctx,
             hook_ret_dict, exc_info)
         if isinstance(e, DoRetry):
-            raise self.retry(args=e.args)
+            raise self.retry(args=e.retry_args)
         else:
             raise e
     else:

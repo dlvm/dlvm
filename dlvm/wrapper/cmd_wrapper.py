@@ -55,20 +55,31 @@ cmd_timeout = cfg.getint('cmd', 'timeout')
 sudo_path = cmd_path.get_path('sudo')
 
 
+class CmdResult(NamedTuple):
+    stdout: bytes
+    stderr: bytes
+    returncode: int
+
+
 def run_cmd(cmd, check=True, inp=None):
     req_ctx = backend_local.req_ctx
     real_cmd = [sudo_path]
     real_cmd.append(cmd_path.get_path(cmd[0]))
     real_cmd.extend(cmd[1:])
     hook_ctx = CmdContext(
-        req_ctx, real_cmd, cmd_timeout, inp, check)
+        req_ctx, real_cmd, cmd_timeout, check, inp)
     hook_ret_dict = run_pre_hook(
         'cmd', cmd_hook_list, hook_ctx)
     try:
+        if isinstance(inp, str):
+            inp = inp.encode('utf-8')
         cp = subprocess.run(
             real_cmd, input=inp,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=cmd_timeout, check=check)
+            timeout=cmd_timeout, check=False)
+        r = CmdResult(cp.stdout, cp.stderr, cp.returncode)
+        if check is True and r.returncode != 0:
+            raise Exception('returncode is not zero: %s' % str(r))
     except Exception:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
@@ -78,5 +89,5 @@ def run_cmd(cmd, check=True, inp=None):
     else:
         run_post_hook(
             'cmd', cmd_hook_list,
-            hook_ctx, hook_ret_dict, cp)
-        return cp
+            hook_ctx, hook_ret_dict, r)
+        return r

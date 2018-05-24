@@ -22,4 +22,4 @@ if [[ $last -gt 4194304 ]]; then
     echoerr "write out of range $last"
 fi
 
-exec dd if=$src of=$dst bs=$bs skip=$skip, seek=$seek count=$count
+exec dd if=$src of=$dst bs=$bs skip=$skip seek=$seek count=$count
