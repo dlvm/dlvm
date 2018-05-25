@@ -115,6 +115,7 @@ def dlvs_post():
         lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
+        req_id_hex=frontend_local.req_ctx.req_id.hex,
     )
     session.add(lock)
 
@@ -240,6 +241,7 @@ def dlv_delete(dlv_name):
         lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
+        req_id_hex=frontend_local.req_ctx.req_id.hex,
     )
     session.add(lock)
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH, \
-    MAX_BM_SIZE, MAX_THIN_MAPPING
+    ID_LENGTH, MAX_BM_SIZE, MAX_THIN_MAPPING
 
 Base = declarative_base()
 
@@ -328,10 +328,13 @@ class Lock(Base):
         primary_key=True, autoincrement=True)
 
     lock_owner = Column(
-        String(RES_NAME_LENGTH), nullable=False)
+        String(ID_LENGTH), nullable=False)
 
     lock_type = Column(
         Enum(LockType, name='lock_type'),
         nullable=False)
+
+    req_id_hex = Column(
+        String(ID_LENGTH), nullable=False)
 
     lock_dt = Column(DateTime, nullable=False)

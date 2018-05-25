@@ -90,7 +90,8 @@ class DlvTest(unittest.TestCase):
         lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
         lock_dt = datetime.utcnow()
-        lock = self.dbm.lock_create(lock_owner, lock_type, lock_dt)
+        req_id_hex = uuid.uuid4().hex
+        lock = self.dbm.lock_create(lock_owner, lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.creating)
@@ -122,7 +123,8 @@ class DlvTest(unittest.TestCase):
         lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
         lock_dt = datetime.utcnow()
-        lock = self.dbm.lock_create(lock_owner, lock_type, lock_dt)
+        req_id_hex = uuid.uuid4().hex
+        lock = self.dbm.lock_create(lock_owner, lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.deleting)

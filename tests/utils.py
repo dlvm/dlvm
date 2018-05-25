@@ -186,11 +186,12 @@ class DataBaseManager():
             .one_or_none()
         return snap
 
-    def lock_create(self, lock_owner, lock_type, lock_dt):
+    def lock_create(self, lock_owner, lock_type, lock_dt, req_id_hex):
         lock = Lock(
             lock_owner=lock_owner,
             lock_type=lock_type,
             lock_dt=lock_dt,
+            req_id_hex=req_id_hex,
         )
         self.session.add(lock)
         self.session.commit()

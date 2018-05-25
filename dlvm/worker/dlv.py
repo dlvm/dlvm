@@ -112,7 +112,7 @@ def dlv_delete_leg(dlv_name):
         err_list.append(err)
     for err in err_list:
         if err:
-            raise err
+            raise SmRetry()
 
 
 def dlv_release_dpv(dlv_name):
