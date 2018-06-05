@@ -10,6 +10,9 @@ CELERY_CFG_FILE = 'celery.json'
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html
 SQLALCHEMY_CFG_FILE = 'sqlalchemy.json'
 
+DEFAULT_MONITOR_CFG = 'default_monitor.cfg'
+MONITOR_CFG_FILE = 'monitor.cfg'
+
 CELERY_APP_NAME = 'dlvm_celery_app'
 
 RES_NAME_REGEX = r'[a-z,A-Z][a-z,A-Z,_]*'
@@ -24,8 +27,10 @@ MIN_THIN_BLOCK_SIZE = 64*1024
 MAX_BM_SIZE = MAX_GROUP_SIZE // MIN_THIN_BLOCK_SIZE
 MAX_THIN_MAPPING = 100*1024*1024
 
-API_LOGGER_NAME = 'dlvm_api'
-DPV_LOGGER_NAME = 'dlvm_dpv'
-IHOST_LOGGER_NAME = 'dlvm_ihost'
-WORKER_LOGGER_NAME = 'dlvm_worker'
-MONITOR_LOGGER_NAME = 'dlvm_minotor'
+API_LOGGER_NAME = 'dlvm.api'
+DPV_LOGGER_NAME = 'dlvm.dpv'
+IHOST_LOGGER_NAME = 'dlvm.ihost'
+SM_LOGGER_NAME = 'dlvm.sm'
+MONITOR_LOGGER_NAME = 'dlvm.monitor'
+
+LOCK_HANDLER_NAME = 'lock_handler'

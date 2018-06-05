@@ -129,7 +129,7 @@ class DistributeLogicalVolume(Base):
         uselist=False,
         back_populates='src_dlv')
 
-    lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'))
+    lock_id = Column(BigInteger, ForeignKey('dlvm_lock.lock_id'), index=True)
 
     lock = relationship('Lock')
 
@@ -338,3 +338,10 @@ class Lock(Base):
         String(ID_LENGTH), nullable=False)
 
     lock_dt = Column(DateTime, nullable=False)
+
+
+class MonitorLock(Base):
+
+    __tablename__ = 'monitor_lock'
+
+    name = Column(String(ID_LENGTH), primary_key=True)

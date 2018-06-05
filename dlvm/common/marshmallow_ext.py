@@ -48,9 +48,9 @@ class NtSchemaMeta(SchemaMeta):
         cls.nt.__new__.__defaults__ = (None,) * len(attr_list)
 
         @post_load
-        def make_nt(self, data):
+        def load_nt(self, data):
             return self.nt(**data)
-        cls.make_nt = make_nt
+        cls.load_nt = load_nt
 
         return cls
 

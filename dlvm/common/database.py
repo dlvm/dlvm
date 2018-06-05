@@ -4,12 +4,14 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE
+from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE, \
+    LOCK_HANDLER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, Lock, LockType, \
-    DistributeLogicalVolume
+    DistributeLogicalVolume, MonitorLock
 
 sqlalchemy_cfg_path = os.path.join(LC_PATH, SQLALCHEMY_CFG_FILE)
 
@@ -116,8 +118,21 @@ class GeneralQuery():
         return query.all()
 
 
+def create_monitor_lock(name):
+    session = Session()
+    try:
+        ml = MonitorLock(name=name)
+        session.add(ml)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+    finally:
+        session.close()
+
+
 def create_all():
     Base.metadata.create_all(engine)
+    create_monitor_lock(LOCK_HANDLER_NAME)
 
 
 def drop_all():
