@@ -13,7 +13,10 @@ bound_list = [low_size, middle_size, high_size, 2**62]
 
 
 class AllocationError(Exception):
-    pass
+
+    def __init__(self, message):
+        self.message = message
+        super(AllocationError, self).__init__(message)
 
 
 class Stage(enum.Enum):

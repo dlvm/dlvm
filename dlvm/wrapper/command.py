@@ -1,5 +1,6 @@
 import os
 import time
+from threading import Lock
 
 from dlvm.common.configure import cfg
 from dlvm.wrapper.cmd_wrapper import run_cmd
@@ -12,6 +13,18 @@ iscsi_path_fmt = cfg.get('iscsi', 'path_fmt')
 iscsi_userid = cfg.get('iscsi', 'iscsi_userid')
 iscsi_password = cfg.get('iscsi', 'iscsi_password')
 iscsi_port = cfg.getint('iscsi', 'iscsi_port')
+
+
+cmd_lock = Lock()
+
+
+def exclude(func):
+
+    def wrapper(*args, **kwargs):
+        with cmd_lock:
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 def lv_get_path(lv_name, vg_name):
@@ -560,6 +573,7 @@ def iscsi_logout(target_name):
     run_cmd(cmd)
 
 
+@exclude
 def iscsi_create(target_name, dev_name, dev_path):
     backstore_path = '/backstores/iblock/{dev_name}'.format(
         dev_name=dev_name)
@@ -644,6 +658,7 @@ def iscsi_create(target_name, dev_name, dev_path):
         run_cmd(cmd)
 
 
+@exclude
 def iscsi_delete(target_name, dev_name):
     target_path = '/iscsi/{target_name}'.format(
         target_name=target_name)
@@ -680,6 +695,7 @@ def iscsi_delete(target_name, dev_name):
         run_cmd(cmd)
 
 
+@exclude
 def iscsi_export(target_name, initiator_name):
     acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
         target_name=target_name,
@@ -726,6 +742,7 @@ def iscsi_export(target_name, initiator_name):
     run_cmd(cmd)
 
 
+@exclude
 def iscsi_unexport(target_name, initiator_name):
     acl_path = '/iscsi/{target_name}/tpg1/acls'.format(
         target_name=target_name,
