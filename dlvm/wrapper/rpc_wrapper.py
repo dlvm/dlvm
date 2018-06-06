@@ -354,12 +354,10 @@ class DpvRpc(DlvmRpc):
 
         def enforce_func():
             session = frontend_local.session
-            lock_owner = frontend_local.worker_ctx.lock_owner
             dpv = session.query(DistributePhysicalVolume) \
                 .filter_by(dpv_name=dpv_name) \
                 .with_lockmode('update') \
                 .one()
-            assert(dpv.lock.lock_owner == lock_owner)
             if dpv.service_status != ServiceStatus.unavailable:
                 dpv.service_status = ServiceStatus.unavailable
                 session.add(dpv)

@@ -129,7 +129,7 @@ class LegCreateArgSchema(NtSchema):
     arg_schema=LegCreateArgSchema,
     lock_method=lambda arg: arg.leg_id)
 def leg_create(arg):
-    leg_id = arg.leg_id
+    leg_id = str(arg.leg_id)
     leg_size = arg.leg_size
     dm_ctx = arg.dm_ctx
     lv_path = cmd.lv_create(
