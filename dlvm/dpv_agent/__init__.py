@@ -335,5 +335,14 @@ def dpv_sync(arg):
     lv_clean(recreate_log.lv_set)
 
 
+class DpvVerifyRetSchema(NtSchema):
+    status = fields.String()
+
+
+@dpv_rpc.register(ret_schema=DpvVerifyRetSchema)
+def dpv_ping():
+    return 'ok'
+
+
 def start_dpv_agent():
     dpv_rpc.start_server()

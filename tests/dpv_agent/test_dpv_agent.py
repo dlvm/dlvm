@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from dlvm.worker.helper import get_dm_ctx
 from dlvm.dpv_agent import dpv_get_info, leg_create, LegCreateArgSchema, \
-    leg_delete, LegDeleteArgSchema, DpvSyncArgSchema, LegInfoSchema, dpv_sync
+    leg_delete, LegDeleteArgSchema, DpvSyncArgSchema, LegInfoSchema, \
+    dpv_sync, dpv_ping
 
 
 class DpvAgentTest(unittest.TestCase):
@@ -40,3 +41,7 @@ class DpvAgentTest(unittest.TestCase):
         dm_ctx = get_dm_ctx()
         arg = DpvSyncArgSchema.nt([leg_info], dm_ctx)
         dpv_sync(arg)
+
+    def test_dpv_ping(self):
+        ret = dpv_ping()
+        self.assertEqual(ret, 'ok')
