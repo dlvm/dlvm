@@ -6,6 +6,7 @@ from dlvm.common.configure import cfg
 from dlvm.wrapper.cmd_wrapper import run_cmd
 
 
+dpv_prefix = cfg.get('device_mapper', 'dpv_prefix')
 target_prefix = cfg.get('iscsi', 'target_prefix')
 initiator_prefix = cfg.get('iscsi', 'initiator_prefix')
 initiator_iface = cfg.get('iscsi', 'iface')
@@ -461,6 +462,22 @@ class DmError(DmBasic):
         return table
 
 
+def dm_get_all():
+    cmd = [
+        'dmsetup',
+        'status',
+    ]
+    r = run_cmd(cmd)
+    lines = r.stdout.decode('utf-8').split('\n')
+    dm_name_list = []
+    for line in lines:
+        if line.startswith(dpv_prefix):
+            end = line.find(':')
+            name = line[:end]
+            dm_name_list.append(name)
+    return dm_name_list
+
+
 def iscsi_extract_context(output):
     items = output.split('\n')
     address = None
@@ -765,3 +782,69 @@ def iscsi_unexport(target_name, initiator_name):
             initiator_name,
         ]
         run_cmd(cmd)
+
+
+@exclude
+def iscsi_target_get_all():
+    cmd = [
+        'targetcli',
+        '/iscsi/'
+        'ls',
+        'depth=1',
+    ]
+    r = run_cmd(cmd)
+    raw_list = r.stdout.decode('utf-8').split('\n')[1:-1]
+    target_list = []
+    for item in raw_list:
+        start = item.find(target_prefix)
+        if start == -1:
+            continue
+        stop = item.find(' ...')
+        target_name = item[start:stop]
+        # FIXME use real initiator list
+        target_list.append(target_name, [])
+
+
+@exclude
+def iscsi_target_release(target_name):
+    target_path = '/iscsi/{target_name}'.format(
+        target_name=target_name)
+    cmd = [
+        'targetcli',
+        target_path,
+        'ls',
+    ]
+    r = run_cmd(cmd, check=False)
+    if r.returncode == 0:
+        cmd = [
+            'targetcli',
+            '/iscsi',
+            'delete',
+            target_name,
+        ]
+        run_cmd(cmd)
+
+
+@exclude
+def iblock_release():
+    cmd = [
+        'targetcli',
+        'ls',
+        '/backstores/iblock',
+        'depth=1',
+    ]
+    r = run_cmd(cmd)
+    lines = r.stdout.decode('utf-8').split('\n')[1:-1]
+    for line in lines:
+        start = line.find('-') + 1
+        stop = line.find('.')
+        dev_name = line[start:stop].strip()
+        if dev_name.startswith(dpv_prefix):
+            if 'not in use' in line:
+                cmd = [
+                    'targetcli',
+                    '/backstores/iblock',
+                    'delete',
+                    dev_name,
+                ]
+                run_cmd(cmd)

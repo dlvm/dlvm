@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from dlvm.worker.helper import get_dm_ctx
 from dlvm.dpv_agent import dpv_get_info, leg_create, LegCreateArgSchema, \
-    leg_delete, LegDeleteArgSchema
+    leg_delete, LegDeleteArgSchema, DpvSyncArgSchema, LegInfoSchema, dpv_sync
 
 
 class DpvAgentTest(unittest.TestCase):
@@ -30,3 +30,13 @@ class DpvAgentTest(unittest.TestCase):
     def test_leg_delete(self, cmd_mock):
         arg = LegDeleteArgSchema.nt(0)
         leg_delete(arg)
+
+    @patch('dlvm.dpv_agent.cmd')
+    def test_dpv_sync(self, cmd_mock):
+        leg_id = 0
+        leg_size = 1024*1024*1024
+        ihost_name = None
+        leg_info = LegInfoSchema.nt(leg_id, leg_size, ihost_name)
+        dm_ctx = get_dm_ctx()
+        arg = DpvSyncArgSchema.nt([leg_info], dm_ctx)
+        dpv_sync(arg)
