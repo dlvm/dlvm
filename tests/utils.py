@@ -5,7 +5,7 @@ from dlvm.common.constant import DEFAULT_SNAP_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
-    ServiceStatus, DiskStatus, Lock, SnapStatus, Snapshot, \
+    DpvStatus, Lock, SnapStatus, Snapshot, \
     Group, Leg, GroupSnapshot
 
 
@@ -55,8 +55,7 @@ class DataBaseManager():
             dpv_name=dpv_name,
             total_size=total_size,
             free_size=free_size,
-            service_status=ServiceStatus.available,
-            disk_status=DiskStatus.available)
+            dpv_status=DpvStatus.available)
         self.session.add(dpv)
         self.session.commit()
 

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE, \
-    LOCK_HANDLER_NAME
+    LOCK_HANDLER_NAME, DPV_HANDLER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, Lock, LockType, \
     DistributeLogicalVolume, MonitorLock
@@ -133,6 +133,7 @@ def create_monitor_lock(name):
 def create_all():
     Base.metadata.create_all(engine)
     create_monitor_lock(LOCK_HANDLER_NAME)
+    create_monitor_lock(DPV_HANDLER_NAME)
 
 
 def drop_all():

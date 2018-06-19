@@ -2,7 +2,7 @@ import enum
 
 from dlvm.common.configure import cfg
 from dlvm.common.modules import DistributePhysicalVolume, \
-    ServiceStatus, DiskStatus
+    DpvStatus
 
 
 low_size = cfg.getsize('allocator', 'low_size')
@@ -35,8 +35,7 @@ class Allocator():
     def select_by_range(self, required_size, max_size, exclude):
         query = self.session.query(DistributePhysicalVolume) \
                 .filter_by(dvg_name=self.dvg_name) \
-                .filter_by(service_status=ServiceStatus.available) \
-                .filter_by(disk_status=DiskStatus.available) \
+                .filter_by(dpv_status=DpvStatus.available) \
                 .filter(DistributePhysicalVolume.free_size.between(
                     required_size, max_size))
         if exclude is not None:

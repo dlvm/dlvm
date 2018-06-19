@@ -16,7 +16,7 @@ from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
 from dlvm.common.error import RpcError
 from dlvm.common.modules import DistributePhysicalVolume, \
-    ServiceStatus
+    DpvStatus
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import backend_local, frontend_local, \
@@ -358,8 +358,9 @@ class DpvRpc(DlvmRpc):
                 .filter_by(dpv_name=dpv_name) \
                 .with_lockmode('update') \
                 .one()
-            if dpv.service_status != ServiceStatus.unavailable:
-                dpv.service_status = ServiceStatus.unavailable
+            if dpv.dpv_status == DpvStatus.available:
+                dpv.dpv_status = DpvStatus.recoverable
+                dpv.status_dt = datetime.utcnow()
                 session.add(dpv)
                 session.commit()
 

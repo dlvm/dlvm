@@ -11,7 +11,7 @@ from dlvm.common.constant import LOCK_HANDLER_NAME, MONITOR_LOGGER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.modules import Lock, LockType, MonitorLock, \
-    DlvStatus, DistributeLogicalVolume
+    DlvStatus, DistributeLogicalVolume, DistributePhysicalVolume
 from dlvm.common.database import Session
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
@@ -41,9 +41,50 @@ def register_lock_handler(lock_type):
     return wrapper
 
 
-@register_lock_handler(LockType.dlv.value)
-def dlv_lock_handler(lock):
+@register_lock_handler(LockType.dpv.value)
+def dpv_lock_handler(lock_nt, lock_owner):
     session = frontend_local.session
+    lock = session.query(Lock) \
+        .filter_by(lock_id=lock_nt.lock_id) \
+        .with_lockmode('update') \
+        .one()
+    assert(lock.lock_owner == lock_owner)
+    dlvs = session.query(DistributeLogicalVolume) \
+        .filter_by(lock_id=lock.lock_id) \
+        .all()
+    for dlv in dlvs:
+        dlv1 = session.query(DistributeLogicalVolume) \
+            .filter_by(dlv_name=dlv.dlv_name) \
+            .with_lockmode('update') \
+            .one()
+        if dlv1.lock is not None:
+            if dlv1.lock.lock_id == lock.lock_id:
+                dlv1.lock = None
+                session.add(dlv1)
+    dpvs = session.query(DistributePhysicalVolume) \
+        .filter_by(lock_id=lock.lock_id) \
+        .all()
+    for dpv in dpvs:
+        dpv1 = session.query(DistributePhysicalVolume) \
+            .filter_by(dpv_name=dpv.dpv_name) \
+            .with_lockmode('update') \
+            .one()
+        if dpv1.lock is not None:
+            if dpv1.lock.lock_id == lock.lock_id:
+                dpv1.lock = None
+                session.add(dpv1)
+    session.delete(lock)
+    session.commit()
+
+
+@register_lock_handler(LockType.dlv.value)
+def dlv_lock_handler(lock_nt, lock_owner):
+    session = frontend_local.session
+    lock = session.query(Lock) \
+        .filtger_by(lock_id=lock_nt.lock_id) \
+        .with_lockmode('update') \
+        .one()
+    assert(lock.lock_owner == lock_owner)
     dlv = session.query(DistributeLogicalVolume) \
         .filter_by(lock_id=lock.lock_id) \
         .with_lockmode('update') \
@@ -107,7 +148,6 @@ def lock_handler(batch):
         run_post_hook(
             'monitor', monitor_hook_list, hook_ctx,
             hook_ret_dict, lock_nt_list)
-        pass
     finally:
         session.close()
 
@@ -128,11 +168,12 @@ def lock_handler(batch):
                 .with_lockmode('update') \
                 .one()
             assert(lock.lock_dt < expire_dt)
+            assert(lock.lock_owner == lock_nt.lock_owner)
             lock.lock_owner = uuid.uuid4().hex
             lock.lock_dt = datetime.utcnow()
             session.add(lock)
             session.commit()
-            handler_dict[lock_nt.lock_type](lock)
+            handler_dict[lock_nt.lock_type](lock_nt, lock.lock_owner)
         except Exception:
             etype, value, tb = sys.exc_info()
             session.rollback()

@@ -11,14 +11,10 @@ from dlvm.common.constant import RES_NAME_LENGTH, DNS_NAME_LENGTH, \
 Base = declarative_base()
 
 
-class ServiceStatus(enum.Enum):
+class DpvStatus(enum.Enum):
     available = 'available'
-    unavailable = 'unavailable'
-
-
-class DiskStatus(enum.Enum):
-    available = 'available'
-    unavailable = 'unavailable'
+    recoverable = 'recoverable'
+    failed = 'failed'
 
 
 class DistributePhysicalVolume(Base):
@@ -31,11 +27,10 @@ class DistributePhysicalVolume(Base):
 
     free_size = Column(BigInteger, nullable=False)
 
-    service_status = Column(
-        Enum(ServiceStatus, name='dpv_service_status'), nullable=False)
+    dpv_status = Column(
+        Enum(DpvStatus, name='dpv_status'), nullable=False)
 
-    disk_status = Column(
-        Enum(DiskStatus, name='dpv_disk_status'), nullable=False)
+    status_dt = Column(DateTime)
 
     location = Column(String(DNS_NAME_LENGTH))
 

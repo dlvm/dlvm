@@ -9,7 +9,7 @@ from dlvm.common.utils import HttpStatus, ExcInfo
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributePhysicalVolume, \
-    ServiceStatus, DiskStatus, DistributeVolumeGroup
+    DpvStatus, DistributeVolumeGroup
 from dlvm.common.db_schema import DpvSummarySchema, DpvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
@@ -29,8 +29,7 @@ class DpvsGetArgSchema(NtSchema):
     offset = fields.Integer(missing=0, validate=Range(0))
     limit = fields.Integer(
         missing=DPV_LIST_LIMIT, validate=Range(0, DPV_LIST_LIMIT))
-    service_status = EnumField(ServiceStatus, missing=None)
-    disk_status = EnumField(DiskStatus, missing=None)
+    dpv_status = EnumField(DpvStatus, missing=None)
     locked = fields.Boolean(missing=None)
     dvg_name = fields.String(missing=None)
 
@@ -45,10 +44,8 @@ def dpvs_get():
     query.add_order_field(arg.order_by, arg.reverse)
     query.set_offset(arg.offset)
     query.set_limit(arg.limit)
-    if arg.service_status is not None:
-        query.add_is_field('service_status', arg.service_status)
-    if arg.disk_status is not None:
-        query.add_is_field('disk_status', arg.disk_status)
+    if arg.dpv_status is not None:
+        query.add_is_field('dpv_status', arg.service_status)
     if arg.locked is not None:
         if arg.locked is True:
             query.add_isnot_field('lock_id', None)
@@ -88,8 +85,7 @@ def dpvs_post():
         dpv_name=dpv_name,
         total_size=total_size,
         free_size=free_size,
-        service_status=ServiceStatus.available,
-        disk_status=DiskStatus.available,
+        dpv_status=DpvStatus.available,
         location=location,
     )
     session.add(dpv)

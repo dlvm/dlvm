@@ -2,7 +2,7 @@ from marshmallow import fields
 
 from dlvm.common.marshmallow_ext import NtSchema, EnumField
 
-from dlvm.common.modules import ServiceStatus, DiskStatus, \
+from dlvm.common.modules import DpvStatus, \
     DlvStatus, SnapStatus
 
 
@@ -40,8 +40,7 @@ class DpvSummarySchema(NtSchema):
     dpv_name = fields.String()
     total_size = fields.Integer()
     free_size = fields.Integer()
-    service_status = EnumField(ServiceStatus)
-    disk_status = EnumField(DiskStatus)
+    dpv_status = EnumField(DpvStatus)
     dvg_name = fields.String()
     lock_id = fields.Integer()
     lock_timestamp = fields.Integer()

@@ -34,3 +34,4 @@ SM_LOGGER_NAME = 'dlvm.sm'
 MONITOR_LOGGER_NAME = 'dlvm.monitor'
 
 LOCK_HANDLER_NAME = 'lock_handler'
+DPV_HANDLER_NAME = 'dpv_handler'
