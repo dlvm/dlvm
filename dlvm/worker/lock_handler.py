@@ -81,7 +81,7 @@ def dpv_lock_handler(lock_nt, lock_owner):
 def dlv_lock_handler(lock_nt, lock_owner):
     session = frontend_local.session
     lock = session.query(Lock) \
-        .filtger_by(lock_id=lock_nt.lock_id) \
+        .filter_by(lock_id=lock_nt.lock_id) \
         .with_lockmode('update') \
         .one()
     assert(lock.lock_owner == lock_owner)
@@ -104,11 +104,12 @@ def dlv_lock_handler(lock_nt, lock_owner):
 
 
 LockNt = namedtuple('LockNt', [
-    'lock_id', 'lock_type', 'req_id_hex'])
+    'lock_id', 'lock_owner', 'lock_type', 'req_id_hex'])
 
 
 class LockSchema(Schema):
     lock_id = fields.Integer()
+    lock_owner = fields.String()
     lock_type = EnumField(LockType)
     req_id_hex = fields.String()
 
@@ -176,6 +177,7 @@ def lock_handler(batch):
             handler_dict[lock_nt.lock_type](lock_nt, lock.lock_owner)
         except Exception:
             etype, value, tb = sys.exc_info()
+            exc_info = ExcInfo(etype, value, tb)
             session.rollback()
             run_error_hook(
                 'monitor', monitor_hook_list, hook_ctx,

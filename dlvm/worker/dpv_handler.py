@@ -152,6 +152,8 @@ def dpv_handler(batch):
         run_post_hook(
             'monitor', monitor_hook_list, hook_ctx,
             hook_ret_dict, dpv_list)
+    finally:
+        session.close()
 
     for dpv_name in dpv_list:
         req_id = uuid.uuid4()

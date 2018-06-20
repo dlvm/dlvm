@@ -1,12 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from dlvm.common.constant import DEFAULT_SNAP_NAME
+from dlvm.common.constant import DEFAULT_SNAP_NAME, \
+    LOCK_HANDLER_NAME, DPV_HANDLER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
     DpvStatus, Lock, SnapStatus, Snapshot, \
-    Group, Leg, GroupSnapshot
+    Group, Leg, GroupSnapshot, MonitorLock
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')
@@ -31,6 +32,14 @@ class DataBaseManager():
         connection.execute('CREATE DATABASE {0}'.format(db_name))
         connection.close()
         Base.metadata.create_all(self.engine)
+        name_list = [
+            LOCK_HANDLER_NAME,
+            DPV_HANDLER_NAME,
+        ]
+        for name in name_list:
+            ml = MonitorLock(name=name)
+            self.session.add(ml)
+        self.session.commit()
 
     def teardown(self):
         if self.session is not None:
