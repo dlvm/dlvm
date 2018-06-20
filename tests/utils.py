@@ -64,7 +64,7 @@ class DataBaseManager():
             dpv_name=dpv_name,
             total_size=total_size,
             free_size=free_size,
-            dpv_status=DpvStatus.available)
+            status=DpvStatus.available)
         self.session.add(dpv)
         self.session.commit()
 

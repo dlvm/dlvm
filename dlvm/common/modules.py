@@ -27,7 +27,7 @@ class DistributePhysicalVolume(Base):
 
     free_size = Column(BigInteger, nullable=False)
 
-    dpv_status = Column(
+    status = Column(
         Enum(DpvStatus, name='dpv_status'), nullable=False)
 
     status_dt = Column(DateTime)

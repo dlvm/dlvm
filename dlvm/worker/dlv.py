@@ -12,6 +12,8 @@ from dlvm.worker.allocator import Allocator, AllocationError
 
 dlv_create_queue = cfg.get('mq', 'dlv_create_queue')
 dlv_delete_queue = cfg.get('mq', 'dlv_delete_queue')
+dlv_attach_queue = cfg.get('mq', 'dlv_attach_queue')
+dlv_detach_queue = cfg.get('mq', 'dlv_detach_queue')
 
 
 def allocate_dpvs_for_group(dvg, group, allocator):
@@ -284,6 +286,50 @@ class DlvDelete(StateMachine):
     sm_name = 'dlv_delete'
     queue_name = dlv_delete_queue
     sm = dlv_delete_sm
+
+    @classmethod
+    def get_sm_name(cls):
+        return cls.sm_name
+
+    @classmethod
+    def get_queue(cls):
+        return cls.queue_name
+
+    @classmethod
+    def get_sm(cls):
+        return cls.sm
+
+
+dlv_attach_sm = {}
+
+
+class DlvAttach(StateMachine):
+
+    sm_name = 'dlv_attach'
+    queue_name = dlv_attach_queue
+    sm = dlv_attach_sm
+
+    @classmethod
+    def get_sm_name(cls):
+        return cls.sm_name
+
+    @classmethod
+    def get_queue(cls):
+        return cls.queue_name
+
+    @classmethod
+    def get_sm(cls):
+        return cls.sm
+
+
+dlv_detach_sm = {}
+
+
+class DlvDetach(StateMachine):
+
+    sm_name = 'dlv_detach'
+    queue_name = dlv_detach_queue
+    sm = dlv_detach_sm
 
     @classmethod
     def get_sm_name(cls):

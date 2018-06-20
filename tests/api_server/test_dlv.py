@@ -172,3 +172,52 @@ class DlvTest(unittest.TestCase):
         dlv2 = self.dbm.dlv_get(fake_dlv['dlv_name'])
         self.assertEqual(dlv2.status, DlvStatus.deleting)
         self.assertEqual(sm_handler.apply_async.call_count, 1)
+
+    @patch('dlvm.wrapper.state_machine.sm_handler')
+    def test_dlv_attach(self, sm_handler):
+        self.dbm.dvg_create(**fake_dvg)
+        for fake_dpv in fake_dpvs:
+            self.dbm.dpv_create(**fake_dpv)
+            self.dbm.dvg_extend(
+                fake_dvg['dvg_name'], fake_dpv['dpv_name'])
+        self.dbm.dlv_create(fake_dlv)
+        dlv1 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv1.status, DlvStatus.available)
+        path = '/dlvs/{0}/attach'.format(fake_dlv['dlv_name'])
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        raw_data = {
+            'ihost_name': 'ihost0',
+        }
+        data = json.dumps(raw_data)
+        resp = self.client.put(path, headers=headers, data=data)
+        self.assertEqual(resp.status_code, 201)
+        self.dbm.update_session()
+        dlv2 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv2.status, DlvStatus.attaching)
+        self.assertEqual(sm_handler.apply_async.call_count, 1)
+
+    @patch('dlvm.wrapper.state_machine.sm_handler')
+    def test_dlv_detach(self, sm_handler):
+        self.dbm.dvg_create(**fake_dvg)
+        for fake_dpv in fake_dpvs:
+            self.dbm.dpv_create(**fake_dpv)
+            self.dbm.dvg_extend(
+                fake_dvg['dvg_name'], fake_dpv['dpv_name'])
+        self.dbm.dlv_create(fake_dlv)
+        self.dbm.dlv_set(
+            fake_dlv['dlv_name'], 'status', DlvStatus.attached)
+        self.dbm.dlv_set(
+            fake_dlv['dlv_name'], 'ihost_name', 'ihost0')
+        self.dbm.update_session()
+        dlv1 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv1.ihost_name, 'ihost0')
+        self.assertEqual(dlv1.status, DlvStatus.attached)
+        path = '/dlvs/{0}/detach'.format(fake_dlv['dlv_name'])
+        resp = self.client.put(path)
+        self.assertEqual(resp.status_code, 201)
+        self.dbm.update_session()
+        dlv2 = self.dbm.dlv_get(fake_dlv['dlv_name'])
+        self.assertEqual(dlv2.status, DlvStatus.detaching)
+        self.assertEqual(sm_handler.apply_async.call_count, 1)

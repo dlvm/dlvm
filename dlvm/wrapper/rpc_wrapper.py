@@ -358,8 +358,8 @@ class DpvRpc(DlvmRpc):
                 .filter_by(dpv_name=dpv_name) \
                 .with_lockmode('update') \
                 .one()
-            if dpv.dpv_status == DpvStatus.available:
-                dpv.dpv_status = DpvStatus.recoverable
+            if dpv.status == DpvStatus.available:
+                dpv.status = DpvStatus.recoverable
                 dpv.status_dt = datetime.utcnow()
                 session.add(dpv)
                 session.commit()

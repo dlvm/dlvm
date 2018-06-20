@@ -135,7 +135,7 @@ def dpv_handler(batch):
         dpvs = session.query(DistributePhysicalVolume) \
             .filter(DistributePhysicalVolume.status_dt < expire_dt) \
             .filter_by(lock_id=None) \
-            .filter_by(dpv_status=DpvStatus.recoverable) \
+            .filter_by(status=DpvStatus.recoverable) \
             .order_by(DistributePhysicalVolume.status_dt.asc()) \
             .limit(batch) \
             .all()
@@ -172,7 +172,7 @@ def dpv_handler(batch):
                 .with_lockmode('update') \
                 .one()
             assert(dpv.status_dt < expire_dt)
-            assert(dpv.dpv_status == DpvStatus.recoverable)
+            assert(dpv.status == DpvStatus.recoverable)
             assert(dpv.lock_id is None)
             dpv.status_dt = current_dt
             session.add(dpv)

@@ -35,7 +35,7 @@ class Allocator():
     def select_by_range(self, required_size, max_size, exclude):
         query = self.session.query(DistributePhysicalVolume) \
                 .filter_by(dvg_name=self.dvg_name) \
-                .filter_by(dpv_status=DpvStatus.available) \
+                .filter_by(status=DpvStatus.available) \
                 .filter(DistributePhysicalVolume.free_size.between(
                     required_size, max_size))
         if exclude is not None:

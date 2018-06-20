@@ -29,7 +29,7 @@ class DpvsGetArgSchema(NtSchema):
     offset = fields.Integer(missing=0, validate=Range(0))
     limit = fields.Integer(
         missing=DPV_LIST_LIMIT, validate=Range(0, DPV_LIST_LIMIT))
-    dpv_status = EnumField(DpvStatus, missing=None)
+    status = EnumField(DpvStatus, missing=None)
     locked = fields.Boolean(missing=None)
     dvg_name = fields.String(missing=None)
 
@@ -44,8 +44,8 @@ def dpvs_get():
     query.add_order_field(arg.order_by, arg.reverse)
     query.set_offset(arg.offset)
     query.set_limit(arg.limit)
-    if arg.dpv_status is not None:
-        query.add_is_field('dpv_status', arg.service_status)
+    if arg.status is not None:
+        query.add_is_field('status', arg.status)
     if arg.locked is not None:
         if arg.locked is True:
             query.add_isnot_field('lock_id', None)
@@ -85,7 +85,7 @@ def dpvs_post():
         dpv_name=dpv_name,
         total_size=total_size,
         free_size=free_size,
-        dpv_status=DpvStatus.available,
+        status=DpvStatus.available,
         location=location,
     )
     session.add(dpv)

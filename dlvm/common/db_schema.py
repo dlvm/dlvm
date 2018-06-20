@@ -40,7 +40,7 @@ class DpvSummarySchema(NtSchema):
     dpv_name = fields.String()
     total_size = fields.Integer()
     free_size = fields.Integer()
-    dpv_status = EnumField(DpvStatus)
+    status = EnumField(DpvStatus)
     dvg_name = fields.String()
     lock_id = fields.Integer()
     lock_timestamp = fields.Integer()

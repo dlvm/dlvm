@@ -22,7 +22,7 @@ from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource
 from dlvm.wrapper.local_ctx import frontend_local
 from dlvm.wrapper.action_check import Action, run_checker, add_checker
-from dlvm.worker.dlv import DlvCreate, DlvDelete
+from dlvm.worker.dlv import DlvCreate, DlvDelete, DlvAttach, DlvDetach
 
 
 thin_meta_factor = cfg.getint('device_mapper', 'thin_meta_factor')
@@ -263,10 +263,126 @@ dlv_res = ApiResource(
 
 
 @add_checker(Action.dlv_delete)
-def normal_checker(dlv):
+def delete_checker(dlv):
     if dlv.status not in (DlvStatus.available, DlvStatus.failed):
         reason = 'status is {0}'.format(dlv.status)
         raise error.CheckerError('dlv', dlv.dlv_name, reason)
+    if dlv.lock_id is not None:
+        reason = 'has lock {0}'.format(dlv.lock_id)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)
+
+
+class DlvAttachArgSchema(NtSchema):
+    ihost_name = fields.String(required=True)
+
+
+dlv_attach_arg_info = ArgInfo(DlvAttachArgSchema, ArgLocation.body)
+
+
+def dlv_attach(dlv_name):
+    session = frontend_local.session
+    arg = frontend_local.arg
+    ihost_name = arg.ihost_name
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one_or_none()
+    if dlv is None:
+        raise error.ResourceNotFoundError(
+            'dlv', dlv_name)
+    if dlv.ihost_name == ihost_name:
+        return None
+
+    run_checker(Action.dlv_attach, dlv)
+
+    lock_owner = uuid.uuid4().hex
+    lock_dt = datetime.utcnow()
+    lock = Lock(
+        lock_owner=lock_owner,
+        lock_type=LockType.dlv,
+        lock_dt=lock_dt,
+        req_id_hex=frontend_local.req_ctx.req_id.hex,
+    )
+    session.add(lock)
+
+    dlv.status = DlvStatus.attaching
+    dlv.lock = lock
+    session.add(dlv)
+    session.commit()
+
+    sm = DlvAttach(dlv.dlv_name)
+    sm.start(lock)
+
+
+dlv_attach_method = ApiMethod(
+    dlv_attach, HttpStatus.Created, dlv_attach_arg_info)
+
+dlv_attach_res = ApiResource(
+    '/dlvs/<dlv_name>/attach',
+    put=dlv_attach_method,
+)
+
+
+@add_checker(Action.dlv_attach)
+def attach_checker(dlv):
+    if dlv.status != DlvStatus.available:
+        reason = 'status is {0}'.format(dlv.status)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)
+    assert(dlv.ihost_name is None)
+    if dlv.lock_id is not None:
+        reason = 'has lock {0}'.format(dlv.lock_id)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)
+
+
+def dlv_detach(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one_or_none()
+    if dlv is None:
+        raise error.ResourceNotFoundError(
+            'dlv', dlv_name)
+    if dlv.ihost_name is None:
+        return None
+
+    run_checker(Action.dlv_detach, dlv)
+
+    lock_owner = uuid.uuid4().hex
+    lock_dt = datetime.utcnow()
+    lock = Lock(
+        lock_owner=lock_owner,
+        lock_type=LockType.dlv,
+        lock_dt=lock_dt,
+        req_id_hex=frontend_local.req_ctx.req_id.hex,
+    )
+    session.add(lock)
+
+    dlv.status = DlvStatus.detaching
+    dlv.lock = lock
+    session.add(dlv)
+    session.commit()
+
+    sm = DlvDetach(dlv.dlv_name)
+    sm.start(lock)
+
+
+dlv_detach_method = ApiMethod(
+    dlv_detach, HttpStatus.Created)
+
+
+dlv_detach_res = ApiResource(
+    '/dlvs/<dlv_name>/detach',
+    put=dlv_detach_method,
+)
+
+
+@add_checker(Action.dlv_detach)
+def detach_checker(dlv):
+    if dlv.status != DlvStatus.attached:
+        reason = 'status is {0}'.format(dlv.status)
+        raise error.CheckerError('dlv', dlv.dlv_name, reason)
+    assert(dlv.ihost_name is not None)
     if dlv.lock_id is not None:
         reason = 'has lock {0}'.format(dlv.lock_id)
         raise error.CheckerError('dlv', dlv.dlv_name, reason)
