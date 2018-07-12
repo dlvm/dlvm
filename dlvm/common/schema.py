@@ -92,7 +92,7 @@ class GroupInfoSchema(NtSchema):
     group_id = fields.Integer()
     group_idx = fields.Integer()
     group_size = fields.Integer()
-    legs = fields.Nested(LegInfoSchema)
+    legs = fields.Nested(LegInfoSchema, many=True)
 
 
 class DlvInfoSchema(NtSchema):

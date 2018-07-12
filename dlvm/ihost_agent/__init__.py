@@ -254,7 +254,7 @@ def create_group(dlv_name, group_thin_size, thin_id, dm_ctx, group):
     pool_data_sectors = group.group_size // 512
     thin_block_sectors = dm_ctx.thin_block_size // 512
     low_water_mark = dm_ctx.low_water_mark
-    legs = group['legs']
+    legs = group.legs
     legs.sort(key=lambda x: x.leg_idx)
     pool_meta_path = create_pool_meta(
         dlv_name, group.group_idx, dm_ctx, legs[0], legs[1])
