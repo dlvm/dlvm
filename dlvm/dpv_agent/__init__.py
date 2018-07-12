@@ -6,6 +6,7 @@ from marshmallow import fields
 
 from dlvm.common.configure import cfg
 from dlvm.common.marshmallow_ext import NtSchema
+from dlvm.common.schema import DmContextSchema
 from dlvm.wrapper.rpc_wrapper import DpvRpc
 from dlvm.wrapper import command as cmd
 from dlvm.wrapper.local_ctx import backend_local
@@ -83,14 +84,6 @@ class DpvGetInfoRetSchema(NtSchema):
 def dpv_get_info():
     total_size, free_size = cmd.vg_get_size(local_vg_name)
     return DpvGetInfoRetSchema.nt(total_size, free_size)
-
-
-class DmContextSchema(NtSchema):
-    thin_block_size = fields.Integer()
-    mirror_meta_blocks = fields.Integer()
-    mirror_region_size = fields.Integer()
-    stripe_chunk_size = fields.Integer()
-    low_water_mark = fields.Integer()
 
 
 class LegCreateArgSchema(NtSchema):

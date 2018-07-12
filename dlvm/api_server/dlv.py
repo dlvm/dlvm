@@ -16,7 +16,7 @@ from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributeLogicalVolume, Snapshot, \
     DlvStatus, SnapStatus, Lock, LockType, Group, GroupSnapshot, Leg
-from dlvm.common.db_schema import DlvSummarySchema, DlvSchema
+from dlvm.common.schema import DlvSummarySchema, DlvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource

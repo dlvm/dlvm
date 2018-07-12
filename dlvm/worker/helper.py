@@ -1,5 +1,5 @@
 from dlvm.common.configure import cfg
-from dlvm.dpv_agent import DmContextSchema
+from dlvm.common.schema import DmContextSchema
 
 
 thin_block_size = cfg.getsize('device_mapper', 'thin_block_size')

@@ -10,7 +10,7 @@ from dlvm.common.marshmallow_ext import NtSchema, EnumField
 import dlvm.common.error as error
 from dlvm.common.modules import DistributePhysicalVolume, \
     DpvStatus, DistributeVolumeGroup
-from dlvm.common.db_schema import DpvSummarySchema, DpvSchema
+from dlvm.common.schema import DpvSummarySchema, DpvSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource

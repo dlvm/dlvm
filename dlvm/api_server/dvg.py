@@ -9,7 +9,7 @@ from dlvm.common.marshmallow_ext import NtSchema
 import dlvm.common.error as error
 from dlvm.common.modules import DistributePhysicalVolume, \
     DistributeVolumeGroup, DistributeLogicalVolume
-from dlvm.common.db_schema import DvgSchema
+from dlvm.common.schema import DvgSchema
 from dlvm.common.database import GeneralQuery
 from dlvm.wrapper.api_wrapper import ArgLocation, ArgInfo, \
     ApiMethod, ApiResource

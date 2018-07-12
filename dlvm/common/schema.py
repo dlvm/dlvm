@@ -71,3 +71,31 @@ class DlvSummarySchema(NtSchema):
 
 class DlvSchema(DlvSummarySchema):
     groups = fields.Nested(GroupSchema, many=True)
+
+
+class DmContextSchema(NtSchema):
+    thin_block_size = fields.Integer()
+    mirror_meta_blocks = fields.Integer()
+    mirror_region_size = fields.Integer()
+    stripe_chunk_size = fields.Integer()
+    low_water_mark = fields.Integer()
+
+
+class LegInfoSchema(NtSchema):
+    leg_id = fields.Integer()
+    leg_idx = fields.Integer()
+    leg_size = fields.Integer()
+    dpv_name = fields.String()
+
+
+class GroupInfoSchema(NtSchema):
+    group_id = fields.Integer()
+    group_idx = fields.Integer()
+    group_size = fields.Integer()
+    legs = fields.Nested(LegInfoSchema)
+
+
+class DlvInfoSchema(NtSchema):
+    dlv_size = fields.Integer()
+    stripe_number = fields.Integer()
+    groups = fields.Nested(GroupInfoSchema, many=True)
