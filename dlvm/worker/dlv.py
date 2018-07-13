@@ -1,11 +1,15 @@
 from dlvm.common.configure import cfg
 from dlvm.common.utils import chunks
 from dlvm.common.modules import DistributePhysicalVolume, \
-    DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus
+    DistributeVolumeGroup, DistributeLogicalVolume, DlvStatus, \
+    Snapshot
+from dlvm.common.schema import DlvInfoSchema
 from dlvm.wrapper.local_ctx import frontend_local
 from dlvm.wrapper.state_machine import StateMachine, SmRetry, \
     BiDirState, UniDirState, BiDirJob, UniDirJob
-from dlvm.dpv_agent import dpv_rpc, LegCreateArgSchema, LegDeleteArgSchema
+from dlvm.dpv_agent import dpv_rpc, LegCreateArgSchema, LegDeleteArgSchema, \
+    LegExportArgSchema, LegUnexportArgSchema
+from dlvm.ihost_agent import ihost_rpc, AggregateArgSchema, DegregateArgSchema
 from dlvm.worker.helper import get_dm_ctx
 from dlvm.worker.allocator import Allocator, AllocationError
 
@@ -300,7 +304,112 @@ class DlvDelete(StateMachine):
         return cls.sm
 
 
-dlv_attach_sm = {}
+def dlv_attach(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one()
+    dm_ctx = get_dm_ctx()
+    ihost_name = dlv.ihost_name
+    assert(ihost_name is not None)
+
+    thread_list = []
+    for group in dlv.groups:
+        for leg in group.legs:
+            dpv_name = leg.dpv_name
+            ac = dpv_rpc.async_client(dpv_name)
+            arg = LegExportArgSchema.nt(leg.leg_id, ihost_name)
+            t = ac.leg_export(arg)
+            thread_list.append(t)
+
+    err_list = []
+    for t in thread_list:
+        err = t.wait()
+        err_list.append(err)
+    for err in err_list:
+        if err:
+            raise SmRetry()
+
+    sc = ihost_rpc.sync_client(dlv.ihost_name)
+    snap_id = '%s%s' % (dlv.dlv_name, dlv.active_snap_id)
+    snap = session.query(Snapshot) \
+        .filter_by(snap_id=snap_id) \
+        .with_lockmode('update') \
+        .one()
+    arg = AggregateArgSchema.nt(
+        dlv_name=dlv.dlv_name,
+        snap_id=snap.thin_id,
+        dlv_info=DlvInfoSchema().dump(dlv),
+        dm_ctx=dm_ctx,
+    )
+    sc.dlv_aggregate(arg)
+    dlv.status = DlvStatus.attached
+    session.add(dlv)
+
+
+def dlv_detach(dlv_name):
+    session = frontend_local.session
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=dlv_name) \
+        .with_lockmode('update') \
+        .one()
+    thread_list = []
+    for group in dlv.groups:
+        for leg in group.legs:
+            dpv_name = leg.dpv_name
+            ac = dpv_rpc.async_client(dpv_name)
+            arg = LegUnexportArgSchema.nt()
+            t = ac.leg_unexport(arg)
+            thread_list.append(t)
+
+    err_list = []
+    for t in thread_list:
+        err = t.wait()
+        err_list.append(err)
+    for err in err_list:
+        if err:
+            raise SmRetry()
+
+    assert(dlv.ihost_name is not None)
+    sc = ihost_rpc.sync_client(dlv.ihost_name)
+    arg = DegregateArgSchema.nt(
+        dlv_name=dlv.dlv_name,
+        dlv_info=DlvInfoSchema().dump(dlv),
+    )
+    sc.dlv_degregate(arg)
+    dlv.status = DlvStatus.attached
+    session.add(dlv)
+
+    dlv.status = DlvStatus.available
+    session.add(dlv)
+
+
+class DlvAttachJob(BiDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_attach(self.dlv_name)
+
+    def backward(self):
+        dlv_detach(self.dlv_name)
+
+
+class DlvDetachJob(UniDirJob):
+
+    def __init__(self, dlv_name):
+        self.dlv_name = dlv_name
+
+    def forward(self):
+        dlv_detach(self.dlv_name)
+
+
+dlv_attach_sm = {
+    'start': BiDirState(DlvAttachJob, 'stop', 'detach'),
+    'detach': UniDirState(DlvDetachJob, 'stop'),
+}
 
 
 class DlvAttach(StateMachine):
@@ -322,7 +431,9 @@ class DlvAttach(StateMachine):
         return cls.sm
 
 
-dlv_detach_sm = {}
+dlv_detach_sm = {
+    'start': UniDirState(DlvDetachJob, 'stop'),
+}
 
 
 class DlvDetach(StateMachine):

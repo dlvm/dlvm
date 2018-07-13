@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from dlvm.common.schema import DlvInfoSchema
 from dlvm.worker.helper import get_dm_ctx
-from dlvm.ihost_agent import dlv_aggregate, AggregateArgSchema
+from dlvm.ihost_agent import dlv_aggregate, AggregateArgSchema, \
+    dlv_degregate, DegregateArgSchema
 
 
 fake_dlv_info = {
@@ -74,8 +75,19 @@ class IhostAgentTest(unittest.TestCase):
         dlv_info = DlvInfoSchema().load(dlv_info1)
         arg = AggregateArgSchema.nt(
             dlv_name='dlv0',
-            snap_id='0',
+            thin_id=0,
             dlv_info=dlv_info,
             dm_ctx=dm_ctx,
         )
         dlv_aggregate(arg)
+
+    @patch('dlvm.ihost_agent.cmd')
+    @patch('dlvm.ihost_agent.backend_local')
+    def test_dlv_degregate(self, backend_local_mock, cmd_mock):
+        dlv_info1 = DlvInfoSchema().dump(fake_dlv_info)
+        dlv_info = DlvInfoSchema().load(dlv_info1)
+        arg = DegregateArgSchema.nt(
+            dlv_name='dlv0',
+            dlv_info=dlv_info,
+        )
+        dlv_degregate(arg)

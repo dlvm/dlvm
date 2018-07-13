@@ -326,7 +326,7 @@ def create_final(
 
 class AggregateArgSchema(NtSchema):
     dlv_name = fields.String()
-    snap_id = fields.Integer()
+    thin_id = fields.Integer()
     dlv_info = fields.Nested(DlvInfoSchema, many=False)
     dm_ctx = fields.Nested(DmContextSchema, many=False)
 
@@ -341,21 +341,113 @@ class AggregateRetSchema(NtSchema):
     lock_method=lambda arg: arg.dlv_name)
 def dlv_aggregate(arg):
     dlv_name = arg.dlv_name
-    snap_id = arg.snap_id
+    thin_id = arg.thin_id
     dlv_info = arg.dlv_info
     dm_ctx = arg.dm_ctx
     dlv_size = dlv_info.dlv_size
     stripe_number = dlv_info.stripe_number
     group_thin_size = ceil(dlv_size / stripe_number)
     group_path_list = []
-    for group in dlv_info.groups:
+    groups = dlv_info.groups
+    groups.sort(key=lambda x: x.group_idx)
+    for group in groups:
         group_path = create_group(
-            dlv_name, group_thin_size, snap_id, dm_ctx, group)
+            dlv_name, group_thin_size, thin_id, dm_ctx, group)
         group_path_list.append(group_path)
     final_path = create_final(
         dlv_name, dm_ctx, dlv_info.dlv_size,
         dlv_info.stripe_number, group_path_list)
     return final_path
+
+
+def logout_leg(leg_id):
+    target_name = cmd.encode_target_name(leg_id)
+    cmd.iscsi_logout(target_name)
+
+
+def remove_mirror_leg(dlv_name, g_idx, leg):
+    mirror_data_name = get_mirror_data_name(
+        dlv_name, g_idx, leg.leg_idx)
+    dm = cmd.DmLinear(mirror_data_name)
+    dm.remove()
+
+    mirror_meta_name = get_mirror_meta_name(
+        dlv_name, g_idx, leg.leg_idx)
+    dm = cmd.DmLinear(mirror_meta_name)
+    dm.remove()
+
+
+def remove_mirror(dlv_name, g_idx, leg0, leg1):
+    mirror_name = get_mirror_name(
+        dlv_name,  g_idx, leg0.leg_idx, leg1.leg_idx)
+    dm = cmd.DmBasic(mirror_name)
+    dm.remove()
+
+    remove_mirror_leg(dlv_name, g_idx, leg0)
+    remove_mirror_leg(dlv_name, g_idx, leg1)
+    logout_leg(leg0.leg_id)
+    logout_leg(leg1.leg_id)
+
+
+def remove_pool_data(dlv_name, g_idx, legs):
+    pool_data_name = get_pool_data_name(dlv_name, g_idx)
+    dm = cmd.DmLinear(pool_data_name)
+    dm.remove()
+
+    for leg0, leg1 in chunks(legs, 2):
+        remove_mirror(dlv_name, g_idx, leg0, leg1)
+
+
+def remove_pool_meta(dlv_name, g_idx, leg0, leg1):
+    assert(leg0.leg_idx == 0)
+    assert(leg1.leg_idx == 1)
+    pool_meta_name = get_pool_meta_name(dlv_name, g_idx)
+    dm = cmd.DmLinear(pool_meta_name)
+    dm.remove()
+    remove_mirror(dlv_name, g_idx, leg0, leg1)
+
+
+def remove_group(dlv_name, group):
+    linear_name = get_linear_name(dlv_name, group.group_idx)
+    dm = cmd.DmLinear(linear_name)
+    dm.remove()
+
+    thin_name = get_thin_name(dlv_name, group.group_idx)
+    dm = cmd.DmThin(thin_name)
+    dm.remove()
+
+    pool_name = get_pool_name(dlv_name, group.group_idx)
+    dm = cmd.DmPool(pool_name)
+    dm.remove()
+
+    legs = group.legs
+    legs.sort(key=lambda x: x.leg_idx)
+
+    remove_pool_data(dlv_name, group.group_idx, legs[2:])
+    remove_pool_meta(
+        dlv_name, group.group_idx, legs[0], legs[1])
+
+
+def remove_final(dlv_name):
+    final_name = get_final_name(dlv_name)
+    dm = cmd.DmStripe(final_name)
+    dm.remove()
+
+
+class DegregateArgSchema(NtSchema):
+    dlv_name = fields.String()
+    dlv_info = fields.Nested(DlvInfoSchema, many=False)
+
+
+@ihost_rpc.register(
+    arg_schema=DegregateArgSchema,
+    lock_method=lambda arg: arg.dlv_name)
+def dlv_degregate(arg):
+    dlv_name = arg.dlv_name
+    dlv_info = arg.dlv_info
+    remove_final(dlv_name)
+    for group in dlv_info.groups:
+        remove_group(dlv_name, group)
 
 
 def start_ihost_agent():
