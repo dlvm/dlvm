@@ -332,14 +332,14 @@ def dlv_attach(dlv_name):
             raise SmRetry()
 
     sc = ihost_rpc.sync_client(dlv.ihost_name)
-    snap_id = '%s%s' % (dlv.dlv_name, dlv.active_snap_id)
+    snap_id = '%s%s' % (dlv.dlv_name, dlv.active_snap_name)
     snap = session.query(Snapshot) \
         .filter_by(snap_id=snap_id) \
         .with_lockmode('update') \
         .one()
     arg = AggregateArgSchema.nt(
         dlv_name=dlv.dlv_name,
-        snap_id=snap.thin_id,
+        thin_id=snap.thin_id,
         dlv_info=DlvInfoSchema().dump(dlv),
         dm_ctx=dm_ctx,
     )
