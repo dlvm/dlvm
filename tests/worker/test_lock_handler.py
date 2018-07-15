@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from dlvm.common.configure import cfg
 from dlvm.common.modules import LockType, DlvStatus
-from dlvm.worker.lock_handler import lock_handler
+from dlvm.worker.lock_handler_task import lock_handler
 
 from tests.utils import DataBaseManager
 

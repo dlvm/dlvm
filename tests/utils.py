@@ -113,7 +113,7 @@ class DataBaseManager():
 
     def dlv_create(self, dlv_info):
         snap_name = DEFAULT_SNAP_NAME
-        snap_id = '%s%s' % (dlv_info['dlv_name'], snap_name)
+        snap_id = '%s/%s' % (dlv_info['dlv_name'], snap_name)
 
         dlv = DistributeLogicalVolume(
             dlv_name=dlv_info['dlv_name'],

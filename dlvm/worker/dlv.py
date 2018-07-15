@@ -93,7 +93,7 @@ def dlv_create_leg(dlv_name):
         err_list.append(err)
     for err in err_list:
         if err:
-            raise SmRetry()
+            raise SmRetry(str(err))
     dlv.status = DlvStatus.available
     session.add(dlv)
 
@@ -332,7 +332,7 @@ def dlv_attach(dlv_name):
             raise SmRetry()
 
     sc = ihost_rpc.sync_client(dlv.ihost_name)
-    snap_id = '%s%s' % (dlv.dlv_name, dlv.active_snap_name)
+    snap_id = '%s/%s' % (dlv.dlv_name, dlv.active_snap_name)
     snap = session.query(Snapshot) \
         .filter_by(snap_id=snap_id) \
         .with_lockmode('update') \
@@ -343,7 +343,11 @@ def dlv_attach(dlv_name):
         dlv_info=DlvInfoSchema().dump(dlv),
         dm_ctx=dm_ctx,
     )
-    sc.dlv_aggregate(arg)
+    try:
+        sc.dlv_aggregate(arg)
+    except Exception as e:
+        raise SmRetry(str(e))
+
     dlv.status = DlvStatus.attached
     session.add(dlv)
 
@@ -359,7 +363,10 @@ def dlv_detach(dlv_name):
         for leg in group.legs:
             dpv_name = leg.dpv_name
             ac = dpv_rpc.async_client(dpv_name)
-            arg = LegUnexportArgSchema.nt()
+            arg = LegUnexportArgSchema.nt(
+                leg_id=leg.leg_id,
+                ihost_name=dlv.ihost_name,
+            )
             t = ac.leg_unexport(arg)
             thread_list.append(t)
 
@@ -382,6 +389,7 @@ def dlv_detach(dlv_name):
     session.add(dlv)
 
     dlv.status = DlvStatus.available
+    dlv.ihost_name = None
     session.add(dlv)
 
 

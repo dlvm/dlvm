@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from dlvm.common.configure import cfg
 from dlvm.common.modules import DpvStatus
-from dlvm.worker.dpv_handler import dpv_handler
+from dlvm.worker.dpv_handler_task import dpv_handler
 
 from tests.utils import DataBaseManager
 
@@ -26,7 +26,7 @@ class DpvHandlerTest(unittest.TestCase):
     def tearDown(self):
         self.dbm.teardown()
 
-    @patch('dlvm.worker.dpv_handler.dpv_rpc')
+    @patch('dlvm.worker.dpv_handler_task.dpv_rpc')
     def test_dpv_handler(self, dpv_rpc):
         self.dbm.dpv_create(**fake_dpv)
         self.dbm.dpv_set(

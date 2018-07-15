@@ -306,6 +306,7 @@ def dlv_attach(dlv_name):
     session.add(lock)
 
     dlv.status = DlvStatus.attaching
+    dlv.ihost_name = ihost_name
     dlv.lock = lock
     session.add(dlv)
     session.commit()

@@ -17,7 +17,7 @@ from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import frontend_local
 from dlvm.worker.monitor_ctx import MonitorContext
-from dlvm.worker.dlv import DlvCreate, DlvDelete
+from dlvm.worker.dlv import DlvCreate, DlvDelete, DlvAttach, DlvDetach
 
 ori_logger = getLogger(MONITOR_LOGGER_NAME)
 monitor_hook_list = build_hook_list('monitor_hook')
@@ -93,9 +93,11 @@ def dlv_lock_handler(lock_nt, lock_owner):
         sm = DlvCreate(dlv.dlv_name)
         sm.start(lock)
     elif dlv.status == DlvStatus.attaching:
-        pass
+        sm = DlvAttach(dlv.dlv_name)
+        sm.start(lock)
     elif dlv.status == DlvStatus.detaching:
-        pass
+        sm = DlvDetach(dlv.dlv_name)
+        sm.start(lock)
     elif dlv.status == DlvStatus.deleting:
         sm = DlvDelete(dlv.dlv_name)
         sm.start(lock)

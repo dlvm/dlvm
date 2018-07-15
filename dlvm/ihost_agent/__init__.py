@@ -19,7 +19,7 @@ ihost_rpc = IhostRpc()
 
 
 def get_final_name(dlv_name):
-    return '{ihost_prefix}-final'.format(
+    return '{ihost_prefix}-final-{dlv_name}'.format(
         ihost_prefix=ihost_prefix,
         dlv_name=dlv_name,
     )
@@ -92,7 +92,7 @@ def get_mirror_meta_name(dlv_name, g_idx, leg_idx):
 
 def get_mirror_data_name(dlv_name, g_idx, leg_idx):
     return (
-        '{ihost_prefix}-mirrormeta-{dlv_name}'
+        '{ihost_prefix}-mirrordata-{dlv_name}'
         '-{g_idx}-{leg_idx}'
     ).format(
         ihost_prefix=ihost_prefix,
@@ -206,18 +206,18 @@ def create_mirror(dlv_name, g_idx, dm_ctx, leg0, leg1):
         mirror_path = dm.create(table)
         # FIXME: track mirror status
 
-        return mirror_path
+        return mirror_path, mirror_data_sectors
 
 
 def create_pool_meta(dlv_name, g_idx, dm_ctx, leg0, leg1):
     assert(leg0.leg_idx == 0)
     assert(leg1.leg_idx == 1)
     assert(leg0.leg_size == leg1.leg_size)
-    mirror_path = create_mirror(dlv_name, g_idx, dm_ctx, leg0, leg1)
-    leg_sectors = leg0.leg_size // 512
+    mirror_path, mirror_sectors = create_mirror(
+        dlv_name, g_idx, dm_ctx, leg0, leg1)
     table = [{
         'start': 0,
-        'length': leg_sectors,
+        'length': mirror_sectors,
         'dev_path': mirror_path,
         'offset': 0,
     }]
@@ -232,17 +232,16 @@ def create_pool_data(dlv_name, g_idx, dm_ctx, legs):
     table = []
     for leg0, leg1 in chunks(legs, 2):
         assert(leg0.leg_size == leg1.leg_size)
-        leg_sectors = leg0.leg_size // 512
-        mirror_path = create_mirror(
+        mirror_path, mirror_sectors = create_mirror(
             dlv_name, g_idx, dm_ctx, leg0, leg1)
         line = {
             'start': current_sectors,
-            'length': leg_sectors,
+            'length': mirror_sectors,
             'dev_path': mirror_path,
             'offset': 0,
         }
         table.append(line)
-        current_sectors += leg_sectors
+        current_sectors += mirror_sectors
     pool_data_name = get_pool_data_name(dlv_name, g_idx)
     dm = cmd.DmLinear(pool_data_name)
     pool_data_path = dm.create(table)
