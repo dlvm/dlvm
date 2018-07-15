@@ -1,4 +1,4 @@
-from typing import NamedTuple, Mapping, Sequence, Callable, Optional, Type
+from collections import namedtuple
 import sys
 import uuid
 import enum
@@ -18,12 +18,9 @@ from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
 from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
 
 
-class ApiContext(NamedTuple):
-    req_ctx: RequestContext
-    func_name: str
-    arg_dict: Mapping
-    path_args: Sequence
-    path_kwargs: Mapping
+ApiContext = namedtuple(
+    'ApiContext', [
+        'req_ctx', 'func_name', 'arg_dict', 'path_args', 'path_kwargs'])
 
 
 class ApiResponseSchema(Schema):
@@ -37,26 +34,22 @@ class ArgLocation(enum.Enum):
     body = 'body'
 
 
-class ArgInfo(NamedTuple):
-    arg_schema: Type[NtSchema]
-    location: ArgLocation
+ArgInfo = namedtuple(
+    'ArgInfo', ['arg_schema', 'location'])
 
 
 empty_arg_info = ArgInfo(NtSchema, ArgLocation.query)
 
 
-class ApiMethod(NamedTuple):
-    func: Callable
-    status_code: HttpStatus
-    arg_info: ArgInfo = empty_arg_info
+ApiMethod = namedtuple(
+    'ApiMethod', ['func', 'status_code', 'arg_info'])
+ApiMethod.__new__.__defaults__ = (None, HttpStatus.OK, empty_arg_info)
 
 
-class ApiResource(NamedTuple):
-    path: str
-    get: Optional[ApiMethod] = None
-    post: Optional[ApiMethod] = None
-    put: Optional[ApiMethod] = None
-    delete: Optional[ApiMethod] = None
+ApiResource = namedtuple(
+    'ApiResource', [
+        'path', 'get', 'post', 'put', 'delete'])
+ApiResource.__new__.__defaults__ = (None,) * len(ApiResource._fields)
 
 
 api_hook_list = build_hook_list('api_hook')

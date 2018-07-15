@@ -1,5 +1,4 @@
 import sys
-import uuid
 from datetime import datetime
 import zlib
 from math import ceil
@@ -109,10 +108,8 @@ def dlvs_post():
     session = frontend_local.session
     arg = frontend_local.arg
 
-    lock_owner = uuid.uuid4().hex
-    lock_dt = datetime.utcnow()
+    lock_dt = datetime.utcnow().replace(microsecond=0)
     lock = Lock(
-        lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
         req_id_hex=frontend_local.req_ctx.req_id.hex,
@@ -235,10 +232,8 @@ def dlv_delete(dlv_name):
 
     run_checker(Action.dlv_delete, dlv)
 
-    lock_owner = uuid.uuid4().hex
-    lock_dt = datetime.utcnow()
+    lock_dt = datetime.utcnow().replace(microsecond=0)
     lock = Lock(
-        lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
         req_id_hex=frontend_local.req_ctx.req_id.hex,
@@ -295,10 +290,8 @@ def dlv_attach(dlv_name):
 
     run_checker(Action.dlv_attach, dlv)
 
-    lock_owner = uuid.uuid4().hex
-    lock_dt = datetime.utcnow()
+    lock_dt = datetime.utcnow().replace(microsecond=0)
     lock = Lock(
-        lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
         req_id_hex=frontend_local.req_ctx.req_id.hex,
@@ -349,10 +342,8 @@ def dlv_detach(dlv_name):
 
     run_checker(Action.dlv_detach, dlv)
 
-    lock_owner = uuid.uuid4().hex
-    lock_dt = datetime.utcnow()
+    lock_dt = datetime.utcnow().replace(microsecond=0)
     lock = Lock(
-        lock_owner=lock_owner,
         lock_type=LockType.dlv,
         lock_dt=lock_dt,
         req_id_hex=frontend_local.req_ctx.req_id.hex,

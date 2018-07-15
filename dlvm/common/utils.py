@@ -1,22 +1,16 @@
-from typing import NamedTuple, Type
-from types import TracebackType
+from collections import namedtuple
 from threading import Lock
 import enum
-import uuid
 import os
 from logging.handlers import WatchedFileHandler
-from logging import LoggerAdapter
 
 
-class RequestContext(NamedTuple):
-    req_id: uuid.UUID
-    logger: LoggerAdapter
+RequestContext = namedtuple(
+    'RequestContext', ['req_id', 'logger'])
 
 
-class ExcInfo(NamedTuple):
-    etype: Type[BaseException]
-    value: BaseException
-    tb: TracebackType
+ExcInfo = namedtuple(
+    'ExcInfo', ['etype', 'value', 'tb'])
 
 
 def run_once(func):

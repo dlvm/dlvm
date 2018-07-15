@@ -322,9 +322,6 @@ class Lock(Base):
         BigInteger().with_variant(Integer, "sqlite"),
         primary_key=True, autoincrement=True)
 
-    lock_owner = Column(
-        String(ID_LENGTH), nullable=False)
-
     lock_type = Column(
         Enum(LockType, name='lock_type'),
         nullable=False)

@@ -1,11 +1,12 @@
-from typing import NamedTuple, Set, Tuple, Type, Mapping
+from collections import namedtuple
 from abc import ABCMeta, abstractmethod
 import sys
 import enum
 import uuid
+from datetime import datetime
 from logging import getLogger, LoggerAdapter
 
-from marshmallow import fields
+from marshmallow import fields, post_dump
 
 from dlvm.common.constant import SM_LOGGER_NAME
 from dlvm.common.configure import cfg
@@ -24,16 +25,12 @@ sm_send_hook_list = build_hook_list('sm_send_hook')
 sm_recv_hook_list = build_hook_list('sm_recv_hook')
 
 
-class SmSendContext(NamedTuple):
-    req_ctx: RequestContext
-    args: Tuple
-    queue: str
+SmSendContext = namedtuple(
+    'SmSendContext', ['req_ctx', 'args', 'queue'])
 
 
-class SmRecvContext(NamedTuple):
-    req_ctx: RequestContext
-    sm_ctx_d: Mapping
-    sm_arg_d: Tuple
+SmRecvContext = namedtuple(
+    'SmRecvContext', ['req_ctx', 'sm_ctx_d', 'sm_arg_d'])
 
 
 class UniDirJob(metaclass=ABCMeta):
@@ -62,15 +59,11 @@ class BiDirJob(metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class UniDirState(NamedTuple):
-    job_cls: Type[UniDirJob]
-    f_state: str
+UniDirState = namedtuple(
+    'UniDirState', ['job_cls', 'f_state'])
 
-
-class BiDirState(NamedTuple):
-    job_cls: Type[BiDirJob]
-    f_state: str
-    b_state: str
+BiDirState = namedtuple(
+    'BiDirState', ['job_cls', 'f_state', 'b_state'])
 
 
 class StepType(enum.Enum):
@@ -86,18 +79,15 @@ class StateMachineContextSchema(NtSchema):
     retries = fields.Integer()
     worklog = SetField(fields.String())
     lock_id = fields.Integer()
-    lock_owner = fields.String()
     lock_dt = fields.DateTime()
 
-
-class StateMachineContext(NamedTuple):
-    sm_name: str
-    state_name: str
-    step_type: StepType
-    retries: int
-    worklog: Set[str]
-    lock_id: int
-    lock_owner: str
+    @post_dump
+    def remove_timezone(self, data):
+        # the default DateTime is iso format:
+        # 2018-07-15 20:03:02.204733+00:00
+        # convert it to:
+        # 2018-07-15 20:03:02.204733
+        data['lock_dt'] = data['lock_dt'][:-6]
 
 
 class SmRetry(Exception):
@@ -146,7 +136,7 @@ def build_worker_ctx(sm_ctx, state):
             direction = Direction.backward
         enforce = True
     return WorkerContext(
-        worklog, direction, enforce, sm_ctx.lock_owner, sm_ctx.lock_dt)
+        worklog, direction, enforce, sm_ctx.lock_dt)
 
 
 def update_for_failed(sm_ctx, state):
@@ -203,9 +193,10 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
     try:
         sm_ctx = StateMachineContextSchema().load(sm_ctx_d)
         sm = sm_dict[sm_ctx.sm_name]
-        new_owner, lock_dt = acquire_lock(
-            session, sm_ctx.lock_id, sm_ctx.lock_owner)
-        sm_ctx = sm_ctx._replace(lock_owner=new_owner, lock_dt=lock_dt)
+        lock_dt = datetime.utcnow().replace(microsecond=0)
+        acquire_lock(
+            session, sm_ctx.lock_id, lock_dt, sm_ctx.lock_dt)
+        sm_ctx = sm_ctx._replace(lock_dt=lock_dt)
         while sm_ctx.state_name != 'stop':
             state = sm[sm_ctx.state_name]
             worker_ctx = build_worker_ctx(sm_ctx, state)
@@ -223,11 +214,11 @@ def sm_handler(self, req_id_str, sm_ctx_d, res_id):
                 retry_args = (req_id_str, sm_ctx_d, res_id)
                 raise DoRetry(retry_args, e.message)
             else:
-                verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner)
+                verify_lock(session, sm_ctx.lock_id, sm_ctx.lock_dt)
                 session.commit()
                 sm_ctx = update_for_succeed(sm_ctx, state)
 
-        release_lock(session, sm_ctx.lock_id, sm_ctx.lock_owner, res_id)
+        release_lock(session, sm_ctx.lock_id, sm_ctx.lock_dt, res_id)
     except Exception as e:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
@@ -273,7 +264,7 @@ class StateMachine(metaclass=ABCMeta):
         req_id_str = str(frontend_local.req_ctx.req_id)
         sm_ctx = StateMachineContextSchema.nt(
             sm_name, 'start', StepType.forward, 0,
-            set(), lock.lock_id, lock.lock_owner, lock.lock_dt)
+            set(), lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         args = (req_id_str, sm_ctx_d, self.res_id)
         req_ctx = frontend_local.req_ctx

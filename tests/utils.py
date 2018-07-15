@@ -194,9 +194,8 @@ class DataBaseManager():
             .one_or_none()
         return snap
 
-    def lock_create(self, lock_owner, lock_type, lock_dt, req_id_hex):
+    def lock_create(self, lock_type, lock_dt, req_id_hex):
         lock = Lock(
-            lock_owner=lock_owner,
             lock_type=lock_type,
             lock_dt=lock_dt,
             req_id_hex=req_id_hex,

@@ -1,8 +1,7 @@
-from typing import NamedTuple, Set
+from collections import namedtuple
 from threading import local
 import enum
 from datetime import datetime
-import uuid
 
 
 backend_local = local()
@@ -14,12 +13,9 @@ class Direction(enum.Enum):
     backward = 'backward'
 
 
-class WorkerContext(NamedTuple):
-    worklog: Set
-    direction: Direction
-    enforce: bool
-    lock_owner: str
-    lock_dt: datetime
+WorkerContext = namedtuple(
+    'WorkerContext', [
+        'worklog', 'direction', 'enforce', 'lock_dt'])
 
 
 def get_empty_worker_ctx():
@@ -27,5 +23,4 @@ def get_empty_worker_ctx():
         worklog=set(),
         direction=Direction.forward,
         enforce=False,
-        lock_owner=uuid.uuid4().hex,
         lock_dt=datetime(3000, 1, 1, 0, 0, 0))

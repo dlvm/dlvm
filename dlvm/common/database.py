@@ -1,7 +1,5 @@
 import os
 import json
-import uuid
-from datetime import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +9,8 @@ from dlvm.common.constant import LC_PATH, SQLALCHEMY_CFG_FILE, \
     LOCK_HANDLER_NAME, DPV_HANDLER_NAME
 from dlvm.common.configure import cfg
 from dlvm.common.modules import Base, Lock, LockType, \
-    DistributeLogicalVolume, MonitorLock
+    DistributeLogicalVolume, MonitorLock, \
+    DistributePhysicalVolume
 
 sqlalchemy_cfg_path = os.path.join(LC_PATH, SQLALCHEMY_CFG_FILE)
 
@@ -25,43 +24,63 @@ engine = create_engine(cfg.get('database', 'db_uri'), **sqlalchemy_kwargs)
 Session = sessionmaker(bind=engine)
 
 
-def verify_lock(session, lock_id, lock_owner):
+def verify_lock(session, lock_id, lock_dt):
     lock = session.query(Lock) \
         .filter_by(lock_id=lock_id) \
         .with_lockmode('update') \
         .one()
-    assert(lock.lock_owner == lock_owner)
+    assert(lock.lock_dt == lock_dt)
     return lock
 
 
-def acquire_lock(session, lock_id, lock_owner):
-    new_owner = uuid.uuid4().hex
-    lock = verify_lock(session, lock_id, lock_owner)
-    lock_dt = datetime.utcnow()
-    lock.lock_owner = new_owner
+def acquire_lock(session, lock_id, lock_dt, old_lock_dt):
+    lock = verify_lock(session, lock_id, old_lock_dt)
     lock.lock_dt = lock_dt
     session.add(lock)
     session.commit()
-    return new_owner, lock_dt
 
 
-def remove_lock(session, lock, res_id):
-    if lock.lock_type == LockType.dlv:
-        dlv = session.query(DistributeLogicalVolume) \
-            .filter_by(dlv_name=res_id) \
-            .with_lockmode('update') \
-            .one_or_none()
-        if dlv is not None:
-            dlv.lock = None
-            session.add(dlv)
-    else:
-        msg = 'unknown lock type: %s' % lock.lock_type
-        raise Exception(msg)
+def remove_dlv_lock(session, lock, res_id):
+    dlv = session.query(DistributeLogicalVolume) \
+        .filter_by(dlv_name=res_id) \
+        .with_lockmode('update') \
+        .one_or_none()
+    if dlv is not None:
+        assert(dlv.lock is not None)
+        assert(dlv.lock.lock_id == lock.lock_id)
+        dlv.lock = None
+        session.add(dlv)
 
 
-def release_lock(session, lock_id, lock_owner, res_id):
-    lock = verify_lock(session, lock_id, lock_owner)
-    remove_lock(session, lock, res_id)
+def remove_dpv_lock(session, lock, res_id):
+    dlvs = session.query(DistributeLogicalVolume) \
+        .filter_by(lock_id=lock.lock_id) \
+        .all()
+    for dlv in dlvs:
+        assert(dlv.lock is not None)
+        assert(dlv.lock.lock_id == lock.lock_id)
+        dlv.lock = None
+        session.add(dlv)
+    dpv = session.query(DistributePhysicalVolume) \
+        .filter_by(dpv_name=res_id) \
+        .with_lockmode('update') \
+        .one()
+    assert(dpv.lock is not None)
+    assert(dpv.lock.lock_id == lock.lock_id)
+    dpv.lock = None
+    session.add(dpv)
+
+
+lock_remove_dict = {
+    LockType.dlv: remove_dlv_lock,
+    LockType.dpv: remove_dpv_lock,
+}
+
+
+def release_lock(session, lock_id, lock_dt, res_id):
+    lock = verify_lock(session, lock_id, lock_dt)
+    remove_func = lock_remove_dict[lock.lock_type]
+    remove_func(session, lock, res_id)
     session.delete(lock)
     session.commit()
 

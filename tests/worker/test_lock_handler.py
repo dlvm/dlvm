@@ -87,12 +87,12 @@ class LockHanderTest(unittest.TestCase):
             self.dbm.dvg_extend(
                 fake_dvg['dvg_name'], fake_dpv['dpv_name'])
         self.dbm.dlv_create(fake_dlv)
-        lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
-        lock_dt = datetime.utcnow() - timedelta(seconds=3600)
+        lock_dt = datetime.utcnow().replace(
+            microsecond=0) - timedelta(seconds=3600)
         req_id_hex = uuid.uuid4().hex
         lock = self.dbm.lock_create(
-            lock_owner, lock_type, lock_dt, req_id_hex)
+            lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.creating)

@@ -1,4 +1,4 @@
-from typing import NamedTuple, Type, Optional, Callable
+from collections import namedtuple
 import sys
 import uuid
 from xmlrpc.server import SimpleXMLRPCServer
@@ -11,7 +11,6 @@ from types import MethodType
 
 from dlvm.common.constant import DPV_LOGGER_NAME, IHOST_LOGGER_NAME
 from dlvm.common.utils import RequestContext, ExcInfo
-from dlvm.common.marshmallow_ext import NtSchema
 from dlvm.common.loginit import loginit
 from dlvm.common.configure import cfg
 from dlvm.common.error import RpcError
@@ -31,20 +30,14 @@ rpc_server_hook_list = build_hook_list('rpc_server_hook')
 rpc_client_hook_list = build_hook_list('rpc_client_hook')
 
 
-class RpcServerContext(NamedTuple):
-    req_ctx: RequestContext
-    func_name: str
-    lock_dt: datetime
-    arg_d: object
+RpcServerContext = namedtuple(
+    'RpcServerContext', [
+        'req_ctx', 'func_name', 'lock_dt', 'arg_d'])
 
 
-class RpcClientContext(NamedTuple):
-    req_ctx: RequestContext
-    address: str
-    timeout: int
-    lock_dt: datetime
-    func_name: str
-    arg_d: object
+RpcClientContext = namedtuple(
+    'RpcClientContext', [
+        'req_ctx', 'address', 'timeout', 'lock_dt', 'func_name', 'arg_d'])
 
 
 class RpcExpireError(Exception):
@@ -55,10 +48,9 @@ class RpcExpireError(Exception):
         super(RpcExpireError, self).__init__(msg)
 
 
-class RpcSchema(NamedTuple):
-    arg_schema: Optional[Type[NtSchema]]
-    ret_schema: Optional[Type[NtSchema]]
-    lock_method: Optional[Callable]
+RpcSchema = namedtuple(
+    'RpcSchema', [
+        'arg_schema', 'ret_schema', 'lock_method'])
 
 
 expire_delta = timedelta(seconds=cfg.getint('lock', 'expire_seconds'))
@@ -259,7 +251,7 @@ class DlvmRpc():
                 hook_ret_dict = run_pre_hook(
                     'rpc_server', rpc_server_hook_list, hook_ctx)
                 try:
-                    curr_dt = datetime.utcnow()
+                    curr_dt = datetime.utcnow().replace(microsecond=0)
                     if curr_dt - lock_dt > expire_delta:
                         raise RpcExpireError(curr_dt, lock_dt)
                     backend_local.req_ctx = req_ctx
@@ -360,7 +352,7 @@ class DpvRpc(DlvmRpc):
                 .one()
             if dpv.status == DpvStatus.available:
                 dpv.status = DpvStatus.recoverable
-                dpv.status_dt = datetime.utcnow()
+                dpv.status_dt = datetime.utcnow().replace(microsecond=0)
                 session.add(dpv)
                 session.commit()
 

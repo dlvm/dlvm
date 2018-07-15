@@ -31,7 +31,8 @@ class DpvHandlerTest(unittest.TestCase):
         self.dbm.dpv_create(**fake_dpv)
         self.dbm.dpv_set(
             fake_dpv['dpv_name'], 'status', DpvStatus.recoverable)
-        status_dt = datetime.utcnow() - timedelta(seconds=3600)
+        status_dt = datetime.utcnow().replace(
+            microsecond=0) - timedelta(seconds=3600)
         self.dbm.dpv_set(
             fake_dpv['dpv_name'], 'status_dt', status_dt)
         dpv_handler(1)

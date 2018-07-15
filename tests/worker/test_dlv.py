@@ -88,12 +88,11 @@ class DlvTest(unittest.TestCase):
             self.dbm.dvg_extend(
                 fake_dvg['dvg_name'], fake_dpv['dpv_name'])
         self.dbm.dlv_create(fake_dlv)
-        lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
-        lock_dt = datetime.utcnow()
+        lock_dt = datetime.utcnow().replace(microsecond=0)
         req_id_hex = uuid.uuid4().hex
         lock = self.dbm.lock_create(
-            lock_owner, lock_type, lock_dt, req_id_hex)
+            lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.creating)
@@ -106,7 +105,7 @@ class DlvTest(unittest.TestCase):
         req_id = uuid.uuid4()
         sm_ctx = StateMachineContextSchema.nt(
             'dlv_create', 'start', StepType.forward, 0, set(),
-            lock.lock_id, lock.lock_owner, lock.lock_dt)
+            lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         sm_handler(str(req_id), sm_ctx_d, dlv_name)
         self.assertEqual(mock_wait.call_count, 4)
@@ -122,12 +121,11 @@ class DlvTest(unittest.TestCase):
             self.dbm.dvg_extend(
                 fake_dvg['dvg_name'], fake_dpv['dpv_name'])
         self.dbm.dlv_create(fake_dlv)
-        lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
-        lock_dt = datetime.utcnow()
+        lock_dt = datetime.utcnow().replace(microsecond=0)
         req_id_hex = uuid.uuid4().hex
         lock = self.dbm.lock_create(
-            lock_owner, lock_type, lock_dt, req_id_hex)
+            lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.deleting)
@@ -140,7 +138,7 @@ class DlvTest(unittest.TestCase):
         req_id = uuid.uuid4()
         sm_ctx = StateMachineContextSchema.nt(
             'dlv_delete', 'start', StepType.forward, 0, set(),
-            lock.lock_id, lock.lock_owner, lock.lock_dt)
+            lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         sm_handler(str(req_id), sm_ctx_d, dlv_name)
         self.assertEqual(mock_wait.call_count, 4)
@@ -157,12 +155,11 @@ class DlvTest(unittest.TestCase):
             self.dbm.dvg_extend(
                 fake_dvg['dvg_name'], fake_dpv['dpv_name'])
         self.dbm.dlv_create(fake_dlv)
-        lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
-        lock_dt = datetime.utcnow()
+        lock_dt = datetime.utcnow().replace(microsecond=0)
         req_id_hex = uuid.uuid4().hex
         lock = self.dbm.lock_create(
-            lock_owner, lock_type, lock_dt, req_id_hex)
+            lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.attaching)
@@ -176,7 +173,7 @@ class DlvTest(unittest.TestCase):
         req_id = uuid.uuid4()
         sm_ctx = StateMachineContextSchema.nt(
             'dlv_attach', 'start', StepType.forward, 0, set(),
-            lock.lock_id, lock.lock_owner, lock.lock_dt)
+            lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         sm_handler(str(req_id), sm_ctx_d, dlv_name)
         self.dbm.update_session()
@@ -192,12 +189,11 @@ class DlvTest(unittest.TestCase):
             self.dbm.dvg_extend(
                 fake_dvg['dvg_name'], fake_dpv['dpv_name'])
         self.dbm.dlv_create(fake_dlv)
-        lock_owner = uuid.uuid4().hex
         lock_type = LockType.dlv
-        lock_dt = datetime.utcnow()
+        lock_dt = datetime.utcnow().replace(microsecond=0)
         req_id_hex = uuid.uuid4().hex
         lock = self.dbm.lock_create(
-            lock_owner, lock_type, lock_dt, req_id_hex)
+            lock_type, lock_dt, req_id_hex)
         dlv_name = fake_dlv['dlv_name']
         self.dbm.dlv_set(dlv_name, 'lock_id', lock.lock_id)
         self.dbm.dlv_set(dlv_name, 'status', DlvStatus.detaching)
@@ -211,7 +207,7 @@ class DlvTest(unittest.TestCase):
         req_id = uuid.uuid4()
         sm_ctx = StateMachineContextSchema.nt(
             'dlv_detach', 'start', StepType.forward, 0, set(),
-            lock.lock_id, lock.lock_owner, lock.lock_dt)
+            lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         sm_handler(str(req_id), sm_ctx_d, dlv_name)
         self.dbm.update_session()

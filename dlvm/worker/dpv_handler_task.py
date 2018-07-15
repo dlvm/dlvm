@@ -10,7 +10,7 @@ from dlvm.common.utils import RequestContext, ExcInfo
 from dlvm.common.modules import Lock, LockType, MonitorLock, \
     DpvStatus, DistributeLogicalVolume, \
     DistributePhysicalVolume
-from dlvm.common.database import Session
+from dlvm.common.database import Session, release_lock
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import frontend_local
@@ -75,11 +75,9 @@ def sync_one_dpv(dpv_name):
         arg.dpv_info.append(leg_info)
         dlv_list.append(dlv)
         dlv_name_list.append(dlv.dlv_name)
-    lock_owner = uuid.uuid4().hex
     lock = Lock(
-        lock_owner=lock_owner,
         lock_type=LockType.dpv,
-        lock_dt=datetime.utcnow(),
+        lock_dt=datetime.utcnow().replace(microsecond=0),
         req_id_hex=frontend_local.req_ctx.req_id.hex,
     )
     session.add(lock)
@@ -92,30 +90,8 @@ def sync_one_dpv(dpv_name):
     try:
         client.dpv_sync(arg)
     finally:
-        lock1 = session.query(Lock) \
-            .filter_by(lock_id=lock.lock_id) \
-            .with_lockmode('update') \
-            .one()
-        if lock1.lock_owner == lock_owner:
-            for dlv_name in dlv_name_list:
-                dlv = session.query(DistributeLogicalVolume) \
-                    .filter_by(dlv_name=dlv_name) \
-                    .with_lockmode('update') \
-                    .one()
-                if dlv.lock is not None:
-                    if dlv.lock.lock_id == lock1.lock_id:
-                        dlv.lock = None
-                        session.add(dlv)
-            dpv = session.query(DistributePhysicalVolume) \
-                .filter_by(dpv_name=dpv_name) \
-                .with_lockmode('update') \
-                .one()
-            if dpv.lock is not None:
-                if dpv.lock.lock_id == lock1.lock_id:
-                    dpv.lock = None
-                    session.add(dpv)
-            session.delete(lock1)
-            session.commit()
+        release_lock(
+            session, lock.lock_id, lock.lock_dt, dpv.dpv_name)
 
 
 def dpv_handler(batch):
@@ -125,7 +101,7 @@ def dpv_handler(batch):
     hook_ctx = MonitorContext(req_ctx, 'dpv_handler', None)
     hook_ret_dict = run_pre_hook(
         'monitor', monitor_hook_list, hook_ctx)
-    current_dt = datetime.utcnow()
+    current_dt = datetime.utcnow().replace(microsecond=0)
     expire_dt = current_dt - lock_seconds
     try:
         session.query(MonitorLock) \
@@ -139,7 +115,19 @@ def dpv_handler(batch):
             .order_by(DistributePhysicalVolume.status_dt.asc()) \
             .limit(batch) \
             .all()
-        dpv_list = [dpv.dpv_name for dpv in dpvs]
+        dpv_list = []
+        for idpv in dpvs:
+            dpv = session.query(DistributePhysicalVolume) \
+                .filter_by(dpv_name=idpv.dpv_name) \
+                .with_lockmode('update') \
+                .one()
+            assert(dpv.status_dt < expire_dt)
+            assert(dpv.status == DpvStatus.recoverable)
+            assert(dpv.lock_id is None)
+            dpv.status_dt = current_dt
+            session.add(dpv)
+            session.commit()
+            dpv_list.append(dpv.dpv_name)
     except Exception:
         etype, value, tb = sys.exc_info()
         exc_info = ExcInfo(etype, value, tb)
@@ -167,16 +155,6 @@ def dpv_handler(batch):
         hook_ret_dict = run_pre_hook(
             'monitor', monitor_hook_list, hook_ctx)
         try:
-            dpv = session.query(DistributePhysicalVolume) \
-                .filter_by(dpv_name=dpv_name) \
-                .with_lockmode('update') \
-                .one()
-            assert(dpv.status_dt < expire_dt)
-            assert(dpv.status == DpvStatus.recoverable)
-            assert(dpv.lock_id is None)
-            dpv.status_dt = current_dt
-            session.add(dpv)
-            session.commit()
             sync_one_dpv(dpv.dpv_name)
         except Exception:
             etype, value, tb = sys.exc_info()

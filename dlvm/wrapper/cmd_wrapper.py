@@ -1,21 +1,18 @@
-from typing import NamedTuple, Sequence
+from collections import namedtuple
 import sys
 import os
 import subprocess
 
-from dlvm.common.utils import RequestContext, ExcInfo
+from dlvm.common.utils import ExcInfo
 from dlvm.common.configure import cfg
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
 from dlvm.wrapper.local_ctx import backend_local
 
 
-class CmdContext(NamedTuple):
-    req_ctx: RequestContext
-    cmd: Sequence
-    timeout: int
-    check: bool
-    inp: str
+CmdContext = namedtuple(
+    'CmdContext', [
+        'req_ctx', 'cmd', 'timeout', 'check', 'inp'])
 
 
 cmd_hook_list = build_hook_list('cmd_hook')
@@ -55,10 +52,8 @@ cmd_timeout = cfg.getint('cmd', 'timeout')
 sudo_path = cmd_path.get_path('sudo')
 
 
-class CmdResult(NamedTuple):
-    stdout: bytes
-    stderr: bytes
-    returncode: int
+CmdResult = namedtuple(
+    'CmdResult', ['stdout', 'stderr', 'returncode'])
 
 
 def run_cmd(cmd, check=True, inp=None):
