@@ -44,6 +44,7 @@ def allocate_dpvs_for_group(dvg, group, allocator):
             .with_lockmode('update') \
             .one()
         assert(dpv1.free_size >= leg1.leg_size)
+        dpv1.free_size -= leg1.leg_size
         leg1.dpv = dpv1
         session.add(dpv1)
         session.add(leg1)
@@ -108,6 +109,8 @@ def dlv_delete_leg(dlv_name):
     for group in dlv.groups:
         for leg in group.legs:
             dpv_name = leg.dpv_name
+            if dpv_name is None:
+                continue
             ac = dpv_rpc.async_client(dpv_name)
             arg = LegDeleteArgSchema.nt(leg.leg_id)
             t = ac.leg_delete(arg)
@@ -358,6 +361,18 @@ def dlv_detach(dlv_name):
         .filter_by(dlv_name=dlv_name) \
         .with_lockmode('update') \
         .one()
+
+    assert(dlv.ihost_name is not None)
+    sc = ihost_rpc.sync_client(dlv.ihost_name)
+    arg = DegregateArgSchema.nt(
+        dlv_name=dlv.dlv_name,
+        dlv_info=DlvInfoSchema().dump(dlv),
+    )
+    try:
+        sc.dlv_degregate(arg)
+    except Exception as e:
+        raise SmRetry(str(e))
+
     thread_list = []
     for group in dlv.groups:
         for leg in group.legs:
@@ -378,13 +393,6 @@ def dlv_detach(dlv_name):
         if err:
             raise SmRetry()
 
-    assert(dlv.ihost_name is not None)
-    sc = ihost_rpc.sync_client(dlv.ihost_name)
-    arg = DegregateArgSchema.nt(
-        dlv_name=dlv.dlv_name,
-        dlv_info=DlvInfoSchema().dump(dlv),
-    )
-    sc.dlv_degregate(arg)
     dlv.status = DlvStatus.attached
     session.add(dlv)
 

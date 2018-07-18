@@ -287,9 +287,9 @@ def dm_clean(dm_info):
     layer2_list = []
     layer1_list = []
     for name in dm_name_list:
-        if name.starts_with(layer2_prefix):
+        if name.startswith(layer2_prefix):
             layer2_list.append(name)
-        elif name.starts_with(layer1_prefix):
+        elif name.startswith(layer1_prefix):
             layer1_list.append(name)
         else:
             logger = backend_local.req_ctx.logger

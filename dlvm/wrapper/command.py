@@ -788,7 +788,7 @@ def iscsi_unexport(target_name, initiator_name):
 def iscsi_target_get_all():
     cmd = [
         'targetcli',
-        '/iscsi/'
+        '/iscsi/',
         'ls',
         'depth=1',
     ]
@@ -802,7 +802,8 @@ def iscsi_target_get_all():
         stop = item.find(' ...')
         target_name = item[start:stop]
         # FIXME use real initiator list
-        target_list.append(target_name, [])
+        target_list.append((target_name, []))
+    return target_list
 
 
 @exclude

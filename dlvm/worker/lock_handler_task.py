@@ -89,6 +89,7 @@ def lock_handler(batch):
         'monitor', monitor_hook_list, hook_ctx)
     current_dt = datetime.utcnow().replace(microsecond=0)
     expire_dt = current_dt - lock_seconds
+    lock_nt_list = []
     try:
         session.query(MonitorLock) \
             .filter_by(name=LOCK_HANDLER_NAME) \
@@ -99,7 +100,6 @@ def lock_handler(batch):
             .order_by(Lock.lock_dt.asc()) \
             .limit(batch) \
             .all()
-        lock_nt_list = []
         for ilock in locks:
             lock = session.query(Lock) \
                 .filter_by(lock_id=ilock.lock_id) \

@@ -13,7 +13,7 @@ from dlvm.common.modules import Lock, LockType, MonitorLock, \
 from dlvm.common.database import Session, release_lock
 from dlvm.wrapper.hook import build_hook_list, run_pre_hook, \
     run_post_hook, run_error_hook
-from dlvm.wrapper.local_ctx import frontend_local
+from dlvm.wrapper.local_ctx import frontend_local, get_empty_worker_ctx
 from dlvm.worker.monitor_ctx import MonitorContext
 from dlvm.worker.helper import get_dm_ctx
 from dlvm.dpv_agent import dpv_rpc, DpvSyncArgSchema, \
@@ -35,7 +35,7 @@ def sync_one_dpv(dpv_name):
     logger = frontend_local.req_ctx.logger
     client = dpv_rpc.sync_client(dpv_name)
     try:
-        client.ping()
+        client.dpv_ping()
     except RpcError:
         logger.debug('dpv ping failed')
         return
@@ -150,6 +150,7 @@ def dpv_handler(batch):
         frontend_local.req_ctx = req_ctx
         session = Session()
         frontend_local.session = session
+        frontend_local.worker_ctx = get_empty_worker_ctx()
         hook_ctx = MonitorContext(
             req_ctx, 'dpv_handler', dpv_name)
         hook_ret_dict = run_pre_hook(

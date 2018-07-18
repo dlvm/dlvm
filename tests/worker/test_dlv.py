@@ -141,7 +141,7 @@ class DlvTest(unittest.TestCase):
             lock.lock_id, lock.lock_dt)
         sm_ctx_d = StateMachineContextSchema().dump(sm_ctx)
         sm_handler(str(req_id), sm_ctx_d, dlv_name)
-        self.assertEqual(mock_wait.call_count, 4)
+        self.assertEqual(mock_wait.call_count, 0)
         self.dbm.update_session()
         dlv = self.dbm.dlv_get(dlv_name)
         self.assertEqual(dlv, None)
