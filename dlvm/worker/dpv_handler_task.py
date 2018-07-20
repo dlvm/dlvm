@@ -89,6 +89,15 @@ def sync_one_dpv(dpv_name):
     session.commit()
     try:
         client.dpv_sync(arg)
+        dpv = session.query(DistributePhysicalVolume) \
+            .filter_by(dpv_name=dpv_name) \
+            .with_lockmode('update') \
+            .one()
+        assert(dpv.lock.lock_id == lock.lock_id)
+        assert(dpv.lock.lock_dt == lock.lock_dt)
+        dpv.status = DpvStatus.available
+        session.add(dpv)
+        session.commit()
     finally:
         release_lock(
             session, lock.lock_id, lock.lock_dt, dpv.dpv_name)
