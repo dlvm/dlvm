@@ -361,11 +361,16 @@ def dlv_detach(dlv_name):
         .filter_by(dlv_name=dlv_name) \
         .with_lockmode('update') \
         .one()
-
     assert(dlv.ihost_name is not None)
+    snap_id = '%s/%s' % (dlv.dlv_name, dlv.active_snap_name)
+    snap = session.query(Snapshot) \
+        .filter_by(snap_id=snap_id) \
+        .with_lockmode('update') \
+        .one()
     sc = ihost_rpc.sync_client(dlv.ihost_name)
     arg = DegregateArgSchema.nt(
         dlv_name=dlv.dlv_name,
+        thin_id=snap.thin_id,
         dlv_info=DlvInfoSchema().dump(dlv),
     )
     try:

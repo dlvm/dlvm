@@ -88,6 +88,7 @@ class IhostAgentTest(unittest.TestCase):
         dlv_info = DlvInfoSchema().load(dlv_info1)
         arg = DegregateArgSchema.nt(
             dlv_name='dlv0',
+            thin_id=0,
             dlv_info=dlv_info,
         )
         dlv_degregate(arg)

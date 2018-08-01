@@ -14,7 +14,7 @@ iscsi_path_fmt = cfg.get('iscsi', 'path_fmt')
 iscsi_userid = cfg.get('iscsi', 'iscsi_userid')
 iscsi_password = cfg.get('iscsi', 'iscsi_password')
 iscsi_port = cfg.getint('iscsi', 'iscsi_port')
-
+tmp_dir = cfg.get('general', 'tmp_dir')
 
 cmd_lock = Lock()
 
@@ -849,3 +849,17 @@ def iblock_release():
                     dev_name,
                 ]
                 run_cmd(cmd)
+
+
+def export_thin_meta(meta_name, meta_path, thin_id):
+    out_path = os.path.join(tmp_dir, meta_name)
+    cmd = [
+        'pdata_tools',
+        'thin_dump',
+        '--dev-id',
+        str(thin_id),
+        '-o',
+        out_path,
+        meta_path,
+    ]
+    run_cmd(cmd)

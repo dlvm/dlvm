@@ -397,16 +397,18 @@ def remove_pool_data(dlv_name, g_idx, legs):
         remove_mirror(dlv_name, g_idx, leg0, leg1)
 
 
-def remove_pool_meta(dlv_name, g_idx, leg0, leg1):
+def remove_pool_meta(dlv_name, g_idx, leg0, leg1, thin_id):
     assert(leg0.leg_idx == 0)
     assert(leg1.leg_idx == 1)
     pool_meta_name = get_pool_meta_name(dlv_name, g_idx)
     dm = cmd.DmLinear(pool_meta_name)
+    pool_meta_path = dm.get_path()
+    cmd.export_thin_meta(pool_meta_name, pool_meta_path, thin_id)
     dm.remove()
     remove_mirror(dlv_name, g_idx, leg0, leg1)
 
 
-def remove_group(dlv_name, group):
+def remove_group(dlv_name, thin_id, group):
     linear_name = get_linear_name(dlv_name, group.group_idx)
     dm = cmd.DmLinear(linear_name)
     dm.remove()
@@ -424,7 +426,7 @@ def remove_group(dlv_name, group):
 
     remove_pool_data(dlv_name, group.group_idx, legs[2:])
     remove_pool_meta(
-        dlv_name, group.group_idx, legs[0], legs[1])
+        dlv_name, group.group_idx, legs[0], legs[1], thin_id)
 
 
 def remove_final(dlv_name):
@@ -435,6 +437,7 @@ def remove_final(dlv_name):
 
 class DegregateArgSchema(NtSchema):
     dlv_name = fields.String()
+    thin_id = fields.Integer()
     dlv_info = fields.Nested(DlvInfoSchema, many=False)
 
 
@@ -443,10 +446,11 @@ class DegregateArgSchema(NtSchema):
     lock_method=lambda arg: arg.dlv_name)
 def dlv_degregate(arg):
     dlv_name = arg.dlv_name
+    thin_id = arg.thin_id
     dlv_info = arg.dlv_info
     remove_final(dlv_name)
     for group in dlv_info.groups:
-        remove_group(dlv_name, group)
+        remove_group(dlv_name, thin_id, group)
 
 
 def start_ihost_agent():
